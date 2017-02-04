@@ -116,11 +116,11 @@ dOpt  = L';
 
 % cost function which gets minimized
 yy = [];
-yy(1) = 1*S;                       % minimize the Brownian noise
+yy(1) = .0001*S;                       % minimize the Brownian noise
      
-yy = [yy 90*abs((T1(1) - T_1)/T_1)^1];    % match the T @ lambda
+yy = [yy 111*abs((T1(1) - T_1)/T_1)^1];    % match the T @ lambda
 
-yy = [yy 1*((T1(2) - T_2)/T_2)^1];    % match the T @ lambda/2
+yy = [yy 111*abs((T1(2) - T_2)/T_2)^1];    % match the T @ lambda/2
 % Thermo-Optic noise cancellation
 % the weight factor is chosen so that StoZ < Sbrown/10
 %y = y + StoZ * 1e46;
@@ -152,7 +152,7 @@ end
 % 2 = Transmission at 1064
 % 3 = Transmission at 532
 % 4 = HR surface field
-y = sum(yy([1 2 3]));
+y = sum(yy([1 2 3 4]));
 
 sss = y;
 

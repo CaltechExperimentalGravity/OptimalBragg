@@ -21,8 +21,8 @@ NUMTOOLS.lambda = 1064e-9;
 NUMTOOLS.func         = 'getMirrorCost';
 
 NUMTOOLS.opt_name     = 'PR3';
-NUMTOOLS.T_1            = 1e-6;  % less than 50 ppm at 1064 nm
-NUMTOOLS.T_2            = 1 - 1e-6;      % more than 99%    at  532 nm
+NUMTOOLS.T_1            = 10e-6;  % less than 50 ppm at 1064 nm
+NUMTOOLS.T_2            = 0.999;      % more than 99%    at  532 nm
 
 ifo = SilicaTantala300;
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
@@ -54,7 +54,7 @@ hybridopts = optimoptions('fmincon',...
                   'MaxFunEvals', 2111);
 
 options = optimoptions('particleswarm',...
-               'SwarmSize', nvars*55,...     % 
+               'SwarmSize', nvars*155,...     % 
                'UseParallel', 1,...
                'MaxIter', 211,...
                'SelfAdjustment',   1.49,...
