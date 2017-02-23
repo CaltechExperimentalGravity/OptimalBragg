@@ -6,8 +6,9 @@
 try
     precompIFO;
 catch me
-    addpath(genpath('../'));
-    addpath(genpath('../../gwincDev'));
+%     addpath(genpath('../'));
+%     addpath(genpath('../../gwincDev'));
+    addpath('../../../2017_02_NB/NoiseBudget/gwinc40m/');
 end
 
 f = logspace(0, 4, 300);
@@ -16,6 +17,7 @@ f = logspace(0, 4, 300);
 
 % from running 'do_aSi.m'
 %fname = ['Data/aSi_layers_' tnowstr];
+% fname = ['Data/PR3_layers_170222_2006'];
 fname = savename;
 load(fname);
 dOpt = TNout.L(:);
@@ -23,7 +25,8 @@ n = TNout.n(:);
 %divide out by index of refraction (omitting vacuum and substrate)
 dReal = dOpt ./ n(2:end-1);
 %
-wBeam = eval(['ifo.Optics.' NUMTOOLS.opt_name '.BeamRadius']);
+% wBeam = eval(['ifo.Optics.' NUMTOOLS.opt_name '.BeamRadius']);
+wBeam = 5e-3;
 wfac = 0.06/wBeam;
 
 [StoZ, SteZ, StrZ, T]  = getCoatThermoOptic(f, ifo, wBeam, dOpt);
@@ -105,7 +108,8 @@ set(gca, ...
 orient landscape
 set(gcf,'Position',[100 280 1000 700])
 set(gcf,'PaperPositionMode','auto')
-fname = ['Figures/' NUMTOOLS.opt_name '_123_TOnoise_' tnowstr];
+% tnowstr = datestr(now, 'yymmdd_HHMM');
+fname = ['Figures/' 'PR3' '_123_TOnoise_' tnowstr];
 print('-depsc','-r600',fname)
 [a,b] = system(['Figures/makePDF.sh ' fname '.eps']);
 if a ~= 0
@@ -156,7 +160,7 @@ orient landscape
 %set(gcf,'Position',[500 50 1000 700])
 set(gcf,'PaperPositionMode','auto')
 %print -depsc -r600 AlGaAs_Layers_60000.eps
-fname = ['Figures/' NUMTOOLS.opt_name '_123_Layers_' tnowstr];
+fname = ['Figures/' 'PR3AR' '_123_Layers_' tnowstr];
 print('-depsc','-r600', fname)
 [a,b] = system(['Figures/makePDF.sh ' fname '.eps']);
 if a ~= 0

@@ -18,13 +18,13 @@ x0 = x0(:);
 %Laser wavelength
 NUMTOOLS.lambda = 1064e-9;            % Wavelength at which R and T are to be evaluated
 
-% NUMTOOLS.func         = 'getMirrorCost';
+% NUMTOOLS.func         = 'getMirrorCost_AR';
 
-NUMTOOLS.opt_name       = 'PR3';
-NUMTOOLS.T_1            = 25e-6;      % Target transmission at 1064 nm
-NUMTOOLS.T_2s           = 0.99;      % Target transmission at 532 nm, s-pol
-NUMTOOLS.T_2p           = 0.99;      % Target transmission at 532 nm, p-pol
-NUMTOOLS.aoi            = 41.1;       % Angle of incidence (degrees)
+NUMTOOLS.opt_name       = 'PR3AR';
+NUMTOOLS.T_1            = 1. - 50e-6;      % Target transmission at 1064 nm
+NUMTOOLS.T_2s           = 1. - 50e-6;      % Target transmission at 532 nm, s-pol
+NUMTOOLS.T_2p           = 1. - 50e-6;      % Target transmission at 532 nm, p-pol
+NUMTOOLS.aoi            = 24.9;       % Angle of incidence (degrees), assuming 2 degree wedge
 
 
 ifo = SilicaTantala300;                 % Load a standard gwinc style parameter file with various material properties defined             
@@ -69,7 +69,7 @@ options = optimoptions('particleswarm',...
 % RUNS the Particle Swarm ========
 tic
 [xout, fval, exitflag] =...
-    particleswarm(@(x) getMirrorCost([x], NUMTOOLS, 0),...
+    particleswarm(@(x) getMirrorCost_AR([x], NUMTOOLS, 0),...
                                     nvars, LB, UB, options);
 toc
 
@@ -78,7 +78,7 @@ if find(xout < 0.001)
     disp('Bad Layer Thickness: invalid results')
 end         
 %% Run it one final time with the flag option turned on
-TNout = getMirrorCost(xout, NUMTOOLS, 1);
+TNout = getMirrorCost_AR(xout, NUMTOOLS, 1);
 tnowstr = datestr(now, 'yymmdd_HHMM');
 
 %SbrZ = getCoatBrownian(100, ifo, ifo.Optics.ETM.BeamRadius, xout);

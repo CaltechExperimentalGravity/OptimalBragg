@@ -1,9 +1,11 @@
-function y = getMirrorCost(x, params, flag)
-% OPTETM This function calculates something about the ETM coating
+function y = getMirrorCost_AR(x, params, flag)
+% OPTETM This function calculates something about the coating
 % it gets used by the do<Optic>.m program as the thing to
 % minimize. The input argument 'x' is the initial guess for the layer structure
 %
 % Option to compute R/T for 532nm at multiple polarizations...
+% This macro changes the order of the layers to account for designing an AR
+% coating, putting it in the way multidiel1.m wants it...
 
 %Importing the parameter called "NUMTOOLS" in do<Optic>.m
 glob_param = params;
@@ -32,11 +34,11 @@ no_of_stacks = floor(length(x)/2);    % use floor if x is not even
 n_c = [];
 
 for kk = 1:(no_of_stacks)
-  n_c  = [n_c n1 n2];
+  n_c  = [n_c n2 n1];
 end
        
 
-n = [na n_c nb];  % add the indices of the vacuum and the substrate at either end
+n = [nb n_c na];  % add the indices of the vacuum and the substrate at either end
 
 %Making this a row vector for multidiel1.m
 L = transpose(x);
@@ -132,7 +134,7 @@ end
 % 3 = Transmission at 532, p-pol
 % 4 = Transmission at 532, s-pol
 % 5 = HR surface field
-y = sum(yy([1 2 3 4 5]));
+y = sum(yy([3 4]));  %For the AR, we only care about 3 and 4...
 
 %This is the error function (evaluated) we are trying to minimize...
 sss = y;
@@ -180,17 +182,17 @@ axis([min(lambda_real) max(lambda_real) .9e-6 1.01])
 
 line(lambda_0*1e9/2*ones(100,1),logspace(-7,0,100),'Color','g','LineWidth',3)
 
-line(lambda_0*1e9*ones(100,1), logspace(-7,0,100), 'Color','c','LineWidth',3)
+% line(lambda_0*1e9*ones(100,1), logspace(-7,0,100), 'Color','c','LineWidth',3)
 %text(1600, 1e-3, ['R @ ' num2str(lambda_0*1e9) ' = ' num2str(R1(1),4)])
-text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(Tp(1)*1e6,3) ' ppm'],...
-    'FontSize', 26)
+% text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(Tp(1)*1e6,3) ' ppm'],...
+%     'FontSize', 26)
 
 %text(1300,0.1*1.3^-1,['R @  ' num2str(lambda_0*1e9/2) ' = ' num2str(R1(1))])
-text(532, 5e-6,['T @  ' num2str(lambda_0*1e9/2) ' = ' num2str(Tp(2))],...
+text(532, 5e-6,['R @  ' num2str(lambda_0*1e9/2) ' = ' num2str(Rp(2)*1e6,3) 'ppm'],...
     'FontSize', 26)
 %S
-disp(['T @ ' num2str(lambda_0*1e9) ' nm, p-pol = ' num2str(Tp(1)*1e6,5) ' ppm'])
-disp(['T @ ' num2str(lambda_0*1e9/2) ' nm, p-pol = ' num2str(Tp(2)*1e2,5) ' %'])
+% disp(['T @ ' num2str(lambda_0*1e9) ' nm, p-pol = ' num2str(Tp(1)*1e6,5) ' ppm'])
+disp(['R @ ' num2str(lambda_0*1e9/2) ' nm, p-pol = ' num2str(Rp(2)*1e6,5) ' ppm'])
 
 
 % nice print
@@ -231,17 +233,17 @@ axis([min(lambda_real) max(lambda_real) .9e-6 1.01])
 
 line(lambda_0*1e9/2*ones(100,1),logspace(-7,0,100),'Color','g','LineWidth',3)
 
-line(lambda_0*1e9*ones(100,1), logspace(-7,0,100), 'Color','c','LineWidth',3)
+% line(lambda_0*1e9*ones(100,1), logspace(-7,0,100), 'Color','c','LineWidth',3)
 %text(1600, 1e-3, ['R @ ' num2str(lambda_0*1e9) ' = ' num2str(R1(1),4)])
-text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(Ts(1)*1e6,3) ' ppm'],...
-    'FontSize', 26)
+% text(1100, 3e-6, ['R @ ' num2str(lambda_0*1e9) ' = ' num2str(Rs(1)*1e6,3) ' ppm'],...
+%     'FontSize', 26)
 
 %text(1300,0.1*1.3^-1,['R @  ' num2str(lambda_0*1e9/2) ' = ' num2str(R1(1))])
-text(532, 5e-6,['T @  ' num2str(lambda_0*1e9/2) ' = ' num2str(Ts(2))],...
+text(532, 5e-6,['R @  ' num2str(lambda_0*1e9/2) ' = ' num2str(Rs(2)*1e6,3) 'ppm'],...
     'FontSize', 26)
 %S
-disp(['T @ ' num2str(lambda_0*1e9) ' nm, s-pol = ' num2str(Ts(1)*1e6,5) ' ppm'])
-disp(['T @ ' num2str(lambda_0*1e9/2) ' nm, s-pol = ' num2str(Ts(2)*1e2,5) ' %'])
+% disp(['T @ ' num2str(lambda_0*1e9) ' nm, s-pol = ' num2str(Ts(1)*1e6,5) ' ppm'])
+disp(['R @ ' num2str(lambda_0*1e9/2) ' nm, s-pol = ' num2str(Rs(2)*1e6,5) ' ppm'])
 
 
 % nice print
