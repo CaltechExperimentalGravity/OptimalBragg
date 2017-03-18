@@ -106,5 +106,5 @@ else
 end
 
 %% plot layer structure and thermo-optic noise
-%plotTO120
+plotTO120
 % exit;

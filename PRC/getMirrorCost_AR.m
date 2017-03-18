@@ -52,6 +52,17 @@ lambda = [lambda_0 lambda_0/2] / lambda_0;
 [Gammap, ~]   = multidiel1(n, L, lambda, aoi, 'tm');
 [Gammas, ~]   = multidiel1(n, L, lambda, aoi, 'te');
 
+% Derivative sensitivity terms - for a 1% change in L: (dT/T)/(dL/L)
+% Assumption is that derivative is approx the same on either side of L0...
+[Gamma5p, ~] = multidiel1(n, 1.01*L, lambda, aoi, 'tm');
+dTdLp = (abs(Gammap).^2 - abs(Gamma5p).^2)/0.01;
+dTdLp = dTdLp ./ (1 - abs(Gammap).^2);
+
+[Gamma5s, ~] = multidiel1(n, 1.01*L, lambda, aoi, 'te');
+dTdLs = (abs(Gammas).^2 - abs(Gamma5s).^2)/0.01;
+dTdLs = dTdLs ./ (1 - abs(Gammas).^2);
+
+
 % Note the arrays Gammap/Gammas contains information at 1064nm as well as 532nm
 % for use to compute error fcn...
 
@@ -128,13 +139,19 @@ elseif flag==3
     keyboard    % debug
 end
 
+%%Add sensitivity function to the cost function...
+yy = [yy 1*abs(dTdLp(1)) 1*abs(dTdLp(2)) 1*abs(dTdLs(2))]; %1064nmp, 532nm p-pol, 532nm s-pol
+
 % choose which terms in the cost function to use
 % 1 = Brownian Noise
 % 2 = Transmission at 1064, p-pol
 % 3 = Transmission at 532, p-pol
 % 4 = Transmission at 532, s-pol
 % 5 = HR surface field
-y = sum(yy([3 4]));  %For the AR, we only care about 3 and 4...
+% 6 = sensitivity to change in layer thickness @1064nm p-pol...
+% 7 = sensitivity to change in layer thickness @532nm p-pol...
+% 8 = sensitivity to change in layer thickness @532nm s-pol...
+y = sum(yy([3 4 7 8]));  %For the AR, we only care about 3 and 4, 7, 8...
 
 %This is the error function (evaluated) we are trying to minimize...
 sss = y;
