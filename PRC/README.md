@@ -20,3 +20,9 @@ AR side
 R_532_p = 51.5ppm
 R_532_s = 50ppm
 nothing special for 1064nm...
+
+### GV April 16 2017 ###
+- Cleaned up some scripts
+- separate functions for calculating derivatives, making plot 
+- now using dispersion data from Ramin for calculations as well as plotting
+- changed constraints on layer thickness, first layer now required to be nearly half-wave thick @1064nm, all layers thicker than ~50nm

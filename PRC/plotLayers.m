@@ -1,7 +1,7 @@
 addpath('../');
 % load Data/PR3_AR_layers_170411_1140.mat
 % load Data/PR3_AR_layers_170410_1321.mat
-load Data/PR3_layers_170407_1336.mat
+load Data/PR3_20_layers_170416_1409.mat
 % load Data/PR3_layers_170411_1823.mat
 
 dOpt = TNout.L(:);
