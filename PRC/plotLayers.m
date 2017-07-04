@@ -1,7 +1,8 @@
 addpath('../');
 % load Data/PR3_AR_layers_170411_1140.mat
 % load Data/PR3_AR_layers_170410_1321.mat
-load Data/PR3_20_layers_170416_1409.mat
+% load Data/PR3_20_layers_170416_1409.mat
+load Data/170416_AR/PR3_AR_6_layers_170416_2233.mat
 % load Data/PR3_layers_170411_1823.mat
 
 dOpt = TNout.L(:);
@@ -20,7 +21,7 @@ hold off
 ylabel('Optical Thickness / \lambda')
 title('SiO_2/Ta_2O_5 Coating')
 %axis tight
-legend('SiO_2')
+legend('Ta_2O_5')
 ylim([0 .71])
 xlim([0 length(dReal)+1])
 set(gca,'XTick',[])

@@ -4,7 +4,7 @@ function [Rp,Tp,Rs,Ts] = makeSpecREFLplot(dataFile, firstLayer)
 clear TNout;
 addpath('../');
 load(dataFile);
-load dispersion.mat;
+load dispersion_revised.mat;
 
 lambda_0 = 1064e-9;
 lambda = linspace(0.4,1.6,2200);
@@ -20,18 +20,24 @@ Tp = zeros(length(lambda),1);
 Rs = zeros(length(lambda),1);
 Ts = zeros(length(lambda),1);
 
+n1_IR = interp1(SiO2(:,1),SiO2(:,2),1064,'pchip');
+n2_IR = interp1(Ta2O5(:,1),Ta2O5(:,2),1064,'pchip');
+
 for i = 1:length(lambda)
-    n1 = interp1(SiO2(:,1),SiO2(:,2),lambda(i)*1000,'pchip');
-    n2 = interp1(Ta2O5(:,1),Ta2O5(:,2),lambda(i)*1000,'pchip');
+    n1 = interp1(SiO2(:,1),SiO2(:,2),lambda(i)*1064,'pchip');
+    n2 = interp1(Ta2O5(:,1),Ta2O5(:,2),lambda(i)*1064,'pchip');
     nb = n1;
     if strcmp(firstLayer,'SiO2')
         n_c = [];
+        L_temp = [];
         for kk = 1:(no_of_stacks)
             n_c  = [n_c n1 n2];
+            L_temp(2*kk - 1) = L(2*kk - 1)*n1/n1_IR;
+            L_temp(2*kk) = L(2*kk)*n2/n2_IR;
         end
         n = [na n_c nb];  % add the indices of the vacuum and the substrate at either end 
-    [Gammap, ~] = multidiel1(n, L, lambda(i), aoi, 'tm');
-    [Gammas, ~] = multidiel1(n, L, lambda(i), aoi, 'te');
+    [Gammap, ~] = multidiel1(n, L_temp, lambda(i), aoi, 'tm');
+    [Gammas, ~] = multidiel1(n, L_temp, lambda(i), aoi, 'te');
     Rp(i) = abs(Gammap).^2;
     Tp(i) = 1 - Rp(i);
     Rs(i) = abs(Gammas).^2;
@@ -39,12 +45,16 @@ for i = 1:length(lambda)
     
     elseif strcmp(firstLayer, 'Ta2O5') %AR coating
         n_c = [];
+        L_temp = [];
         for kk = 1:(no_of_stacks)
             n_c  = [n_c n2 n1];
+            L_temp(2*kk - 1) = L(2*kk - 1)*n2/n2_IR;
+            L_temp(2*kk) = L(2*kk)*n1/n1_IR;
         end
         n = [nb n_c na];  % add the indices of the vacuum and the substrate at either end 
-        [Gammap, ~] = multidiel1(n, L, lambda(i), aoi, 'tm');
-        [Gammas, ~] = multidiel1(n, L, lambda(i), aoi, 'te');
+        aoi_temp = theta2(n1,n2,41.1);
+        [Gammap, ~] = multidiel1(n, L_temp, lambda(i), aoi_temp, 'tm');
+        [Gammas, ~] = multidiel1(n, L_temp, lambda(i), aoi_temp, 'te');
         Rp(i) = abs(Gammap).^2;
         Tp(i) = 1 - Rp(i);
         Rs(i) = abs(Gammas).^2;
@@ -53,8 +63,6 @@ for i = 1:length(lambda)
 end
         
 
-lambda_real = lambda * lambda_0 * 1e9;
-lambda_0 = 1064e-9;
 lambda_real = lambda * lambda_0 * 1e9;
 figure(70711)
 hold on
