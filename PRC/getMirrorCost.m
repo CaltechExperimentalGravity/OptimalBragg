@@ -1,5 +1,5 @@
 function y = getMirrorCost(x, params, flag)
-% OPTETM This function calculates something about the ETM coating
+% getMirrorCost This function calculates something about the coating
 % it gets used by the do<Optic>.m program as the thing to
 % minimize. The input argument 'x' is the initial guess for the layer structure
 %
@@ -10,64 +10,88 @@ glob_param = params;
 
 % This makes x into a column vector if it isn't already
 x = x(:);
-
-% WTF?
-try, flag; catch flag = 0; end
+%Making this a row vector for multidiel1.m
+L = transpose(x);
 
 ifo = glob_param.ifo;
 
 % Laser wavelength
-lambda_0 = ifo.Laser.Wavelength;
-
+lambda_0 = glob_param.lambda;
 % Angle of incidence
 aoi = glob_param.aoi;
+aoi_green = glob_param.aoi;
 
-na = 1.000;    % Index of vacuum
-n1 = ifo.Materials.Coating.Indexlown;             % Index of SiO2  @ 1064 nm
-n2 = ifo.Materials.Coating.Indexhighn;            % Index of Ta2O5 @ 1064 nm
-nb = ifo.Materials.Substrate.RefractiveIndex;     % Substrate is made of SiO2
+%Dispersion taken from Ramin
+na = 1.0000;           %Vacuum
+n1_IR = glob_param.n1_IR;
+n2_IR = glob_param.n2_IR;
+nb_IR = glob_param.nb_IR;
+
+n1_green = glob_param.n1_green;
+n2_green = glob_param.n2_green;
+nb_green = glob_param.nb_green;
+
+n1_ratio = glob_param.n1_ratio;
+n2_ratio = glob_param.n2_ratio;
 
 no_of_stacks = floor(length(x)/2);    % use floor if x is not even
 % set up the (alternating) array of index of refractions
-n_c = [];
 
-for kk = 1:(no_of_stacks)
-  n_c  = [n_c n1 n2];
+if strcmp(glob_param.firstLayer, 'SiO2') %HR coating
+    n_c = [];
+    for kk = 1:(no_of_stacks)
+        n_c  = [n_c n1_IR n2_IR];
+    end
+    n_IR = [na n_c nb_IR];  % add the indices of the vacuum and the substrate at either end
+    
+    n_c = [];
+    L_green = [];
+    for kk = 1:(no_of_stacks)
+        n_c  = [n_c n1_green n2_green];
+        L_green(2*kk - 1) = L(2*kk - 1)*n1_ratio;
+        L_green(2*kk) = L(2*kk)*n2_ratio;
+    end
+    n_green = [na n_c nb_green];  % add the indices of the vacuum and the substrate at either end
+elseif strcmp(glob_param.firstLayer, 'Ta2O5') %AR coating
+    n_c = [];
+    for kk = 1:(no_of_stacks)
+        n_c  = [n_c n2_IR n1_IR];
+    end
+    n_IR = [nb_IR n_c na];  % add the indices of the vacuum and the substrate at either end
+    
+    n_c = [];
+    L_green = [];
+    for kk = 1:(no_of_stacks)
+        n_c  = [n_c n2_green n1_green];
+        L_green(2*kk - 1) = L(2*kk - 1)*n2_ratio;
+        L_green(2*kk) = L(2*kk)*n1_ratio;
+    end
+    n_green = [nb_green n_c na];  % add the indices of the vacuum and the substrate at either end
 end
-       
-
-n = [na n_c nb];  % add the indices of the vacuum and the substrate at either end
-
-%Making this a row vector for multidiel1.m
-L = transpose(x);
 
 % list of wavelengths to use for the optimization
-lambda = [lambda_0 lambda_0/2] / lambda_0;
-%lambda = [lambda_0] / lambda_0;
+lambda_IR = [lambda_0] / lambda_0;
+lambda_green = [lambda_0/2] / lambda_0;
 
 % Calculate reflectivities for each polarization at the angle of incidence
 % ['tm' = 'p-pol', 'te' = 's-pol'], for the given layer structure
-[Gammap, ~]   = multidiel1(n, L, lambda, aoi, 'tm');
-[Gammas, ~]   = multidiel1(n, L, lambda, aoi, 'te');
+[Gammap, ~]   = multidiel1(n_IR, L, lambda_IR, aoi, 'tm');
+[Gammas, ~]   = multidiel1(n_IR, L, lambda_IR, aoi, 'te');
+Rp_IR = abs(Gammap).^2;
+Tp_IR = 1 - Rp_IR;
+Rs_IR = abs(Gammas).^2;
+Ts_IR = 1 - Rs_IR;
 
-% Derivative sensitivity terms - for a 1% change in L: (dT/T)/(dL/L)
-% Assumption is that derivative is approx the same on either side of L0...
-[Gamma5p, ~] = multidiel1(n, 1.01*L, lambda, aoi, 'tm');
-dTdLp = (abs(Gammap).^2 - abs(Gamma5p).^2)/0.01;
-dTdLp = dTdLp ./ (1 - abs(Gammap).^2);
-
-[Gamma5s, ~] = multidiel1(n, 1.01*L, lambda, aoi, 'te');
-dTdLs = (abs(Gammas).^2 - abs(Gamma5s).^2)/0.01;
-dTdLs = dTdLs ./ (1 - abs(Gammas).^2);
-
-% Note the arrays Gammap/Gammas contains information at 1064nm as well as 532nm
-% for use to compute error fcn...
-
-Rp = abs(Gammap).^2;
-Tp = 1 - Rp;
-
-Rs = abs(Gammas).^2;
-Ts = 1 - Rs;
+% minimize reflected E-field (usually by 1/2 wave cap on top)
+% only at main wavelength
+r_refl = abs(1 + Gammap);
+%Now for green
+[Gammap, ~]   = multidiel1(n_green, L_green, lambda_green, aoi_green, 'tm');
+[Gammas, ~]   = multidiel1(n_green, L_green, lambda_green, aoi_green, 'te');
+Rp_green = abs(Gammap).^2;
+Tp_green = 1 - Rp_green;
+Rs_green = abs(Gammas).^2;
+Ts_green = 1 - Rs_green;
 
 % define the error function
 T_1 = glob_param.T_1;         % desired  transmission @ lambda_0
@@ -79,211 +103,131 @@ R_2s = 1 - T_2s;      % currently not used
 T_2p = glob_param.T_2p;         % desired transmission @ lambda_0 / 2
 R_2p = 1 - T_2p;      % currently not used
 
-% ----Brownian Thermal noise - parameters from GWINC IFOmodel file
-% Formula from E0900068-v3, see also T0900161
-phi_high = ifo.Materials.Coating.Phihighn;
-n_high   = n2; 
-Y_high   = ifo.Materials.Coating.Yhighn;
-
-phi_low  = ifo.Materials.Coating.Philown; 
-n_low    = n1;
-Y_low    = ifo.Materials.Coating.Ylown; 
-
-Y_sub  = ifo.Materials.Substrate.MirrorY;
-
-% Total thickness
-z_low  = sum(L(1:2:length(L)));  %odd layers
-z_high = sum(L(2:2:length(L)));  %even layers
-
-a = phi_high / phi_low;
-b = n_low / n_high;
-c = Y_high/Y_sub + Y_sub/Y_high;
-d = Y_low/Y_sub  + Y_sub/Y_low;
-little_gamma = a*b*c/d;
-
-% Brownian thermal noise estimate (only used for optimization)
-%This is a kind of proxy function for minimizing coating thermal noise
-S = z_low + (little_gamma * z_high);
-% ---------------------------------------------------
-
-
-% Thermo-Optic Noise (there should be a flag to use this or not)
-f_to  = glob_param.f_optimize;     %Frequency to evaluate this
-wBeam = glob_param.wBeam;
-dOpt  = L';
-%[StoZ, SteZ, StrZ, T]  = getCoatThermoOptic(f_to, ifo, wBeam, dOpt);
-
-% cost function which gets minimized - equal penalties given at 532nm and
-% 1064nm
+% cost function which gets minimized 
 yy = [];
-yy(1) = .0001*S;                           % minimize the Brownian noise
-     
-yy = [yy 111*abs((Tp(1) - T_1)/T_1)^1];    % match the T @ lambda
+% Indices of the yy term
+% 1 = Transmission at 1064, p-pol
+% 2 = Transmission at 532, p-pol
+% 3 = Transmission at 532, s-pol
+% 4 = HR surface field
+% 5 = Brownian Noise
+% 6 = sensitivity to change in layer thickness @1064nm p- +/-1%...
+% 7 = sensitivity to change in layer thickness @532nm p-pol +/-1%...
+% 8 = sensitivity to change in layer thickness @532nm s-pol +/-1%...
+% 9 = sensitivity to change in n1 @1064nm p- +/-1%...
+% 10 = sensitivity to change in n1 @532nm p-pol +/-1%...
+% 11 = sensitivity to change in n1 @532nm s-pol +/-1%...
+% 12 = sensitivity to change in n2 @1064nm p- +/-1%...
+% 13 = sensitivity to change in n2 @532nm p-pol +/-1%...
+% 14 = sensitivity to change in n2 @532nm s-pol +/-1%...
+% 15 = sensitivity to change in aoi @1064nm p- +/-1%...
+% 16 = sensitivity to change in aoi @532nm p-pol +/-1%...
+% 17 = sensitivity to change in aoi @532nm s-pol +/-1%...
 
-yy = [yy 333*abs((Tp(2) - T_2p)/T_2p)^1];  % match the T @ lambda/2, p-pol
+%Don't penalize for being better than the spec...
+% yy = [yy 2222*heaviside(T_1 - Tp_IR)*abs((Tp_IR - T_1)/T_1)^1];    % match the T @ lambda
+yy = [yy 2222*heaviside(Tp_IR - T_1)*abs((Tp_IR - T_1)/T_1)^1];    % match the T @ lambda
 
-yy = [yy 333*abs((Ts(2) - T_2s)/T_2s)^1];  % match the T @ lambda/2, s-pol
+yy = [yy 2222*heaviside(Rp_green - R_2p)*abs((Rp_green - R_2p)/R_2p)^1];  % match the T @ lambda/2, p-pol
 
-% minimize reflected E-field (usually by 1/2 wave cap on top)
-% only at main wavelength
-r_refl = abs(1 + Gammap(1));
-yy     = [yy 10*r_refl^2];
+yy = [yy 2222*heaviside(Rs_green - R_2s)*abs((Rs_green - R_2s)/R_2s)^1];  % match the T @ lambda/2, s-pol
 
-if flag==2
-    yy
-elseif flag==3
-    yy
-    keyboard    % debug
+if strcmp(glob_param.coatingType,'HR')
+    %Term for minimizing surface E-field
+    yy     = [yy 100*r_refl^2];
+else
+    yy = [yy 0];
+end
+y = sum(yy([1 2 3 4]));   %Terms included by default...
+
+if glob_param.include_thermal
+    % ----Brownian Thermal noise - parameters from GWINC IFOmodel file
+    % Formula from E0900068-v3, see also T0900161
+    phi_high = ifo.Materials.Coating.Phihighn;
+    n_high   = n2_IR; 
+    Y_high   = ifo.Materials.Coating.Yhighn;
+
+    phi_low  = ifo.Materials.Coating.Philown; 
+    n_low    = n1_IR;
+    Y_low    = ifo.Materials.Coating.Ylown; 
+
+    Y_sub  = ifo.Materials.Substrate.MirrorY;
+
+    % Total thickness
+    z_low  = sum(L(1:2:length(L)));  %odd layers
+    z_high = sum(L(2:2:length(L)));  %even layers
+
+    a = phi_high / phi_low;
+    b = n_low / n_high;
+    c = Y_high/Y_sub + Y_sub/Y_high;
+    d = Y_low/Y_sub  + Y_sub/Y_low;
+    little_gamma = a*b*c/d;
+
+    % Brownian thermal noise estimate (only used for optimization)
+    %This is a kind of proxy function for minimizing coating thermal noise
+    S = z_low + (little_gamma * z_high);
+    % ---------------------------------------------------
+
+
+    % Thermo-Optic Noise (there should be a flag to use this or not)
+    f_to  = glob_param.f_optimize;     %Frequency to evaluate this
+    wBeam = glob_param.wBeam;
+    dOpt  = L';
+    %[StoZ, SteZ, StrZ, T]  = getCoatThermoOptic(f_to, ifo, wBeam, dOpt);
+    y = y + .0001*S;
+    yy(5) = .0001*S;                           % minimize the Brownian noise
+    
+else
+    S = 0;
+    yy(5) = 0;
 end
 
-%%Add sensitivity function to the cost function...
-yy = [yy 1*abs(dTdLp(1)) 1*abs(dTdLp(2)) 1*abs(dTdLs(2))]; %1064nmp, 532nm p-pol, 532nm s-pol
+if glob_param.include_sens
+    [err_IR] = doSens(n_IR, L, lambda_IR, aoi, Tp_IR, Rp_IR, Rs_IR);
+    [err_green] = doSens(n_green, L_green, lambda_green, aoi_green, Tp_green, Rp_green, Rs_green);
 
-% choose which terms in the cost function to use
-% 1 = Brownian Noise
-% 2 = Transmission at 1064, p-pol
-% 3 = Transmission at 532, p-pol
-% 4 = Transmission at 532, s-pol
-% 5 = HR surface field
-% 6 = sensitivity to change in layer thickness @1064nm p-pol...
-% 7 = sensitivity to change in layer thickness @532nm p-pol...
-% 8 = sensitivity to change in layer thickness @532nm s-pol...
+    %%Add sensitivity function to the cost function... 10x weight for IR
+    %%than green
+    e1 = 1*abs(err_IR.Tp.coatLayer_plus) + 1*abs(err_IR.Tp.coatLayer_minus);
+    e2 = 10*abs(err_green.Rp.coatLayer_plus) + 10*abs(err_green.Rp.coatLayer_minus);
+    e3 = 10*abs(err_green.Rs.coatLayer_plus) + 10*abs(err_green.Rs.coatLayer_minus);
+    yy = [yy e1 e2 e3]; %1064nmp, 532nm p-pol, 532nm s-pol
 
-y = sum(yy([1 2 3 4 5 6 7 8]));
+    e1 = 1*abs(err_IR.Tp.n1_plus) + 1*abs(err_IR.Tp.n1_minus);
+    e2 = 10*abs(err_green.Rp.n1_plus) + 10*abs(err_green.Rp.n1_minus);
+    e3 = 10*abs(err_green.Rs.n1_plus) + 10*abs(err_green.Rs.n1_minus);
+    yy = [yy e1 e2 e3];
 
-%This is the error function (evaluated) we are trying to minimize...
-sss = y;
+    e1 = 1*abs(err_IR.Tp.n2_plus) + 1*abs(err_IR.Tp.n2_minus);
+    e2 = 10*abs(err_green.Rp.n2_plus) + 10*abs(err_green.Rp.n2_minus);
+    e3 = 10*abs(err_green.Rs.n2_plus) + 10*abs(err_green.Rs.n2_minus);
+    yy = [yy e1 e2 e3];
 
-%Plot option...
-if flag == 1
- yy
- clear y
- y.n = n;
- y.L = L;
- y.lambda = lambda;
- y.Tp = Tp;
- y.Ts = Ts;
- y.Rp = Rp;
- y.Rs = Rs;
- y.sss = sss;
- y.Sthermal = S;
- y.yy = yy;
- 
- lambda = sort([linspace(0.4, 1.6, 2200), lambda]);
+    e1 = 1*abs(err_IR.Tp.aoi_plus) + 1*abs(err_IR.Tp.aoi_minus);
+    e2 = 10*abs(err_green.Rp.aoi_plus) + 10*abs(err_green.Rp.aoi_minus);
+    e3 = 10*abs(err_green.Rs.aoi_plus) + 10*abs(err_green.Rs.aoi_minus);
+    yy = [yy e1 e2 e3];
+    
+    y = y + sum(yy([6 7 8 9 10 11 12 13 14 15 16 17]));
+end
 
- [Gammap, ~] = multidiel1(n, L, lambda, aoi, 'tm');
- [Gammas, ~] = multidiel1(n, L, lambda, aoi, 'te');
+if flag == 1 %Make an output structure with all variables of importance..
+    clear y;
+    y.aoi = aoi;
+    y.L = L;
+    y.Tp_IR = Tp_IR;
+    y.Ts_IR = Ts_IR;
+    y.Rp_IR = Rp_IR;
+    y.Rs_IR = Rs_IR;
+    y.Tp_green = Tp_green;
+    y.Ts_green = Ts_green;
+    y.Rp_green = Rp_green;
+    y.Rs_green = Rs_green;
+    y.Sthermal = S;
+    y.yy = yy;
+    y.n_IR = n_IR;
+    y.n_green = n_green;
+end
 
- R = abs(Gammap).^2;
- T = 1 - R;
- 
- R2 = abs(Gammas).^2;
- T2 = 1 - R2;
-
- lambda_real = lambda * lambda_0 * 1e9;
- 
-figure(70711)
-hold on
-subplot(2,1,1)
-semilogy(lambda_real, R, 'b',...
-         lambda_real, T, 'r',...
-         'LineWidth', 4)
-xlabel('Wavelength [nm]')
-ylabel('R or T, p-pol')
-legend('R','T', 'Location', 'SouthEast')
-grid
-axis([min(lambda_real) max(lambda_real) .9e-6 1.01])
-%title('Calculated AlGaAs Mirror Reflectivity')
-
-line(lambda_0*1e9/2*ones(100,1),logspace(-7,0,100),'Color','g','LineWidth',3)
-
-line(lambda_0*1e9*ones(100,1), logspace(-7,0,100), 'Color','c','LineWidth',3)
-%text(1600, 1e-3, ['R @ ' num2str(lambda_0*1e9) ' = ' num2str(R1(1),4)])
-text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(Tp(1)*1e6,3) ' ppm'],...
-    'FontSize', 26)
-
-%text(1300,0.1*1.3^-1,['R @  ' num2str(lambda_0*1e9/2) ' = ' num2str(R1(1))])
-text(532, 5e-6,['T @  ' num2str(lambda_0*1e9/2) ' = ' num2str(Tp(2))],...
-    'FontSize', 26)
-%S
-disp(['T @ ' num2str(lambda_0*1e9) ' nm, p-pol = ' num2str(Tp(1)*1e6,5) ' ppm'])
-disp(['T @ ' num2str(lambda_0*1e9/2) ' nm, p-pol = ' num2str(Tp(2)*1e2,5) ' %'])
-
-
-% nice print
-set( gca                       , ...
-    'FontName'   , 'Times'     );
-% set([hXLabel, hYLabel], ...
-%     'FontName'   , 'Times',...
-%     'FontSize'   , 34         );
-% set([hLegend, gca]             , ...
-%     'FontSize'   , 22           );
-%set( hTitle                    , ...
-%    'FontSize'   , 12          , ...
-%    'FontWeight' , 'bold'      );
-
-set(gca, ...
-  'Box'         , 'on'     , ...
-  'TickDir'     , 'in'     , ...
-  'TickLength'  , [.02 .02] , ...
-  'XMinorTick'  , 'on'      , ...
-  'YMinorTick'  , 'on'      , ...
-  'YGrid'       , 'on'      , ...
-  'XColor'      , .1*[.3 .3 .3], ...
-  'YColor'      , .1*[.3 .3 .3], ...
-  'YTick'       , logspace(-6, 0, 7), ...
-  'FontSize'    , 26 ,...
-  'LineWidth'   , 2);
-%%%%%%%%%%%%%%%  s-pol   %%%%%%%%%%%%%%%%%%%%
-subplot(2,1,2)
-semilogy(lambda_real, R2, 'b',...
-         lambda_real, T2, 'r',...
-         'LineWidth', 4)
-xlabel('Wavelength [nm]')
-ylabel('R or T, s-pol')
-legend('R','T', 'Location', 'SouthEast')
-grid
-axis([min(lambda_real) max(lambda_real) .9e-6 1.01])
-%title('Calculated AlGaAs Mirror Reflectivity')
-
-line(lambda_0*1e9/2*ones(100,1),logspace(-7,0,100),'Color','g','LineWidth',3)
-
-line(lambda_0*1e9*ones(100,1), logspace(-7,0,100), 'Color','c','LineWidth',3)
-%text(1600, 1e-3, ['R @ ' num2str(lambda_0*1e9) ' = ' num2str(R1(1),4)])
-text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(Ts(1)*1e6,3) ' ppm'],...
-    'FontSize', 26)
-
-%text(1300,0.1*1.3^-1,['R @  ' num2str(lambda_0*1e9/2) ' = ' num2str(R1(1))])
-text(532, 5e-6,['T @  ' num2str(lambda_0*1e9/2) ' = ' num2str(Ts(2))],...
-    'FontSize', 26)
-%S
-disp(['T @ ' num2str(lambda_0*1e9) ' nm, s-pol = ' num2str(Ts(1)*1e6,5) ' ppm'])
-disp(['T @ ' num2str(lambda_0*1e9/2) ' nm, s-pol = ' num2str(Ts(2)*1e2,5) ' %'])
-
-
-% nice print
-set( gca                       , ...
-    'FontName'   , 'Times'     );
-% set([hXLabel, hYLabel], ...
-%     'FontName'   , 'Times',...
-%     'FontSize'   , 34         );
-% set([hLegend, gca]             , ...
-%     'FontSize'   , 22           );
-%set( hTitle                    , ...
-%    'FontSize'   , 12          , ...
-%    'FontWeight' , 'bold'      );
-
-set(gca, ...
-  'Box'         , 'on'     , ...
-  'TickDir'     , 'in'     , ...
-  'TickLength'  , [.02 .02] , ...
-  'XMinorTick'  , 'on'      , ...
-  'YMinorTick'  , 'on'      , ...
-  'YGrid'       , 'on'      , ...
-  'XColor'      , .1*[.3 .3 .3], ...
-  'YColor'      , .1*[.3 .3 .3], ...
-  'YTick'       , logspace(-6, 0, 7), ...
-  'FontSize'    , 26 ,...
-  'LineWidth'   , 2);
 end
 
