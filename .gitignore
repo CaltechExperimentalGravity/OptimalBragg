@@ -17,3 +17,12 @@ slprj/
 
 # Session info
 octave-workspace
+
+# Files from OpenFilter used to check coatings
+*.ofp
+
+# Data files
+**/*.mat
+
+#hdf5
+**/*.hdf5
