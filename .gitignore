@@ -26,3 +26,6 @@ octave-workspace
 
 #hdf5
 **/*.hdf5
+
+#pyc
+**/*.pyc
