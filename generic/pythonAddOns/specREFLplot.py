@@ -28,4 +28,4 @@ ax.set_ylabel('R or T',fontsize=20,fontweight='extra bold')
 ax.axvline(x=532,linewidth=2,linestyle='dashed',color='g',label='532 nm')
 ax.axvline(x=1064,linewidth=2,linestyle='dashed',color='orangered',label='1064 nm')
 
-plt.savefig('aLIGO_ETM_specREFL_comparison.pdf')
+plt.savefig('../Figures/aLIGO_ETM_specREFL_comparison.pdf')

@@ -53,8 +53,8 @@ NUMTOOLS.include_sens   = 0;        % Include derivatives in sensitivity functio
 NUMTOOLS.include_brownian  = 1;     % Include coating brownian term in sensitivity function
 NUMTOOLS.include_TO   = 0;          % Include thermo-optic term in sensitivity function
 
-
-ifo = SilicaTantala300;                 % Load a standard gwinc style parameter file with various material properties defined             
+% Load a standard gwinc style parameter file with various material properties defined
+ifo = SilicaTantala300;
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
 ifo.Materials.Coating.Phihighn = loss_highn;
 % load this lookup table for speedup
@@ -83,12 +83,16 @@ NUMTOOLS.ifo = ifo;
 % 11 = sensitivity to change in n2 @532nm p-pol +/-1%...
 % 12 = sensitivity of surface field term to perturbations in n1, n2 and L
 
+
 weights = [10000 1000 1 10 1e22 5 1 5 1 5 1 0.01];
+
+%weights = [11111. 5555. 1. 10 1e22 50. 10. 50. 10. 50. 10. 0.01];
+
 NUMTOOLS.wt = weights;
 
 % setting the bounds for the variables to be searched over
 LB = 0.030 * ones(size(x0));     % lower bounds on the layer thicknesses, lambda/50
-UB = 0.51 * ones(size(x0));     % upper bound, lambda/2          
+UB = 0.510 * ones(size(x0));     % upper bound, lambda/2
 nvars = length(UB);
 
 if strcmp(NUMTOOLS.coatingType,'HR')
@@ -123,7 +127,7 @@ options = optimoptions('particleswarm',...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                   Run particle swarm optimization
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-x0 = x0(:);                       
+x0 = x0(:);
 %% Do the optimization
 % RUNS the Particle Swarm ========
 tic
@@ -135,7 +139,7 @@ toc
 % Check for thin layers
 if find(xout < 0.05)
     disp('Bad Layer Thickness: invalid results')
-end         
+end
 %% SAVE layer structure, IFOmodel, and noise
 costOut = getCost_aLIGO_ETM(xout, NUMTOOLS, 1);
 tnowstr = datestr(now, 'yymmdd_HHMM');
