@@ -39,11 +39,11 @@ corner.corner(samples.T,
             #quantiles=[0.9, 0.95, 0.98],
             show_titles=True, use_math_text=True,
             bins=50,
-            range=[(0.,10.),(96.,101.),(1.98,2.04),(4.3,4.5),(0.,1.2)],
+            #range=[(0.,10.),(90.,101.),(1.5,2.5),(4.,7.),(0.,1.2)],
             #   levels=(0.95,),
             color='firebrick',
             hist_kwargs={'linewidth':2},
             label_kwargs={'fontsize':16, 'fontweight':'bold'},
             title_kwargs={'fontsize':16, 'fontweight':'bold'}, fig=fig)
 
-plt.savefig('../Figures/aLIGO_ETM_phiTa4_cornerPlt.pdf')
+plt.savefig('../Figures/aLIGO_ETM_phi4_cornerPlt.pdf')
