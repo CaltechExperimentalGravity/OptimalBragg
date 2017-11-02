@@ -83,7 +83,7 @@ NUMTOOLS.ifo = ifo;
 % 11 = sensitivity to change in n2 @532nm p-pol +/-1%...
 % 12 = sensitivity of surface field term to perturbations in n1, n2 and L
 
-weights = [11111. 1111. 1. 10 1e22 50. 10. 50. 10. 50. 10. 0.01];
+weights = [11111. 5555. 1. 10 1e22 50. 10. 50. 10. 50. 10. 0.01];
 NUMTOOLS.wt = weights;
 
 % setting the bounds for the variables to be searched over
