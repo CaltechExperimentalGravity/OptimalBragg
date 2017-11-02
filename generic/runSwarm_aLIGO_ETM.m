@@ -1,15 +1,19 @@
-% Code for optimizing the PR3/SR3 coating for the 40m
-% https://dcc.ligo.org/E1700016
-% Adapted from RXA code by GV, April 2017
+% Code for optimizing dielectric coating design using MATLAB particle swarm
+% Adapted to optimize aLIGO ETM coating requirements - E0900068-v5
+% https://git.ligo.org/40m/Coatings
 clc
 % clear
 close all
 addpath('../');
+addpath('thermalNoiseFuncs/');
+
+%Start a parpool with 40 workers
+delete(gcp('nocreate'));
+parpool(40);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                    USER CONFIG
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %%Load dispersion data...
 load dispersion_revised.mat;
 na = 1.0000;           %Vacuum
@@ -24,58 +28,74 @@ NUMTOOLS.nb_green = 1.4607; %Estimate
 NUMTOOLS.n1_ratio = NUMTOOLS.n1_green / NUMTOOLS.n1_IR;
 NUMTOOLS.n2_ratio = NUMTOOLS.n2_green / NUMTOOLS.n2_IR;
 
-
-plotFlag = 1;
-saveFlag = 1;
-
 % Initial guess vector of layer thicknesses in units of lambda
-%no_of_stacks = 20;  
-% no_of_stacks = 6;  
+no_of_stacks = 20;  
 x0 = [];
 for kk = 1:no_of_stacks
     x0 = [x0 2/8 2/8];
 end
  
-%load('Data/170623_HR/PR3_HR_20_layers_170622_1451.mat');             
-% load('Data/170621_AR/PR3_layers_170621_1911.mat');             
-% x0 = TNout.L;                                                               
-clear TNout                                                                 
+clear costOut                                                                 
 clear ifo    
 
-
 NUMTOOLS.lambda = 1064e-9;            % Wavelength at which R and T are to be evaluated
-NUMTOOLS.opt_name       = 'PR3';
-NUMTOOLS.coatingType    = 'AR';
-NUMTOOLS.T_1            = 0.99;      % Target transmission at 1064 nm --- 50ppm for HR, 99% for AR
-NUMTOOLS.T_2s           = 0.998;      % Target transmission at 532 nm, s-pol --- 99.5% for HR, 99.8% for AR
-NUMTOOLS.T_2p           = 0.998;      % Target transmission at 532 nm, p-pol ---- same as above
-NUMTOOLS.aoi            = 24.967;       % Angle of incidence (degrees)  --- 41.1deg for HR, 24.8deg for AR
-NUMTOOLS.aoi_green      = 24.746;       % Angle of incidence (degrees)  ---24.746 deg for green
-NUMTOOLS.firstLayer     = 'Ta2O5';     %Depending whether coating is on the HR side or AR side
-NUMTOOLS.wBeam        = 5e-3;          % Beam size on optic being optimized
+NUMTOOLS.opt_name       = 'aLIGO_ETM';
+NUMTOOLS.coatingType    = 'HR';
+NUMTOOLS.T_1            = 5e-6;      % Target transmission at 1064 nm --- 5ppm for HR
+NUMTOOLS.T_2p           = 0.968;      % Target transmission at 532 nm, p-pol ---- same as above
+NUMTOOLS.surfaceField   = 0.01;      % Target Surface E Field, [V/m]
+NUMTOOLS.aoi            = 0.;       % Angle of incidence (degrees)  --- 41.1deg for HR, 24.8deg for AR
+NUMTOOLS.aoi_green      = 0.;       % Angle of incidence (degrees)  ---24.746 deg for green
+NUMTOOLS.wBeam        = 6e-2;          % Beam size on optic being optimized
 NUMTOOLS.f_optimize   = 100;           % Frequency at which to evaluate noise being optimized
-NUMTOOLS.noise_weight = 1e42;          % to equate Brownian and TO noise
+NUMTOOLS.noise_weight = 1e21;          % to equate Brownian and TO noise
 NUMTOOLS.include_sens   = 1;           %Include derivatives in sensitivity function (1 or 0)
-NUMTOOLS.include_thermal   = 0;        %Include TN term in sensitivity function (1 for HR or 0 for AR)
+NUMTOOLS.include_brownian   = 1;        %Include coating brownian term in sensitivity function
+NUMTOOLS.include_TO   = 1;              %Include thermo-optic term in sensitivity function
 
 
 ifo = SilicaTantala300;                 % Load a standard gwinc style parameter file with various material properties defined             
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
 % load this lookup table for speedup
-load ../besselzeros.mat
+load besselzeros.mat
 ifo.Constants.BesselZeros = besselzeros;
 ifo.Optics.ETM.BeamRadius = NUMTOOLS.wBeam; %using the gwinc infrastructure for calculating TO noise for ease...
 ifo.Optics.ITM.BeamRadius = NUMTOOLS.wBeam;
+%set some of the material params in this structure to match that used to optimize coating, i.e. values from Ramin
+ifo.Materials.Coating.Indexhighn = NUMTOOLS.n2_IR; 
+ifo.Materials.Coating.Indexlown = NUMTOOLS.n1_IR;
+ifo.Materials.Substrate.RefractiveIndex = 1.449641; %Corning datasheet
 NUMTOOLS.ifo = ifo;
 
+%set up the weighting to convert MO cost to scalar cost
+% Indices of the yy term
+% 1 = Transmission at 1064, p-pol
+% 2 = Transmission at 532, p-pol
+% 3 = HR surface field
+% 4 = Brownian Noise
+% 5 = TO Noise
+% 6 = sensitivity to change in layer thickness @1064nm p- +/-1%...
+% 7 = sensitivity to change in layer thickness @532nm p-pol +/-1%...
+% 8 = sensitivity to change in n1 @1064nm p- +/-1%...
+% 9 = sensitivity to change in n1 @532nm p-pol +/-1%...
+% 10 = sensitivity to change in n2 @1064nm p- +/-1%...
+% 11 = sensitivity to change in n2 @532nm p-pol +/-1%...
+% 12 = sensitivity of surface field term to perturbations in n1, n2 and L
+
+weights = [11111. 1111. 10. 0.0001 1e22 10. 10. 10. 10. 10. 10. 0.01];
+NUMTOOLS.wt = weights;
+
 % setting the bounds for the variables to be searched over
-LB = 0.050 * ones(size(x0));     % lower bounds on the layer thicknesses, lambda/50
+LB = 0.030 * ones(size(x0));     % lower bounds on the layer thicknesses, lambda/50
 UB = 0.51 * ones(size(x0));     % upper bound, lambda/2          
 nvars = length(UB);
 
 if strcmp(NUMTOOLS.coatingType,'HR')
-    LB(1) = 0.48;  %Constrain topost layer to be nearly halfwave thick...
-    UB(1) = 0.52;
+%    LB(1) = 0.48;  %Constrain topost layer to be nearly halfwave thick...
+%    UB(1) = 0.52;
+	NUMTOOLS.firstLayer = 'SiO2';     %Depending whether coating is on the HR side or AR side
+else
+	NUMTOOLS.firstLayer = 'Ta2O5';
 end
 
 % set particle swarm optimization options
@@ -107,7 +127,7 @@ x0 = x0(:);
 % RUNS the Particle Swarm ========
 tic
 [xout, fval, exitflag] =...
-    particleswarm(@(x) getMirrorCost([x], NUMTOOLS, 0),...
+    particleswarm(@(x) getCost_aLIGO_ETM([x], NUMTOOLS, 0),...
                                     nvars, LB, UB, options);
 toc
 
@@ -116,29 +136,7 @@ if find(xout < 0.05)
     disp('Bad Layer Thickness: invalid results')
 end         
 %% SAVE layer structure, IFOmodel, and noise
-TNout = getMirrorCost(xout, NUMTOOLS, 1);
+costOut = getCost_aLIGO_ETM(xout, NUMTOOLS, 1);
 tnowstr = datestr(now, 'yymmdd_HHMM');
 savename = ['Data/' NUMTOOLS.opt_name '_' NUMTOOLS.coatingType '_' num2str(no_of_stacks) '_layers_' tnowstr];
-save(savename, 'TNout', 'ifo');
-
-%%Make a spectral reflectivity plot
-makeSpecREFLplot(savename,NUMTOOLS.firstLayer);
-
-%% printing plot to file
-title(' ')
-orient landscape
-set(gcf,'PaperPositionMode','auto')
-
-fname = ['Figures/' NUMTOOLS.opt_name '_R_' tnowstr];
-
-print('-depsc','-r600', fname)
-[a,b] = system(['../makePDF.sh ' fname '.eps']);
-if a ~= 0
-    disp('PDF Generation Error')
-else
-    [a,b] = system(['rm ' fname '.eps']);
-end
-
-%% plot layer structure and thermo-optic noise
-% plotTO120
-% exit;
+save(savename, 'costOut', 'ifo');
