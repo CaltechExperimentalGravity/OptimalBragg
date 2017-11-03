@@ -7,7 +7,7 @@ be plotted
 '''
 import numpy as np
 import matplotlib.pyplot as plt
-from mcutils import *
+from coatingUtils import *
 import sys
 import h5py 
 import scipy.io as scio
