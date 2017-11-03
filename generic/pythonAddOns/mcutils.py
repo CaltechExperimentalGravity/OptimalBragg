@@ -7,6 +7,7 @@ import sys
 #Import the pygwinc functions
 sys.path.append('/ligo/svncommon/pygwinc')
 from gwinc import *
+from itertools import izip
 
 #Some function definitions
 def multidiel1(n,L,lamb,theta=0,pol='te'):
@@ -76,3 +77,75 @@ def specREFL(matFileName, dispFileName, lambda_0=1064e-9, lam=np.linspace(0.4,1.
         Tp[ii] = 1 - Rp[ii]
     return Rp, Tp
 
+def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
+	'''
+	Function that calculates "Normalized" E-Field strength squared
+	as a function of penetration depth in a dielectric coating.
+	Input argument L is an array of PHYSICAL thickness of coating layers.
+	Input argument n is an array of refractive indices.
+	
+	Following derivation set out in Arnon and Baumeister, 1980
+	https://www.osapublishing.org/ao/abstract.cfm?uri=ao-19-11-1853
+	'''
+	def arrayTheta(n,theta0):
+		alpha=[]
+		alpha.append(np.deg2rad(theta0))
+		for ii in range(len(n)-1):
+			t_r = np.arcsin(n[ii]*np.sin(alpha[ii])/n[ii+1])
+			alpha.append(t_r)
+		return np.array(alpha)
+	#Calculate the array of angles
+	angles = arrayTheta(n,theta)
+	def M_i(beta_i,q_i):
+		#Eqn 2 from paper
+		return np.matrix([[np.cos(beta_i), 1j*np.sin(beta_i)/q_i],
+			[1j*np.sin(beta_i)*q_i, np.cos(beta_i)]])
+	def q_i(n_i, theta_i):
+		if pol == 's':
+			return n_i*np.cos(theta_i) #Eqn 5
+		elif pol == 'p':
+			return n_i / np.cos(theta_i) #Eqn 6
+	def beta_i(theta_i, n_i, h_i):
+		return 2*np.pi*np.cos(theta_i)*n_i*h_i/lam #Eqn 3
+	
+	#Calculate the total matrix, as per Eqn 7.
+	Mtot = np.eye(2)
+	for n_i, h_i, theta_i in izip(n[1:-1], L, angles):
+		Mtot = Mtot * M_i(beta_i(theta_i,n_i,h_i), q_i(n_i,theta_i))
+
+	Mtotz = Mtot
+
+	def E0pk(Mtot):
+		q0 = q_i(n[0],theta)
+		qSub = q_i(n[-1],angles[-1])
+		#Eqn 10
+		return 0.25*(np.abs(Mtot[0,0] + Mtot[1,1]*qSub/q0)**2 + 
+				np.abs(Mtot[1,0]/q0 + Mtot[0,1]*qSub)**2)
+	def delta_h(beta_i, q_i):
+		#Equation 11
+		return M_i(beta_i, -q_i)
+	
+	#Initialize some arrays to store the calculated E field profile
+	E_profile = np.zeros(len(L)*nPts)
+	z = np.zeros(len(L)*nPts)
+	Z=0.
+	correction=1.
+
+	#Initialize the q-parameter at the rightmost interface
+	qSub = q_i(n[-1], angles[-1])
+	
+	for ii in range(len(L)):
+		n_i = n[ii+1]
+		dL = L[ii] / nPts
+		theta_i = angles[ii]
+		
+		if pol=='p':
+			correction=(np.cos(theta[0])/np.cos(theta_i))**2
+
+		for jj in range(0,nPts):
+			Z += dL
+			z[ii*nPts + jj] = Z
+			Mtotz = Mtotz * delta_h(beta_i(theta_i, n_i, dL),q_i(n_i, theta_i))
+			E_profile[ii*nPts+jj] = correction * np.abs(Mtotz[0,0])**2 + np.abs(qSub*Mtotz[0,1]/1j)**2
+
+	return np.flip(z,0), E_profile/E0pk(Mtot)
