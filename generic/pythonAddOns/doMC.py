@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d, PchipInterpolator
 import emcee
 import h5py
 import sys
-from mcutils import *
+from coatingUtils import *
 import gwinc 
 
 #User config

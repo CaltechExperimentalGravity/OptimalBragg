@@ -121,7 +121,8 @@ yy = [];
 %Don't penalize for being better than the spec...
 yy = [yy heaviside(Tp_IR - T_1)*abs((Tp_IR - T_1)/T_1)^1];    % match the T @ lambda
 
-yy = [yy heaviside(Rp_green - R_2p)*abs((Rp_green - R_2p)/R_2p)^1];  % match the T @ lambda/2, p-pol
+yy = [yy heaviside(R_2p - Rp_green)*abs((Rp_green - R_2p)/R_2p)^1];  % match the T @ lambda/2, p-pol
+%yy = [yy abs((Rp_green - R_2p)/R_2p)^1];  % match the T @ lambda/2, p-pol
 
 
 if strcmp(glob_param.coatingType,'HR')

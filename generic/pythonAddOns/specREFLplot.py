@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mcutils import *
+from coatingUtils import *
 import sys
 
 if 'gvELOG' in plt.style.available:
@@ -28,4 +28,4 @@ ax.set_ylabel('R or T',fontsize=20,fontweight='extra bold')
 ax.axvline(x=532,linewidth=2,linestyle='dashed',color='g',label='532 nm')
 ax.axvline(x=1064,linewidth=2,linestyle='dashed',color='orangered',label='1064 nm')
 
-plt.savefig('aLIGO_ETM_specREFL_comparison.pdf')
+plt.savefig('../Figures/aLIGO_ETM_specREFL_comparison.pdf')
