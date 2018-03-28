@@ -6,7 +6,7 @@ addpath(genpath('../generic/'));
 %addpath(genpath('../../gwincDev'));  % add GWINCdev path to get TO coating noise
 
 % Initial guess vector of layer thicknesses in units of lambda
-no_of_stacks = 20;  
+no_of_stacks = 40;  
 
 x0 = [];
 
@@ -52,7 +52,7 @@ hybridopts = optimoptions('fmincon',...
                   'MaxFunEvals', 2111);
 
 options = optimoptions('particleswarm',...
-               'SwarmSize', nvars*54,...     % 
+               'SwarmSize', nvars*154,...     % 
                'UseParallel', 1,...
                'MaxIter', 211,...
                'SelfAdjustment',   1.49,...
@@ -104,4 +104,4 @@ else
 end
 
 %% plot layer structure and thermo-optic noise
-plotTO120
+plotTOnoise

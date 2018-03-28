@@ -5,6 +5,7 @@ function y = getMirrorCost(x, params, flag)
 %
 
 glob_param = params;
+minParamSens = 0;
 
 % This makes x into a column vector
 x = x(:);
@@ -43,29 +44,29 @@ L = transpose(x);
 lambda = [lambda_0] / lambda_0;
 
 % Calculate reflectivities
-[Gamma1, Z1] = multidiel1(n, L, lambda);
+[Gamma1, ~] = multidiel1(n, L, lambda);
 %[Gamma1e, Z1e] = multidiel1(n, L, lambda*1.01);
 
 % (dT/T) / (dlambda / lambda)
 %dTdlambda = (abs(Gamma1).^2 - abs(Gamma1e).^2)/0.01;
 %dTdlambda = dTdlambda ./ (1 - abs(Gamma1).^2);
 
-if 1 == 0
+if minParamSens
     % (dT/T)/(dL/L)
     % dT/T < 10% for a 1% change in L
-    [Gamma5, Z5] = multidiel1(n, 1.01*L, lambda);
+    [Gamma5, ~] = multidiel1(n, 1.01*L, lambda);
     dTdL = (abs(Gamma1).^2 - abs(Gamma5).^2)/0.01;
     dTdL = dTdL ./ (1 - abs(Gamma1).^2);
 
     % (dT/T)/(dn1/n1)
     % dT/T < 10% for a 1% change in n1
-    [Gamma7, Z7] = multidiel1([n_vac n_c1 n_sub], L, lambda);
+    [Gamma7, ~] = multidiel1([n_vac n_c1 n_sub], L, lambda);
     dTdn1 = (abs(Gamma7).^2 - abs(Gamma1).^2)/0.01;
     dTdn1 = dTdn1 ./ (1 - abs(Gamma1).^2);
 
     % (dT/T)/(dn/n)
     % dT/T < 10% for a 1% change in n2
-    [Gamma9, Z9] = multidiel1([n_vac n_c2 n_sub], L, lambda);
+    [Gamma9, ~] = multidiel1([n_vac n_c2 n_sub], L, lambda);
     dTdn2 = (abs(Gamma9).^2 - abs(Gamma1).^2)/0.01;
     dTdn2 = dTdn2 ./ (1 - abs(Gamma1).^2);
 end
@@ -78,8 +79,6 @@ T1 = 1 - R1;
 T_1 = glob_param.T;         % desired  transmission @ lambda_0
 R_1 = 1 - T_1;
 
-T_2 = 0.05;         % desired transmission @ lambda_0 / 2
-R_2 = 1 - T_2;      % currently not used
 
 % ----Brownian Thermal noise - parameters from GWINC IFOmodel file
 % Formula from E0900068-v3
@@ -112,7 +111,7 @@ S = z_low + (little_gamma * z_high);
 f_to = glob_param.f_optimize;
 wBeam = glob_param.wBeam;
 dOpt = L';
-[StoZ, SteZ, StrZ, T]  = getCoatThermoOptic(f_to, ifo, wBeam, dOpt);
+[StoZ, ~, ~, ~]  = getCoatThermoOptic(f_to, ifo, wBeam, dOpt);
 
 % cost function which gets minimized
 yy = [];
@@ -148,7 +147,7 @@ elseif flag==3
 end
 
 % choose which terms in the cost function to use
-y = sum(yy([2 3]));
+y = sum(yy([1 2 3 4]));
 
 sss = y;
 
