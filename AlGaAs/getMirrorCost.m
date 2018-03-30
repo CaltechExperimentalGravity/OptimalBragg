@@ -30,7 +30,7 @@ n2 = ifo.Materials.Coating.Indexlown;             % Index of AlAs
 
 n_sub = ifo.Materials.Substrate.RefractiveIndex;  % Substrate is made of Si
 
-% no_of_stacks = floor(length(x)/2);    
+% no_of_stacks = floor(length(x)/2);
 % use floor if x is not even
 % set up the array of index of refractions
 n_c = zeros(size(x)).';
@@ -38,8 +38,8 @@ n_c(1:2:end) = n1;
 n_c(2:2:end) = n2;
 
 %n_c  = [n_c n1];          % make the last layer silica
-%n_c1 = [n_c1 n1*1.01];   
-%n_c2 = [n_c2 n1];        
+%n_c1 = [n_c1 n1*1.01];
+%n_c2 = [n_c2 n1];
 
 n = [n_vac n_c n_sub];  % add the indices of the vacuum and the substrate
 
@@ -91,12 +91,12 @@ R_1 = 1 - T_1;
 % ----Brownian Thermal noise - parameters from GWINC IFOmodel file
 % Formula from E0900068-v3
 phi_high = ifo.Materials.Coating.Phihighn;
-n_high   = n1; 
+n_high   = n1;
 Y_high   = ifo.Materials.Coating.Yhighn;
 
-phi_low  = ifo.Materials.Coating.Philown; 
+phi_low  = ifo.Materials.Coating.Philown;
 n_low    = n2;
-Y_low    = ifo.Materials.Coating.Ylown; 
+Y_low    = ifo.Materials.Coating.Ylown;
 
 Y_sub  = ifo.Materials.Substrate.MirrorY;
 
@@ -124,8 +124,8 @@ dOpt = L';
 % cost function which gets minimized
 yy = [];
 yy(1) = S/10;                       % minimize the Brownian noise
-     
-yy = [yy 20*abs((T1(1) - T_1)/T_1)^1];    % match the T @ lambda
+
+yy = [yy 5*abs((T1(1) - T_1)/T_1)^1];    % match the T @ lambda
 
 %yy = [yy 1*((T1(2) - T_2)/T_2)^1];    % match the T @ lambda/2
 % Thermo-Optic noise cancellation
@@ -139,7 +139,7 @@ yy = [yy StoZ * 10e43];
 %yy = [yy 5*abs(dTdlambda(1))^2];
 
 % minimize sensitivity to index of refraction mis-calibration
-%yy = [yy 1*(abs(dTdn1(1)))];  % dn1 = 1% 
+%yy = [yy 1*(abs(dTdn1(1)))];  % dn1 = 1%
 %yy = [yy 1*(abs(dTdn2(1)))];  % dn2 = 1%
 
 % minimize reflected E-field (usually by 1/2 wave cap on top)
@@ -160,25 +160,29 @@ y = sum(yy([1 2 3 4]));
 sss = y;
 
 if flag == 1
- yy
- clear y
- y.n = n;
- y.L = L;
- y.lambda = lambda;
- y.T1 = T1;
- y.R1 = R1;
- y.sss = sss;
- y.Sthermal = S;
- y.yy = yy;
- 
- lambda = sort([linspace(0.4, 1.6, 2200), lambda]);
+    %yy
+    disp(['Brownian Noise     = ' num2str(yy(1))])
+    disp(['Transmission       = ' num2str(yy(2))])
+    disp(['Thermo-Optic Noise = ' num2str(yy(3))])
+    disp(['Surface E-Field    = ' num2str(yy(4))])
+    clear y
+    y.n = n;
+    y.L = L;
+    y.lambda = lambda;
+    y.T1 = T1;
+    y.R1 = R1;
+    y.sss = sss;
+    y.Sthermal = S;
+    y.yy = yy;
 
- [Gamma1, ~] = multidiel1(n, L, lambda);
+    lambda = sort([linspace(0.4, 1.6, 2200), lambda]);
 
- R = abs(Gamma1).^2;
- T = 1 - R;
+    [Gamma1, ~] = multidiel1(n, L, lambda);
 
- lambda_real = lambda * lambda_0 * 1e9;
+    R = abs(Gamma1).^2;
+    T = 1 - R;
+
+    lambda_real = lambda * lambda_0 * 1e9;
 figure(70711)
 semilogy(lambda_real, R, 'b',...
          lambda_real, T, 'r',...
@@ -226,5 +230,6 @@ set(gca, ...
   'YTick'       , logspace(-6, 0, 7), ...
   'FontSize'    , 34 ,...
   'LineWidth', 1);
+
 end
 

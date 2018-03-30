@@ -1,12 +1,12 @@
 % Example code for coating optimization
-% 
+%
 
 addpath(genpath('../'));
 addpath(genpath('../generic/'));
 %addpath(genpath('../../gwincDev'));  % add GWINCdev path to get TO coating noise
 
 % Initial guess vector of layer thicknesses in units of lambda
-no_of_stacks = 40;  
+no_of_stacks = 40;
 
 x0 = [];
 
@@ -52,12 +52,12 @@ hybridopts = optimoptions('fmincon',...
                   'MaxFunEvals', 2111);
 
 options = optimoptions('particleswarm',...
-               'SwarmSize', nvars*15,...     % 
+               'SwarmSize', nvars*54,...
                'UseParallel', 1,...
                'MaxIter', 211,...
                'SelfAdjustment',   1.49,...
                'SocialAdjustment', 1.49,...
-               'TolFun', 1e-2,...
+               'TolFun', 1e-1,...
                'Display', 'iter',...
                'HybridFcn',{@fmincon, hybridopts});
 
@@ -74,13 +74,16 @@ if find(xout < 0.001)
     disp('Bad Layer Thickness: invalid results')
 end
 
-%% SAVE layer structure, IFOmodel, and noise
-savename = ['Data/' NUMTOOLS.opt_name '_layers_' tnowstr];
-save(savename, 'TNout', 'ifo');
 
 %% Run it one final time with the flag option turned on
 TNout = getMirrorCost(xout, NUMTOOLS, 1);
 tnowstr = datestr(now, 'yymmdd_HHMM');
+
+%% SAVE layer structure, IFOmodel, and noise
+savename = ['Data/' NUMTOOLS.opt_name '_layers_' tnowstr];
+save(savename, 'TNout', 'ifo');
+
+
 
 SbrZ = getCoatBrownian(100, ifo, ifo.Optics.ETM.BeamRadius, xout);
 
