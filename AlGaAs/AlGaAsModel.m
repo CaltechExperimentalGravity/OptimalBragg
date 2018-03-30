@@ -113,12 +113,12 @@ function ifo = AlGaAsModel(varargin)
   ifo.Materials.Substrate.MassKappa = 1.38;              % J/m/s/K; thermal conductivity (ref. 4)
   ifo.Materials.Substrate.RefractiveIndex = 1.45;        % mevans 25 Apr 2008
   
-  ifo.Materials.MassRadius    = 0.50 * 0.0254;             % m  (1" dia)
-  ifo.Materials.MassThickness = 0.25 * 0.0254;             % m  (1/4" thick)
+  ifo.Materials.MassRadius    = (34e-2)/2;             % m  (1" dia)
+  ifo.Materials.MassThickness = 20e-2;             % m  (1/4" thick)
   
   %% Laser-------------------------------------------------------------------
   ifo.Laser.Wavelength                   = 1.064e-6;                                  % m;
-  ifo.Laser.Power                        = 0.01;                                       % W;
+  ifo.Laser.Power                        = 1;                                       % W;
   
   %% Optics------------------------------------------------------------------
   ifo.Optics.Type = 'SignalRecycled';

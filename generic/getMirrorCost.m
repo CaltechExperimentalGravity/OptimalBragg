@@ -20,7 +20,7 @@ lambda_0 = glob_param.lambda;
 aoi = glob_param.aoi;
 aoi_green = glob_param.aoi;
 
-%Dispersion taken from Ramin
+% Dispersion taken from Ramin
 na = 1.0000;           %Vacuum
 n1_IR = glob_param.n1_IR;
 n2_IR = glob_param.n2_IR;
@@ -189,33 +189,33 @@ if yy(1)<2 && yy(2)<2 && yy(3)<2
 
     if glob_param.include_sens
         [err_IR] = doSens(n_IR, L, lambda_IR, aoi, Tp_IR, Rp_IR, Rs_IR);
-        [err_green] = doSens(n_green, L_green, lambda_green, aoi_green, Tp_green, Rp_green, Rs_green);
+        %[err_green] = doSens(n_green, L_green, lambda_green, aoi_green, Tp_green, Rp_green, Rs_green);
 
         %%Add sensitivity function to the cost function... 10x weight for IR
         %%than green
         e1 = 1*abs(err_IR.Tp.coatLayer_plus) + 1*abs(err_IR.Tp.coatLayer_minus);
-        e2 = 10*abs(err_green.Rp.coatLayer_plus) + 10*abs(err_green.Rp.coatLayer_minus);
-        e3 = 10*abs(err_green.Rs.coatLayer_plus) + 10*abs(err_green.Rs.coatLayer_minus);
+        %e2 = 10*abs(err_green.Rp.coatLayer_plus) + 10*abs(err_green.Rp.coatLayer_minus);
+        %e3 = 10*abs(err_green.Rs.coatLayer_plus) + 10*abs(err_green.Rs.coatLayer_minus);
         yy = [yy e1 e2 e3]; %1064nmp, 532nm p-pol, 532nm s-pol
 
         e1 = 1*abs(err_IR.Tp.n1_plus) + 1*abs(err_IR.Tp.n1_minus);
-        e2 = 10*abs(err_green.Rp.n1_plus) + 10*abs(err_green.Rp.n1_minus);
-        e3 = 10*abs(err_green.Rs.n1_plus) + 10*abs(err_green.Rs.n1_minus);
+        %e2 = 10*abs(err_green.Rp.n1_plus) + 10*abs(err_green.Rp.n1_minus);
+        %e3 = 10*abs(err_green.Rs.n1_plus) + 10*abs(err_green.Rs.n1_minus);
         yy = [yy e1 e2 e3];
 
         e1 = 1*abs(err_IR.Tp.n2_plus) + 1*abs(err_IR.Tp.n2_minus);
-        e2 = 10*abs(err_green.Rp.n2_plus) + 10*abs(err_green.Rp.n2_minus);
-        e3 = 10*abs(err_green.Rs.n2_plus) + 10*abs(err_green.Rs.n2_minus);
+        %e2 = 10*abs(err_green.Rp.n2_plus) + 10*abs(err_green.Rp.n2_minus);
+        %e3 = 10*abs(err_green.Rs.n2_plus) + 10*abs(err_green.Rs.n2_minus);
         yy = [yy e1 e2 e3];
 
         e1 = 1*abs(err_IR.Tp.aoi_plus) + 1*abs(err_IR.Tp.aoi_minus);
-        e2 = 10*abs(err_green.Rp.aoi_plus) + 10*abs(err_green.Rp.aoi_minus);
-        e3 = 10*abs(err_green.Rs.aoi_plus) + 10*abs(err_green.Rs.aoi_minus);
+        %e2 = 10*abs(err_green.Rp.aoi_plus) + 10*abs(err_green.Rp.aoi_minus);
+        %e3 = 10*abs(err_green.Rs.aoi_plus) + 10*abs(err_green.Rs.aoi_minus);
         yy = [yy e1 e2 e3];
         
         y = y + sum(yy(6:17) .* weights(6:17));
     end
-    y = exp(y/1000.);
+    y = exp(y/1000);
 else
 	y = sum(yy(1:4)); %Give a high cost and exit
     y = exp(3*y);

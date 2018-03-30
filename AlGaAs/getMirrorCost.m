@@ -10,8 +10,12 @@ minParamSens = 0;
 % This makes x into a column vector
 x = x(:);
 
-% WTF?
-try, flag; catch flag = 0; end
+% set 'flag' value if its not set in the varargin
+try
+    flag;
+catch
+    flag = 0;
+end
 
 ifo = glob_param.ifo;
 
@@ -19,11 +23,15 @@ ifo = glob_param.ifo;
 lambda_0 = ifo.Laser.Wavelength;
 
 n_vac = 1.000;    % Index of vacuum
-n2 = ifo.Materials.Coating.Indexlown;             % Index of AlAs @ 2000 nm
-n1 = ifo.Materials.Coating.Indexhighn;            % Index of GaAs @ 2000 nm
-n_sub = ifo.Materials.Substrate.RefractiveIndex;     % Substrate is made of Si
 
-% no_of_stacks = floor(length(x)/2);    % use floor if x is not even
+n1 = ifo.Materials.Coating.Indexhighn;            % Index of GaAs
+
+n2 = ifo.Materials.Coating.Indexlown;             % Index of AlAs
+
+n_sub = ifo.Materials.Substrate.RefractiveIndex;  % Substrate is made of Si
+
+% no_of_stacks = floor(length(x)/2);    
+% use floor if x is not even
 % set up the array of index of refractions
 n_c = zeros(size(x)).';
 n_c(1:2:end) = n1;
@@ -122,7 +130,7 @@ yy = [yy 20*abs((T1(1) - T_1)/T_1)^1];    % match the T @ lambda
 %yy = [yy 1*((T1(2) - T_2)/T_2)^1];    % match the T @ lambda/2
 % Thermo-Optic noise cancellation
 % the weight factor is chosen so that StoZ / Sbrown ~= 1
-yy = [yy StoZ * 1e43];
+yy = [yy StoZ * 10e43];
 
 % also add some costs to minimize the first derivatives
 % minimize sensitivity to thickness cal of deposition
@@ -165,7 +173,7 @@ if flag == 1
  
  lambda = sort([linspace(0.4, 1.6, 2200), lambda]);
 
- [Gamma1, Z1] = multidiel1(n, L, lambda);
+ [Gamma1, ~] = multidiel1(n, L, lambda);
 
  R = abs(Gamma1).^2;
  T = 1 - R;

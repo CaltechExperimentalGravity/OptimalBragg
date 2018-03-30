@@ -16,13 +16,13 @@ f = logspace(0, 4, 300);
 
 fname = savename;
 load(fname);
-dOpt = TNout.L(:);
-n = TNout.n(:);
+dOpt  = TNout.L(:);
+n     = TNout.n(:);
 %divide out by index of refraction (omitting vacuum and substrate)
 dReal = dOpt ./ n(2:end-1);
 %
 wBeam = eval(['ifo.Optics.' NUMTOOLS.opt_name '.BeamRadius']);
-wfac = 0.06/wBeam;
+wfac  = 0.06/wBeam;
 
 [StoZ, SteZ, StrZ, T]  = getCoatThermoOptic(f, ifo, wBeam, dOpt);
 
@@ -30,22 +30,22 @@ wfac = 0.06/wBeam;
 SbrZ = getCoatBrownian(f, ifo, wBeam, dOpt);
 
 % Mirror Brownian
-c2 = ifo.Materials.Substrate.c2;
-yy = ifo.Materials.Substrate.MechanicalLossExponent;
+c2  = ifo.Materials.Substrate.c2;
+yy  = ifo.Materials.Substrate.MechanicalLossExponent;
 kBT = ifo.Constants.kB * ifo.Materials.Substrate.Temp;
 
 % Bulk substrate contribution
-phibulk = c2 .* f.^yy;
+phibulk = c2 .* (f.^yy);
 
 [cETM, aETM] = subbrownianFiniteCorr(ifo, 'ETM');
-cbulk = 8 * kBT * (aETM) .* phibulk ./ (2 * pi * f);
+cbulk = 8 * kBT * aETM .* phibulk ./ (2 * pi * f);
 
 % sub brown
 sbr = sqrt(cbulk');
 
-to = sqrt(StoZ');  % thermo optic
-te = sqrt(SteZ');  % thermo elastic
-tr = sqrt(StrZ');  % thermo refractive
+to  = sqrt(StoZ');  % thermo optic
+te  = sqrt(SteZ');  % thermo elastic
+tr  = sqrt(StrZ');  % thermo refractive
 tbr = sqrt(SbrZ'); % coating brownian
 
 
@@ -53,11 +53,11 @@ tbr = sqrt(SbrZ'); % coating brownian
 
 %%
 figure(415)
-loglog(f,  sbr(:,1),...
+loglog(f, sbr(:,1),...
        f, tbr(:,1) ,...
        f,  te(:,1),...
-       f, tr(:,1),...
-       f, to(:,1),...
+       f,  tr(:,1),...
+       f,  to(:,1),...
        'LineWidth', 6)
 %plotyy(f, to, f, te, f, tr, @loglog)
 

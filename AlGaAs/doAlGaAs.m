@@ -10,7 +10,7 @@ no_of_stacks = 40;
 
 x0 = [];
 
-x0 = [x0; ones(2*no_of_stacks,1)];
+x0 = [x0; 0.25*ones(2*no_of_stacks,1)];
 
 % add a layer of GaAs at the bottom
 %x0 = [x0; 1/4];
@@ -32,7 +32,7 @@ load ../besselzeros.mat
 ifo.Constants.BesselZeros = besselzeros;
 NUMTOOLS.ifo = ifo;
 
-NUMTOOLS.wBeam        = 0.06;
+NUMTOOLS.wBeam        = 0.065;
 %NUMTOOLS.wBeam = 291e-6;     % for little Reference Cavities
 NUMTOOLS.f_optimize   = 100;
 ifo.Optics.ETM.BeamRadius = NUMTOOLS.wBeam;
@@ -52,7 +52,7 @@ hybridopts = optimoptions('fmincon',...
                   'MaxFunEvals', 2111);
 
 options = optimoptions('particleswarm',...
-               'SwarmSize', nvars*154,...     % 
+               'SwarmSize', nvars*15,...     % 
                'UseParallel', 1,...
                'MaxIter', 211,...
                'SelfAdjustment',   1.49,...

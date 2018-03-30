@@ -7,9 +7,13 @@ close all
 addpath('../');
 addpath('thermalNoiseFuncs/');
 
-%Start a parpool with 40 workers
+% Start a parpool with 40 workers
 delete(gcp('nocreate'));
-parpool(40);
+try
+    parpool(40);
+catch
+    parpool();
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                    USER CONFIG
