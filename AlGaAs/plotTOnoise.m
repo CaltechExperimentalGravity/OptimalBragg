@@ -13,9 +13,22 @@
 f = logspace(0, 4, 300);
 
 %%
+% get time str for latest coating design
+d = dir('Data/*.mat');
+[~,idx] = max([d.datenum]);
+filename = d(idx).name;
+strfind(filename,'_18');
+tnowstr = filename(12:22)
+if strfind(d(idx).name,'ETM')
+    NUMTOOLS.opt_name = 'ETM';
+else
+    NUMTOOLS.opt_name = 'ITM';
+end
 
-fname = savename;
+fname = ['Data/' NUMTOOLS.opt_name '_layers_' tnowstr];
+
 load(fname);
+
 dOpt  = TNout.L(:);
 n     = TNout.n(:);
 %divide out by index of refraction (omitting vacuum and substrate)
@@ -43,12 +56,10 @@ cbulk = 8 * kBT * aETM .* phibulk ./ (2 * pi * f);
 % sub brown
 sbr = sqrt(cbulk');
 
-to  = sqrt(StoZ');  % thermo optic
-te  = sqrt(SteZ');  % thermo elastic
-tr  = sqrt(StrZ');  % thermo refractive
+to  = sqrt(StoZ'); % thermo optic
+te  = sqrt(SteZ'); % thermo elastic
+tr  = sqrt(StrZ'); % thermo refractive
 tbr = sqrt(SbrZ'); % coating brownian
-
-
 
 
 %%
@@ -101,7 +112,7 @@ set(gca, ...
   'LineWidth', 1);
 % print pretty plot
 orient landscape
-set(gcf,'Position',[300 80 1000 700])
+set(gcf,'Position',[200 80 1000 700])
 set(gcf,'PaperPositionMode','auto')
 fname = ['Figures/' NUMTOOLS.opt_name '_AlGaAs_TOnoise_' tnowstr];
 print('-depsc','-r300',fname)
@@ -144,14 +155,14 @@ hold off
 xlabel('Layer #')
 ylabel('Physical Thickness / \lambda')
 axis tight
-set(gca,'XTick',[1:length(dReal)])
+set(gca,'XTick',[1:2:length(dReal)])
 xlim([0 length(dReal)+1]);
 %legend('SiO2:a-Si 123 K');
 grid
 
 % print pretty plot
 orient landscape
-set(gcf,'Position',[500 50 1000 700])
+set(gcf,'Position',[500 250 1000 700])
 set(gcf,'PaperPositionMode','auto')
 %print -depsc -r600 AlGaAs_Layers_60000.eps
 fname = ['Figures/' NUMTOOLS.opt_name '_AlGaAs_Layers_' tnowstr];
