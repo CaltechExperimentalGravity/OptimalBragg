@@ -13,7 +13,22 @@
 % OUT.XO   = Optimized Parameter Values
 % OUT.fval = Obtained global minima solution for the cost function 
 %
-% NM & GV 31 March 2018
+% runOptim.m uses functions: getCost_aLIGO_ETM_mex.m, parload.m, parsave.m, SA_RI_load.m, SA_Temp_load.m
+%
+% Method:
+% This function optimizes Coating thickness parameters using a modified
+% Simulated Annealing(SA) algorithm. This version incoporates
+% parallel processing. Running in parallel improves the probablility to 
+% to identify the global minima. The best obtained configuration at each
+% stage from among the  workers is selected and used as input for  the
+% next iteration. At every new iteration, the SA parameters like
+% Initial Temperature and Reanneal Interval  are progressively modified
+% so as to converge to the optimal solution where the given residual function is
+% minimized. FMINCON is performed at the end of each iteration to 
+% accelerate the convergence. Results can be further improved by recursively using the
+% optimized output as input to runOptim.m (i.e OUT=runOptim.m; settings.XO = OUT.XO; OUT = runOptims(settings); )
+%
+% Authors: Nikhil Mukund Menon & Gautam Venugopalan (Last Modified: 2nd April 2018)
 function [OUT] = runOptim(settings)
 % clc
 % clear
@@ -246,7 +261,9 @@ OUT.executionTime = toc;
 if (settings.parallel_toggle == 1)
     delete(gcp('nocreate'))
 end
-system('rm -r output*.mat RI_set.mat Temp_set.mat X_initial.mat'); % deletes individual  output files
+
+% Remove temporary files
+system('rm -r output*.mat RI_set.mat Temp_set.mat X_initial.mat');
 diary off
 
 OUT.fval = Residual;
