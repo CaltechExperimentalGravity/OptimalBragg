@@ -6,14 +6,14 @@ addpath(genpath('../generic/'));
 %addpath(genpath('../../gwincDev'));  % add GWINCdev path to get TO coating noise
 
 % Initial guess vector of layer thicknesses in units of lambda
-no_of_stacks = 40;
+no_of_stacks = 36;
 
 x0 = [];
 
 x0 = [x0; 0.25*ones(2*no_of_stacks,1)];
 
 % add a layer of GaAs at the bottom
-%x0 = [x0; 1/4];
+x0 = [x0; 1/4];
 x0 = x0(:);                        % Make it a column
 
 NUMTOOLS.lambda = 1064e-9;
@@ -40,27 +40,32 @@ ifo.Optics.ITM.BeamRadius = NUMTOOLS.wBeam;
 
 %% Do the optimization
 % setting the bounds for the variables to be searched over
-LB = 0.002 * ones(size(x0));     % bounds on the layer thicknesses
-UB = 0.500 * ones(size(x0));     %              "
+minThick = 0.002;
+maxThick = 0.500;
+LB = minThick * ones(size(x0));     % bounds on the layer thicknesses
+UB = maxThick * ones(size(x0));     %              "
 nvars = length(UB);
+
+nswarms = 90;
+x0 = rand(nswarms, nvars) *(maxThick-minThick) + minThick;
 
 % set particle swarm optimization options
 hybridopts = optimoptions('fmincon',...
                   'Display','iter',...
                   'MaxIter', 611,...
                   'TolFun', 1e-3,...
-                  'MaxFunEvals', 2111);
+                  'MaxFunEvals', 21111);
 
 options = optimoptions('particleswarm',...
-               'SwarmSize', nvars*54,...
-               'UseParallel', 1,...
-               'MaxIter', 211,...
-               'SelfAdjustment',   1.49,...
-               'SocialAdjustment', 1.49,...
-               'TolFun', 1e-1,...
-               'Display', 'iter',...
-               'HybridFcn',{@fmincon, hybridopts});
-
+                       'InitialSwarmMatrix', x0,...
+                       'SwarmSize', nvars*nswarms,...
+                       'UseParallel', 1,...
+                       'MaxIter', 211,...
+                       'SelfAdjustment',   1.49,...
+                       'SocialAdjustment', 1.49,...
+                       'TolFun', 1e-1,...
+                       'Display', 'iter',...
+                       'HybridFcn',{@fmincon, hybridopts});
 
 % RUNS the Particle Swarm ========
 tic
@@ -73,7 +78,6 @@ toc
 if find(xout < 0.001)
     disp('Bad Layer Thickness: invalid results')
 end
-
 
 %% Run it one final time with the flag option turned on
 TNout = getMirrorCost(xout, NUMTOOLS, 1);

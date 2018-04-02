@@ -78,7 +78,7 @@ ifo.Materials.Substrate.RefractiveIndex = 1.45;        % mevans 25 Apr 2008
   ifo.Materials.MassRadius    = 0.0254 * 1/2;             % m  
   ifo.Materials.MassThickness = 0.0254 * 1/4;
   
-  ifo.Materials.Substrate.Temp = 290;            % mirror temperature [K]
+  ifo.Materials.Substrate.Temp = 294;            % mirror temperature [K]
   %% Laser-------------------------------------------------------------------
   ifo.Laser.Wavelength                   = 1064e-9;                                  % m;
   ifo.Laser.Power                        = 125;                                       % W;
@@ -89,17 +89,16 @@ ifo.Materials.Substrate.RefractiveIndex = 1.45;        % mevans 25 Apr 2008
   ifo.Optics.Curvature.ETM = 2192;               % ROC of ETM
   ifo.Optics.SubstrateAbsorption = 0.5e-4;       % 1/m; bulk absorption coef (ref. 2)
 
-  
   % factor of 2.5 added to simulate LNG modes - remove after new LNG code is added
-  ifo.Optics.ITM.BeamRadius = 0.055 * 2.5;                     % m; 1/e^2 power radius
-  ifo.Optics.ETM.BeamRadius = 0.062 * 2.5;                     % m; 1/e^2 power radius
+  ifo.Optics.ITM.BeamRadius = 0.055;                     % m; 1/e^2 power radius
+  ifo.Optics.ETM.BeamRadius = 0.062;                     % m; 1/e^2 power radius
   
   % coating layer optical thicknesses - mevans June 2008
   ifo.Optics.ITM.CoatingThicknessLown = 0.308;
-  ifo.Optics.ITM.CoatingThicknessCap = 0.5;
+  ifo.Optics.ITM.CoatingThicknessCap  = 0.5;
   
   ifo.Optics.ETM.CoatingThicknessLown = 0.27;
-  ifo.Optics.ETM.CoatingThicknessCap = 0.5;
+  ifo.Optics.ETM.CoatingThicknessCap  = 0.5;
   
   
   

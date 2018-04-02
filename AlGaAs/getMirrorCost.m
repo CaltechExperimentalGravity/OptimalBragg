@@ -118,7 +118,7 @@ S = z_low + (little_gamma * z_high);
 % Thermo-Optic Noise (there should be a flag to use this or not)
 f_to = glob_param.f_optimize;
 wBeam = glob_param.wBeam;
-dOpt = L';
+dOpt = L.';
 [StoZ, ~, ~, ~]  = getCoatThermoOptic(f_to, ifo, wBeam, dOpt);
 
 % cost function which gets minimized
@@ -130,7 +130,7 @@ yy = [yy 5*abs((T1(1) - T_1)/T_1)^1];    % match the T @ lambda
 %yy = [yy 1*((T1(2) - T_2)/T_2)^1];    % match the T @ lambda/2
 % Thermo-Optic noise cancellation
 % the weight factor is chosen so that StoZ / Sbrown ~= 1
-yy = [yy StoZ * 10e43];
+yy = [yy StoZ * 5e44];
 
 % also add some costs to minimize the first derivatives
 % minimize sensitivity to thickness cal of deposition
@@ -155,7 +155,7 @@ elseif flag==3
 end
 
 % choose which terms in the cost function to use
-y = sum(yy([1 2 3 4]));
+y = sum(yy([2 3]));
 
 sss = y;
 
@@ -183,6 +183,8 @@ if flag == 1
     T = 1 - R;
 
     lambda_real = lambda * lambda_0 * 1e9;
+
+% plot the spectral transmisions/reflection
 figure(70711)
 semilogy(lambda_real, R, 'b',...
          lambda_real, T, 'r',...
@@ -198,12 +200,12 @@ axis([min(lambda_real) max(lambda_real) .9e-6 1.01])
 
 line(lambda_0*1e9*ones(100,1), logspace(-7,0,100), 'Color','y')
 %text(1600, 1e-3, ['R @ ' num2str(lambda_0*1e9) ' = ' num2str(R1(1),4)])
-text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(T1(1)*1e6,4) ' ppm'])
+text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(T1(1)*1e6,3) ' ppm'])
 
 %text(1300,0.1*1.3^-1,['R @  ' num2str(lambda_0*1e9/2) ' = ' num2str(R1(1))])
 %text(1300,0.1*1.3^-2,['T @  ' num2str(lambda_0*1e9/2) ' = ' num2str(T1(1))])
 %S
-disp(['T @ ' num2str(lambda_0*1e9) ' nm = ' num2str(T1(1)*1e6,5) ' ppm'])
+disp(['T @ ' num2str(lambda_0*1e9) ' nm = ' num2str(T1(1)*1e6,3) ' ppm'])
 
 % nice print
 set( gca                       , ...
