@@ -1,11 +1,23 @@
-% Code for optimizing dielectric coating design using MATLAB Simulated Annealing
+% runOptim.m -  Code for optimizing dielectric coating design using MATLAB Simulated Annealing
+%
 % Adapted to optimize aLIGO ETM coating requirements - E0900068-v5
 % https://git.ligo.org/40m/Coatings
+%
+% Usage: [OUT] = runOptim;
+%        [OUT] = runOptim(settings);
+%
+% To change default values pass structure "settings", for example:
+% settings.Workers = 40; 
+% settings.XO = ...; % Initial Guess
+%
+% OUT.XO   = Optimized Parameter Values
+% OUT.fval = Obtained global minima solution for the cost function 
+%
 % NM & GV 31 March 2018
 function [OUT] = runOptim(settings)
 % clc
 % clear
-close all
+% close all
 addpath('../');
 addpath('thermalNoiseFuncs/');
 addpath('./SA_utils/');
@@ -121,13 +133,11 @@ nvars = length(UB);
 
 
 XO = 0.5*(LB+UB);
-Temp = 1e4;
+
 if isfield(settings,'XO')
     XO = settings.XO;
 end
-if isfield(settings,'Temp')
-    Temp = settings.Temp;
-end
+
 
 Temp_set = logspace(4,-2,3);
 RI_set   = floor(linspace(5,30,2));
