@@ -12,7 +12,7 @@
 %        = the effective thermal expansion coeffient of the coating layer
 % bLayer = change in refractive index with temperature
 %        = dn/dT
-% dLayer = geometrical thicness of each layer
+% dLayer = geometrical thickness of each layer
 % sLayer = Yamamoto thermo-refractive correction
 %        = alpha * (1 + sigma) / (1 - sigma)
 
@@ -21,23 +21,23 @@ function [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt)
   % coating parameters
   lambda = ifo.Laser.Wavelength;
     
-  pS = ifo.Materials.Substrate;
-  pC = ifo.Materials.Coating;
+  pS   = ifo.Materials.Substrate;
+  pC   = ifo.Materials.Coating;
   
-  Y_S = pS.MirrorY;
+  Y_S  = pS.MirrorY;
   sigS = pS.MirrorSigma;
   
   alphaL = pC.Alphalown;
-  betaL = pC.Betalown;
-  Y_L = pC.Ylown;
-  sigL = pC.Sigmalown;
-  nL = pC.Indexlown;
+  betaL  = pC.Betalown;
+  Y_L    = pC.Ylown;
+  sigL   = pC.Sigmalown;
+  nL     = pC.Indexlown;
   
   alphaH = pC.Alphahighn;
-  betaH = pC.Betahighn;
-  Y_H = pC.Yhighn;
-  sigH = pC.Sigmahighn;
-  nH = pC.Indexhighn;
+  betaH  = pC.Betahighn;
+  Y_H    = pC.Yhighn;
+  sigH   = pC.Sigmahighn;
+  nH     = pC.Indexhighn;
   
   Nlayer = numel(dOpt);
   
