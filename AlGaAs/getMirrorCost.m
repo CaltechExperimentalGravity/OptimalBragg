@@ -124,7 +124,7 @@ ifo.Materials.Coating.Indices = n;
 
 % cost function which gets minimized
 yy = [];
-yy(1) = S/10;                       % minimize the Brownian noise
+yy = S/10;                       % minimize the Brownian noise
 
 yy = [yy 5*abs((T1(1) - T_1)/T_1)^1];    % match the T @ lambda
 
