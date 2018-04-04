@@ -38,32 +38,62 @@ function [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt)
   Y_H    = pC.Yhighn;
   sigH   = pC.Sigmahighn;
   nH     = pC.Indexhighn;
-  
+
   Nlayer = numel(dOpt);
-  
+
+  try
+      CoatType = ifo.Materials.Coating.Type;
+  catch
+      CoatType = 'standard';
+  end
+
   % compute effective alpha
   aLayer = zeros(Nlayer, 1);
-  aLayer(1:2:end) = alphaL * getExpansionRatio(Y_L, sigL, Y_S, sigS);
-  aLayer(2:2:end) = alphaH * getExpansionRatio(Y_H, sigH, Y_S, sigS);
-  
+  switch CoatType
+    case 'standard'
+      aLayer(1:2:end) = alphaL * getExpansionRatio(Y_L, sigL, Y_S, sigS);
+      aLayer(2:2:end) = alphaH * getExpansionRatio(Y_H, sigH, Y_S, sigS);
+    case 'AlGaAs'
+      aLayer(2:2:end) = alphaL * getExpansionRatio(Y_L, sigL, Y_S, sigS);
+      aLayer(1:2:end) = alphaH * getExpansionRatio(Y_H, sigH, Y_S, sigS);
+  end
+
   % and beta
   bLayer = zeros(Nlayer, 1);
-  bLayer(1:2:end) = betaL;
-  bLayer(2:2:end) = betaH;
+  switch CoatType
+    case 'standard'
+      bLayer(1:2:end) = betaL;
+      bLayer(2:2:end) = betaH;
+    case 'AlGaAs'
+      bLayer(2:2:end) = betaL;
+      bLayer(1:2:end) = betaH;
+  end
 
   % and refractive index
   nLayer = zeros(Nlayer, 1);
-  nLayer(1:2:end) = nL;
-  nLayer(2:2:end) = nH;
-  
+  switch CoatType
+    case 'standard'
+      nLayer(1:2:end) = nL;
+      nLayer(2:2:end) = nH;
+    case 'AlGaAs'
+      nLayer(2:2:end) = nL;
+      nLayer(1:2:end) = nH;
+  end
+
   % and geometrical thickness
   dLayer = lambda * dOpt ./ nLayer;
 
   % and sigma correction
   sLayer = zeros(Nlayer, 1);
-  sLayer(1:2:end) = alphaL * (1 + sigL) / (1 - sigL);
-  sLayer(2:2:end) = alphaH * (1 + sigH) / (1 - sigH);
-  
+  switch CoatType
+    case 'standard'
+      sLayer(1:2:end) = alphaL * (1 + sigL) / (1 - sigL);
+      sLayer(2:2:end) = alphaH * (1 + sigH) / (1 - sigH);
+    case 'AlGaAs'
+      sLayer(2:2:end) = alphaL * (1 + sigL) / (1 - sigL);
+      sLayer(1:2:end) = alphaH * (1 + sigH) / (1 - sigH);
+  end
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -26,6 +26,7 @@ NUMTOOLS.T            = 5e-6;
 ifo = AlGaAsModel;
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
 ifo.Materials.Substrate.Temp = 293;
+ifo.Materials.Coating.Type = 'AlGaAs';
 
 % load this lookup table for speedup
 load ../besselzeros.mat

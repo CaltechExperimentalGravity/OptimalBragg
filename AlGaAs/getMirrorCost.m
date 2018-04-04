@@ -119,7 +119,8 @@ S = z_low + (little_gamma * z_high);
 f_to = glob_param.f_optimize;
 wBeam = glob_param.wBeam;
 dOpt = L.';
-[StoZ, ~, ~, ~]  = getCoatThermoOptic(f_to, ifo, wBeam, dOpt);
+ifo.Materials.Coating.Indices = n;
+[StoZ, ~, ~, Tto]  = getCoatThermoOptic(f_to, ifo, wBeam, dOpt);
 
 % cost function which gets minimized
 yy = [];
@@ -206,6 +207,7 @@ text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(T1(1)*1e6,3) ' ppm'
 %text(1300,0.1*1.3^-2,['T @  ' num2str(lambda_0*1e9/2) ' = ' num2str(T1(1))])
 %S
 disp(['T @ ' num2str(lambda_0*1e9) ' nm = ' num2str(T1(1)*1e6,3) ' ppm'])
+disp(['T @ ' num2str(lambda_0*1e9) ' nm = ' num2str(Tto*1e6,3) ' ppm'])
 
 % nice print
 set( gca                       , ...

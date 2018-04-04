@@ -31,14 +31,7 @@ function [dTO, dTR, dTE, T, R] = getCoatTOPos(ifo, wBeam, dOpt)
   
   % compute refractive index, effective alpha and beta
   [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt);
-  
-  % use pre-determined layer structure if its available
-  try
-      nLayer = ifo.Materials.Coating.Indices(2:end-1);
-  catch
-      % otherwise use nLayer from getCoatLayers.m
-  end
-  
+
   % compute coating average parameters
   [dc, Cc, Kc, aSub] = getCoatAvg(ifo, dOpt);
   
