@@ -81,8 +81,11 @@ for i = 1:SimNum
     % Rank the results
     T = struct2table(optimResults);
     
+    Normalize = @(x)(x./norm(x,2)); % normalize using 2-norm
+
+    
     Alpha = 0.7; % Relative Weight (minFval vs minExecutionTime)
-    [SCORE,IDX] = sort(Alpha.*normalize(1./(T.minFval),'norm') +  (1-Alpha).*normalize(1./(T.minExecutionTime),'norm'),'descend');
+    [SCORE,IDX] = sort(Alpha.*Normalize(1./(T.minFval)) +  (1-Alpha).*Normalize(1./(T.minExecutionTime)),'descend');
     [~,RANK] = sort(IDX);
     %T2 = table(SCORE,IDX,'VariableNames',{'SCORE','Index'})
     Tfinal = [table(RANK,100*SCORE(RANK),'VariableNames',{'RANK','SCORE'}) T ];
