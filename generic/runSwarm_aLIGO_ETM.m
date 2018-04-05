@@ -2,21 +2,19 @@
 % Adapted to optimize aLIGO ETM coating requirements - E0900068-v5
 % https://git.ligo.org/40m/Coatings
 function OUT = runSwarm_aLIGO_ETM(settings)
-    clc
-    % clear
-    close all
+
     addpath('../');
     addpath('thermalNoiseFuncs/');
 
-    %Start a parpool with 40 workers
-    %delete(gcp('nocreate'));
-    %parpool(40);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %                    DEFAULT SETTINGS                                             
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    defaults.Global  = 'PSO';                                                       
-    defaults.Local   = @fmincon;                                                    
-    defaults.Workers = 10;                                                          
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                              
+    defaults.Workers          = 20;        
+    defaults.SwarmSize        = 55;      
+    defaults.MaxIter          = 1111;      
+    defaults.SelfAdjustment   = 1.49;
+    defaults.SocialAdjustment = 1.49;
+    defaults.TolFun           =  1e-4;
                                                                                     
                                                                                     
     if nargin ~= 0                                                                  
@@ -25,12 +23,19 @@ function OUT = runSwarm_aLIGO_ETM(settings)
             settings = defaults;                                                    
     end                                                                             
                                                                                     
-                                                                                    
-                                                                                    
-                                                                                    
+                                                                                                                                                                                                                                                        
     %Start a parpool with N  workers                                                
-    delete(gcp('nocreate'));                                                        
+    delete(gcp('nocreate'));  
+    
+    if setting.Workers > 0
     parpool(settings.Workers);  
+    parallel_toggle = 1;
+    pctRunOnAll warning off
+    warning('off');
+    else
+        parallel_toggle = 0;
+        warning('off');
+    end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %                    USER CONFIG
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -127,17 +132,17 @@ function OUT = runSwarm_aLIGO_ETM(settings)
     % set particle swarm optimization options
     hybridopts = optimoptions('fmincon',...
                     'Display','iter',...
-                    'MaxIter', 911,...
+                    'MaxIter', 1000,...
                     'TolFun', 1e-4,...
-                    'MaxFunEvals', 51111);
+                    'MaxFunEvals', 5000);
 
     options = optimoptions('particleswarm',...
-                'SwarmSize', nvars*55,...
-                'UseParallel', 1,...
-                'MaxIter', 1111,...
-                'SelfAdjustment',   1.49,...
-                'SocialAdjustment', 1.49,...
-                'TolFun', 1e-4,...
+                'SwarmSize', nvars*settings.SwarmSize,...
+                'UseParallel', parallel_toggle,...
+                'MaxIter', settings.MaxIter,...
+                'SelfAdjustment',   settings.SelfAdjustment,...
+                'SocialAdjustment', settings.SocialAdjustment,...
+                'TolFun', settings.TolFun,...
                 'Display', 'iter',...
                 'HybridFcn',{@fmincon, hybridopts});
 

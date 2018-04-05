@@ -1,10 +1,50 @@
-% Code tp benchmark various optimizers for Coatings Optimization
-Workers = [5,10,20,30];
-Trials  = 5;
+% Code to find the best hyperparameters for PSO based Coatings Optimization
+% The following code grid the n-dimensional parameter space & 
+% perform brute force search over randomly selected indices
+% Nikhil (5th April 2018)
 
-for i = 1:numel(Workers)
-    diary('coatingCodeSpeedTestLog.txt')
-    settings.Workers = Workers(i);  
+% PSO Parameters
+Workers = 5:5:40;
+Workers = [0 Workers];
+SwarmSize = [5,50,500]; % times nvars
+MaxIter = [100,500,1000];
+SelfAdjustment = [0.1,1,10,100];
+SocialAdjustment = [0.1,1,10,100];
+TolFun  = logspace(-8,-3,6);
+
+% Generate All Possible Combos for Grid Search
+AllCombos = allcomb(Workers,SwarmSize,MaxIter,SelfAdjustment,...
+          SocialAdjustment,TolFun);
+
+% Number of trials       
+Trials  = 1;
+
+% Generate random indices to search
+SimNum = 100; % Total number ofd simulations
+rng(0,'twister');  
+SimIndex =  randi(size(AllCombos,1),SimNum,1);
+
+% Create Result Folder                                                                                                                                                   
+if ~exist('./Data/benchmark_Results','dir')                                                
+    mkdir('./Data/benchmark_Results');                                               
+end 
+
+DATETIME = char(datetime('now'));
+DATETIME = regexprep(DATETIME,':|-| ','_');
+RESULT_FOLDER = strcat('benchmark_Results_',DATETIME);
+RESULT_FOLDER = sprintf('./Data/benchmark_Results/%s',RESULT_FOLDER);
+mkdir(RESULT_FOLDER);
+
+%% Start the Grid Run
+for i = 1:SimNum
+    %diary('coatingCodeSpeedTestLog.txt')
+    settings.Workers          = AllCombos(SimIndex(i),1);
+    settings.SwarmSize        = AllCombos(SimIndex(i),2);
+    settings.MaxIter          = AllCombos(SimIndex(i),3);
+    settings.SelfAdjustment   = AllCombos(SimIndex(i),4);
+    settings.SocialAdjustment = AllCombos(SimIndex(i),5);
+    settings.TolFun           = AllCombos(SimIndex(i),6);
+    
     
     for iter = 1:Trials
         OUT = runSwarm_aLIGO_ETM(settings);
@@ -13,34 +53,28 @@ for i = 1:numel(Workers)
         xout{iter}          = OUT.xout;
     end
     
-    optimResults(i).Workers          = Workers(i); 
-    [min_val,min_idx]                = min(executionTime);
-    optimResults(i).minExecutionTime = min_val;
-    optimResults(i).minFval          = fval(min_idx);
-    optimResults(i).minParams        = xout{min_idx};
+    optimResults(i).Workers          = settings.Workers; 
+    [min_val,min_idx]                = min(fval);
+    optimResults(i).minFval          = min_val;
+    optimResults(i).minExecutionTime = executionTime(min_idx);
+    optimResults(i).OptParams        = xout{min_idx};
     optimResults(i).allExecutionTime = executionTime;
     optimResults(i).allFval          = fval;
     optimResults(i).allParams        = xout;
-    diary('off')
+    %diary('off')
+    
+    % Save Results
+    save(sprintf('%s/optimResults.mat',RESULT_FOLDER),'optimResults');
+    
 end
 
-% Save Results                                                                                                                                                   
-if ~exist('./Data/optimResults')                                                
-    mkdir('./Data/optimResults');                                               
-end 
-
-DATETIME = char(datetime('now'));
-DATETIME = regexprep(DATETIME,':|-| ','_');
-RESULT_FOLDER = strcat('optimResults_',DATETIME);
-mkdir(sprintf('./Data/optimResults/%s',RESULT_FOLDER));
 
 
-% Make Plots
-fig111 = figure(111);
-plot(Workers,extractfield(optimResults,'minExecutionTime'),'*-' );
-xlabel('Workers')
-ylabel('Best execution time')
-saveas(gcf,sprintf('./Data/optimResults/%s/optimResults.png',RESULT_FOLDER));
 
-
-save(sprintf('./Data/optimResults/%s/optimResults.mat',RESULT_FOLDER),'optimResults');
+% % Make Plots (Part of Older code)
+% fig111 = figure(111);
+% plot(Workers,extractfield(optimResults,'minExecutionTime'),'*-' );
+% xlabel('Workers')
+% ylabel('Best execution time')
+% saveas(gcf,sprintf('./Data/optimResults/%s/optimResults.png',RESULT_FOLDER));
+% save(sprintf('./Data/optimResults/%s/optimResults.mat',RESULT_FOLDER),'optimResults');
