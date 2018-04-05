@@ -27,7 +27,7 @@ function OUT = runSwarm_aLIGO_ETM(settings)
     %Start a parpool with N  workers                                                
     delete(gcp('nocreate'));  
     
-    if setting.Workers > 0
+    if settings.Workers > 0
     parpool(settings.Workers);  
     parallel_toggle = 1;
     pctRunOnAll warning off

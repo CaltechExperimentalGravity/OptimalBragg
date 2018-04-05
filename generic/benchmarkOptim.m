@@ -4,13 +4,13 @@
 % Nikhil (5th April 2018)
 
 % PSO Parameters
-Workers = 5:5:40;
+Workers = [5,20,40];
 Workers = [0 Workers];
 SwarmSize = [5,50,500]; % times nvars
 MaxIter = [100,500,1000];
-SelfAdjustment = [0.1,1,10,100];
-SocialAdjustment = [0.1,1,10,100];
-TolFun  = logspace(-8,-3,6);
+SelfAdjustment = [0.1,1,10];
+SocialAdjustment = [0.1,1,10];
+TolFun  = [1e-8,1e-6,1e-3];
 
 % Generate All Possible Combos for Grid Search
 AllCombos = allcomb(Workers,SwarmSize,MaxIter,SelfAdjustment,...
