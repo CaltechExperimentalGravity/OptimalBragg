@@ -45,6 +45,12 @@ for i = 1:SimNum
     settings.SocialAdjustment = AllCombos(SimIndex(i),5);
     settings.TolFun           = AllCombos(SimIndex(i),6);
     
+    disp('----------------------------------------------')
+    disp(['Iteration ',num2str(i),' of ',num2str(SimNum)])
+    disp('Running PSO with the following configuration ...')
+    disp(settings)
+    disp('----------------------------------------------')
+
     
     for iter = 1:Trials
         OUT = runSwarm_aLIGO_ETM(settings);
