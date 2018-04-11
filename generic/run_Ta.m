@@ -3,13 +3,15 @@
 clear
 clc
 
-ifo = SilicaTantala300; 
-phi_Ta = [1., 1.5, 2.0, 2.5, 3.0];
+ifo = SilicaTantala300;
+
+phi_Ta = [1, 1.5, 2, 2.5, 3];
+phi_Ta = [1, 4];
 phi_Ta = 1./phi_Ta;
 phi_Ta = phi_Ta .* ifo.Materials.Coating.Phihighn;
 
-for i=1:length(phi_Ta)
-    loss_highn=phi_Ta(i);
+for i = 1:length(phi_Ta)
+    loss_highn = phi_Ta(i);
     runSwarm_aLIGO_ETM;
 end
 

@@ -8,8 +8,8 @@ close all
 addpath('../');
 
 %Start a parpool with 40 workers
-delete(gcp('nocreate'));
-parpool(40);
+%delete(gcp('nocreate'));
+%parpool(40);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                    USER CONFIG
@@ -42,27 +42,28 @@ end
 clear costOut                                                                 
 clear ifo    
 
-NUMTOOLS.lambda = 1064e-9;            % Wavelength at which R and T are to be evaluated
+NUMTOOLS.lambda = 1064e-9;          % Wavelength at which R and T are to be evaluated
 NUMTOOLS.opt_name       = 'PR3';
 NUMTOOLS.coatingType    = 'HR';
-NUMTOOLS.T_1            = 50e-6;      % Target transmission at 1064 nm --- 50ppm for HR, 99% for AR
-NUMTOOLS.T_2s           = 0.995;      % Target transmission at 532 nm, s-pol --- 99.5% for HR, 99.8% for AR
-NUMTOOLS.T_2p           = 0.995;      % Target transmission at 532 nm, p-pol ---- same as above
-NUMTOOLS.aoi            = 41.1;       % Angle of incidence (degrees)  --- 41.1deg for HR, 24.8deg for AR
-NUMTOOLS.aoi_green      = 41.1;       % Angle of incidence (degrees)  ---24.746 deg for green
-NUMTOOLS.wBeam        = 5e-3;          % Beam size on optic being optimized
-NUMTOOLS.f_optimize   = 100;           % Frequency at which to evaluate noise being optimized
-NUMTOOLS.noise_weight = 1e42;          % to equate Brownian and TO noise
-NUMTOOLS.include_sens   = 1;           %Include derivatives in sensitivity function (1 or 0)
-NUMTOOLS.include_thermal   = 1;        %Include TN term in sensitivity function (1 for HR or 0 for AR)
+NUMTOOLS.T_1            = 50e-6;    % Target transmission at 1064 nm --- 50ppm for HR, 99% for AR
+NUMTOOLS.T_2s           = 0.995;    % Target transmission at 532 nm, s-pol --- 99.5% for HR, 99.8% for AR
+NUMTOOLS.T_2p           = 0.995;    % Target transmission at 532 nm, p-pol ---- same as above
+NUMTOOLS.aoi            = 41.1;     % Angle of incidence (degrees)  --- 41.1deg for HR, 24.8deg for AR
+NUMTOOLS.aoi_green      = 41.1;     % Angle of incidence (degrees)  ---24.746 deg for green
+NUMTOOLS.wBeam          = 5e-3;     % Beam size on optic being optimized
+NUMTOOLS.f_optimize     = 100;      % Frequency at which to evaluate noise being optimized
+NUMTOOLS.noise_weight   = 1e42;     % to equate Brownian and TO noise
+NUMTOOLS.include_sens   = 1;        % Include derivatives in sensitivity function (1 or 0)
+NUMTOOLS.include_thermal = 1;       % Include TN term in sensitivity function (1 for HR or 0 for AR)
 
 
-ifo = SilicaTantala300;                 % Load a standard gwinc style parameter file with various material properties defined             
+ifo = SilicaTantala300;                % Load a standard gwinc style 
+                                       % parameter file with various material properties defined             
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
 % load this lookup table for speedup
 load besselzeros.mat
 ifo.Constants.BesselZeros = besselzeros;
-ifo.Optics.ETM.BeamRadius = NUMTOOLS.wBeam; %using the gwinc infrastructure for calculating TO noise for ease...
+ifo.Optics.ETM.BeamRadius = NUMTOOLS.wBeam; % using the gwinc infrastructure for calculating TO noise for ease...
 ifo.Optics.ITM.BeamRadius = NUMTOOLS.wBeam;
 NUMTOOLS.ifo = ifo;
 
@@ -110,22 +111,22 @@ hybridopts = optimoptions('fmincon',...
                   'MaxFunEvals', 11111);
 
 options = optimoptions('particleswarm',...
-               'SwarmSize', nvars*155,...     % 
+               'SwarmSize', nvars*115,...     % 
                'UseParallel', 1,...
-               'MaxIter', 911,...
+               'MaxIter', 111,...
                'SelfAdjustment',   1.49,...
                'SocialAdjustment', 1.49,...
                'TolFun', 1e-4,...
                'Display', 'iter',...
                'HybridFcn',{@fmincon, hybridopts});
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                   END USER CONFIG
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                   Run particle swarm optimization
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 x0 = x0(:);                       
 %% Do the optimization
 % RUNS the Particle Swarm ========
@@ -142,11 +143,12 @@ end
 %% SAVE layer structure, IFOmodel, and noise
 costOut = getMirrorCost(xout, NUMTOOLS, 1);
 tnowstr = datestr(now, 'yymmdd_HHMM');
-savename = ['Data/' NUMTOOLS.opt_name '_' NUMTOOLS.coatingType '_' num2str(no_of_stacks) '_layers_' tnowstr];
+savename = ['Data/' NUMTOOLS.opt_name '_' NUMTOOLS.coatingType...
+    '_' num2str(no_of_stacks) '_layers_' tnowstr];
 save(savename, 'costOut', 'ifo');
 
 %%Make a spectral reflectivity plot
-makeSpecREFLplot(savename,NUMTOOLS.firstLayer);
+makeSpecREFLplot(savename, NUMTOOLS.firstLayer);
 
 %% printing plot to file
 title(' ')

@@ -27,7 +27,7 @@ function [dTO, dTR, dTE, T, R] = getCoatTOPos(ifo, wBeam, dOpt)
   
   % parameters
   lambda = ifo.Laser.Wavelength;
-  nS = ifo.Materials.Substrate.RefractiveIndex;  
+  nS     = ifo.Materials.Substrate.RefractiveIndex;  
   
   % compute refractive index, effective alpha and beta
   [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt);
