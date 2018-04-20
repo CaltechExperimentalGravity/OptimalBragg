@@ -126,7 +126,7 @@ ifo.Materials.Coating.Indices = n;
 yy = [];
 yy = S/10;                       % minimize the Brownian noise
 
-yy = [yy 5*abs((T1(1) - T_1)/T_1)^1];    % match the T @ lambda
+yy = [yy 5*asinh(abs((T1(1) - T_1)/T_1)^2)];    % match the T @ lambda
 
 %yy = [yy 1*((T1(2) - T_2)/T_2)^1];    % match the T @ lambda/2
 % Thermo-Optic noise cancellation

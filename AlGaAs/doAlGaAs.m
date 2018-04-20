@@ -18,10 +18,10 @@ x0 = [x0; 0.25*ones(2*no_of_pairs,1)];
 x0 = [x0; 1/4];
 x0 = x0(:);                        % Make it a column
 
-NUMTOOLS.lambda = 1064e-9;
-NUMTOOLS.func         = 'getMirrorCost';
-NUMTOOLS.opt_name     = 'ETM';
-NUMTOOLS.T            = 5e-6;  % desired power transmission
+NUMTOOLS.lambda    = 1064e-9;
+NUMTOOLS.func      = 'getMirrorCost';
+NUMTOOLS.opt_name  = 'ETM';
+NUMTOOLS.T         = 5e-6;  % desired power transmission
 
 ifo = AlGaAsModel;
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
@@ -35,7 +35,8 @@ NUMTOOLS.ifo = ifo;
 
 NUMTOOLS.wBeam        = 0.065;
 %NUMTOOLS.wBeam = 291e-6;     % for little Reference Cavities
-NUMTOOLS.f_optimize   = 100;
+NUMTOOLS.f_optimize   = 100;  % minimize the noise at this
+                              % frequency only
 ifo.Optics.ETM.BeamRadius = NUMTOOLS.wBeam;
 ifo.Optics.ITM.BeamRadius = NUMTOOLS.wBeam;
 
@@ -47,7 +48,7 @@ LB = minThick * ones(size(x0));     % bounds on the layer thicknesses
 UB = maxThick * ones(size(x0));     %              "
 nvars = length(UB);
 
-nswarms = 190;
+nswarms = 19;
 x0 = 0.25 + 0.1*(rand(nswarms, nvars) *(maxThick-minThick) + minThick);
 
 % set particle swarm optimization options
