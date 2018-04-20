@@ -1,32 +1,32 @@
-% Example code for coating optimization
+% PSO for AlGaAs coating design for ETM/ITM
 %
 
-addpath(genpath('../'));
-addpath(genpath('../generic/'));
-%addpath(genpath('../../gwincDev'));  % add GWINCdev path to get TO coating noise
+try % set path if its not there already
+    op2phys(4, 2);
+catch
+    addpath(genpath('../'));
+    addpath(genpath('../generic/'));
+    %addpath(genpath('../../gwincDev'));  % add GWINCdev path to get TO coating noise
+end
 
 % Initial guess vector of layer thicknesses in units of lambda
-no_of_stacks = 42;
-
+no_of_pairs = 44;
 x0 = [];
-
-x0 = [x0; 0.25*ones(2*no_of_stacks,1)];
+x0 = [x0; 0.25*ones(2*no_of_pairs,1)];
 
 % add a layer of GaAs at the bottom
 x0 = [x0; 1/4];
 x0 = x0(:);                        % Make it a column
 
 NUMTOOLS.lambda = 1064e-9;
-
 NUMTOOLS.func         = 'getMirrorCost';
-
 NUMTOOLS.opt_name     = 'ETM';
-NUMTOOLS.T            = 5e-6;
+NUMTOOLS.T            = 5e-6;  % desired power transmission
 
 ifo = AlGaAsModel;
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
 ifo.Materials.Substrate.Temp = 293;
-ifo.Materials.Coating.Type = 'AlGaAs';
+ifo.Materials.Coating.Type = 'AlGaAs';  % high index (GaAs) cap layer
 
 % load this lookup table for speedup
 load ../besselzeros.mat
@@ -42,13 +42,13 @@ ifo.Optics.ITM.BeamRadius = NUMTOOLS.wBeam;
 %% Do the optimization
 % setting the bounds for the variables to be searched over
 minThick = 0.002;
-maxThick = 0.500;
+maxThick = 0.600;
 LB = minThick * ones(size(x0));     % bounds on the layer thicknesses
 UB = maxThick * ones(size(x0));     %              "
 nvars = length(UB);
 
-nswarms = 90;
-x0 = rand(nswarms, nvars) *(maxThick-minThick) + minThick;
+nswarms = 190;
+x0 = 0.25 + 0.1*(rand(nswarms, nvars) *(maxThick-minThick) + minThick);
 
 % set particle swarm optimization options
 hybridopts = optimoptions('fmincon',...
