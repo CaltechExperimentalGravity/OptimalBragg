@@ -1,3 +1,5 @@
+function Cfsm = getCoatFiniteCorr(ifo, wBeam, dOpt)
+
 % Cfsm = getCoatFiniteCorr(ifo, opticName)
 % Cfsm = getCoatFiniteCorr(ifo, wBeam, dOpt)
 %   finite mirror size correction
@@ -19,7 +21,6 @@
 %
 % version 1 by Sam Wald, 2008
 
-function Cfsm = getCoatFiniteCorr(ifo, wBeam, dOpt)
 
   % check arguments
   if nargin < 3
@@ -28,30 +29,30 @@ function Cfsm = getCoatFiniteCorr(ifo, wBeam, dOpt)
   end
   
   % parameter extraction
-  R = ifo.Materials.MassRadius;      %substrate radius
-  H = ifo.Materials.MassThickness;   %substrate thickness
+  R      = ifo.Materials.MassRadius;      %substrate radius
+  H      = ifo.Materials.MassThickness;   %substrate thickness
   lambda = ifo.Laser.Wavelength;
-  zeta = ifo.Constants.BesselZeros;  % zeros of 1st order bessel function (J1)
+  zeta   = ifo.Constants.BesselZeros;  % zeros of 1st order bessel function (J1)
     
   pS = ifo.Materials.Substrate;
   pC = ifo.Materials.Coating;
   
   alphaS = pS.MassAlpha;
-  C_S = pS.MassCM * pS.MassDensity;
-  Y_S = pS.MirrorY;
-  sigS = pS.MirrorSigma;
+  C_S    = pS.MassCM * pS.MassDensity;
+  Y_S    = pS.MirrorY;
+  sigS   = pS.MirrorSigma;
   
   alphaL = pC.Alphalown;
-  C_L = pC.CVlown;
-  Y_L = pC.Ylown;
-  sigL = pC.Sigmalown;
-  nL = pC.Indexlown;
+  C_L    = pC.CVlown;
+  Y_L    = pC.Ylown;
+  sigL   = pC.Sigmalown;
+  nL     = pC.Indexlown;
   
   alphaH = pC.Alphahighn;
-  C_H = pC.CVhighn;
-  Y_H = pC.Yhighn;
-  sigH = pC.Sigmahighn;
-  nH = pC.Indexhighn;
+  C_H    = pC.CVhighn;
+  Y_H    = pC.Yhighn;
+  sigH   = pC.Sigmahighn;
+  nH     = pC.Indexhighn;
 
   % coating sums
   dL = lambda * sum(dOpt(1:2:end)) / nL;
@@ -102,9 +103,9 @@ function Cfsm = getCoatFiniteCorr(ifo, wBeam, dOpt)
   P = (Xr - 2 * sigS * Yr - Cr + S1 * (Cr - Yr * (1 - sigS)))^2 + S2;
   
   % eq 60 and 70
-  LAMBDA = -Cr + (Xr / (1 + sigS) + Yr * (1 - 2 * sigS)) / 2;
+  LAMB = -Cr + (Xr / (1 + sigS) + Yr * (1 - 2 * sigS)) / 2;
 
   % eq 92
-  Cfsm = sqrt((r0^2 * P) / (2 * R^2 * (1 + sigS)^2 * LAMBDA^2));
+  Cfsm = sqrt((r0^2 * P) / (2 * R^2 * (1 + sigS)^2 * LAMB^2));
   
 end

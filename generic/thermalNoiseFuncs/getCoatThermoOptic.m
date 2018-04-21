@@ -1,3 +1,5 @@
+function [StoZ, SteZ, StrZ, T] = getCoatThermoOptic(f, ifo, wBeam, dOpt)
+
 % [StoZ, SteZ, StrZ, T] = getCoatThermoOptic(f, ifo, opticName);
 % [StoZ, SteZ, StrZ, T] = getCoatThermoOptic(f, ifo, wBeam, dOpt);
 %   return power spectra of coating thermo-optic noise for a single optic
@@ -17,7 +19,6 @@
 % StrZ = thermo-refractive componenet of StoZ
 % T = coating power transmission, made available as a cross-check
 
-function [StoZ, SteZ, StrZ, T] = getCoatThermoOptic(f, ifo, wBeam, dOpt)
   
   % check arguments
   if nargin < 4
@@ -26,7 +27,7 @@ function [StoZ, SteZ, StrZ, T] = getCoatThermoOptic(f, ifo, wBeam, dOpt)
   end
   
   % compute coefficients
-  [dTO, dTR, dTE, T] = getCoatTOPos(ifo, wBeam, dOpt);
+  [dTO, dTR, dTE, T, ~] = getCoatTOPos(ifo, wBeam, dOpt);
   
   % compute correction factors
   gTO = getCoatThickCorr(f, ifo, dOpt, dTE, dTR);

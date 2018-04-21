@@ -22,16 +22,16 @@ function gTC = getCoatThickCorr(f, ifo, dOpt, dTE, dTR)
   Ks = pS.MassKappa;
   
   % compute coating average parameters
-  [dc, Cc, Kc] = getCoatAvg(ifo, dOpt);
+  [d_coat, Cc, Kc] = getCoatAvg(ifo, dOpt);
   
   % R and xi (from T080101, Thick Coating Correction)
-  w = 2 * pi * f;
-  R = sqrt(Cc * Kc / (Cs * Ks));
-  xi = dc * sqrt(2 * w * Cc / Kc);
+  w  = 2 * pi * f;
+  R  = sqrt(Cc * Kc / (Cs * Ks));
+  xi = d_coat * sqrt(2 * w * Cc / Kc);
   
   % trig functions of xi
-  s = sin(xi);
-  c = cos(xi);
+  s  = sin(xi);
+  c  = cos(xi);
   sh = sinh(xi);
   ch = cosh(xi);
   

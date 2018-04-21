@@ -1,3 +1,5 @@
+function [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt)
+
 % [nLayer, aLayer, bLayer, dLayer] = getCoatLayers(ifo, dOpt)
 %   get layer vectors for refractive index, effective alpha and beta
 %   and geometrical thickness
@@ -13,19 +15,21 @@
 % bLayer = change in refractive index with temperature
 %        = dn/dT
 % dLayer = geometrical thickness of each layer
-% sLayer = Yamamoto thermo-refractive correction
+% sLayer = Yamamoto thermo-refractive correction (add citation)
 %        = alpha * (1 + sigma) / (1 - sigma)
+%
+% added 'CoatType' variable so that we can calculate for cases where the
+%        top layer is high index. (i.e. for AlGaAs, not like Adv LIGO)
+%         - RXA, April 2018
 
-function [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt)
-   
   % coating parameters
   lambda = ifo.Laser.Wavelength;
     
-  pS   = ifo.Materials.Substrate;
-  pC   = ifo.Materials.Coating;
+  pS     = ifo.Materials.Substrate;
+  pC     = ifo.Materials.Coating;
   
-  Y_S  = pS.MirrorY;
-  sigS = pS.MirrorSigma;
+  Y_S    = pS.MirrorY;
+  sigS   = pS.MirrorSigma;
   
   alphaL = pC.Alphalown;
   betaL  = pC.Betalown;
@@ -54,8 +58,8 @@ function [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt)
       aLayer(1:2:end) = alphaL * getExpansionRatio(Y_L, sigL, Y_S, sigS);
       aLayer(2:2:end) = alphaH * getExpansionRatio(Y_H, sigH, Y_S, sigS);
     case 'AlGaAs'
-      aLayer(2:2:end) = alphaL * getExpansionRatio(Y_L, sigL, Y_S, sigS);
       aLayer(1:2:end) = alphaH * getExpansionRatio(Y_H, sigH, Y_S, sigS);
+      aLayer(2:2:end) = alphaL * getExpansionRatio(Y_L, sigL, Y_S, sigS);
   end
 
   % and beta
@@ -65,8 +69,8 @@ function [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt)
       bLayer(1:2:end) = betaL;
       bLayer(2:2:end) = betaH;
     case 'AlGaAs'
-      bLayer(2:2:end) = betaL;
       bLayer(1:2:end) = betaH;
+      bLayer(2:2:end) = betaL;
   end
 
   % and refractive index
@@ -76,8 +80,8 @@ function [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt)
       nLayer(1:2:end) = nL;
       nLayer(2:2:end) = nH;
     case 'AlGaAs'
-      nLayer(2:2:end) = nL;
       nLayer(1:2:end) = nH;
+      nLayer(2:2:end) = nL;
   end
 
   % and geometrical thickness
@@ -90,8 +94,8 @@ function [nLayer, aLayer, bLayer, dLayer, sLayer] = getCoatLayers(ifo, dOpt)
       sLayer(1:2:end) = alphaL * (1 + sigL) / (1 - sigL);
       sLayer(2:2:end) = alphaH * (1 + sigH) / (1 - sigH);
     case 'AlGaAs'
-      sLayer(2:2:end) = alphaL * (1 + sigL) / (1 - sigL);
       sLayer(1:2:end) = alphaH * (1 + sigH) / (1 - sigH);
+      sLayer(2:2:end) = alphaL * (1 + sigL) / (1 - sigL);
   end
 
 end

@@ -1,9 +1,12 @@
+function [dphi_dT, dphi_TE, dphi_TR, rCoat] = ...
+    getCoatTOPhase(nIn, nOut, nLayer, dOpt, aLayer, bLayer, sLayer)
+
 % [dphi_dT, dphi_TE, dphi_TR, rCoat] = ...
 %   getCoatTOPhase(nIn, nOut, nLayer, dOpt, aLayer, bLayer)
 %   returns coating reflection phase derivatives w.r.t. temperature
 %
-% nIn = refractive index of input medium (e.g., vacuum = 1)
-% nOut = refractive index of output medium (e.g., SiO2 = 1.45231 @ 1064nm)
+% nIn    = refractive index of input  medium (e.g., vacuum = 1)
+% nOut   = refractive index of output medium (e.g., SiO2 = 1.45231 @ 1064nm)
 % nLayer = refractive index of each layer, ordered input to output (N x 1)
 % dOpt   = optical thickness / lambda of each layer
 %        = geometrical thickness * refractive index / lambda
@@ -21,13 +24,12 @@
 %
 % Note about aLayer: on a SiO2 substrate,
 % a_Ta2O5 ~ 3.5 * alpha_Ta2O5
-% a_SiO2 ~ 2.3 * alpha_SiO2
+% a_SiO2  ~ 2.3 * alpha_SiO2
 %
 % see getCoatTOPos for more information
 % (see also T080101)
 
-function [dphi_dT, dphi_TE, dphi_TR, rCoat] = ...
-    getCoatTOPhase(nIn, nOut, nLayer, dOpt, aLayer, bLayer, sLayer)
+
 
   % vector of all refractive indexs
   nAll = [nIn; nLayer(:); nOut];
@@ -50,7 +52,8 @@ function [dphi_dT, dphi_TE, dphi_TR, rCoat] = ...
     end
     
     % accumulate reflecitivity
-    rbar(n) = ephi(n) * (r(n) + rbar(n + 1)) / (1 + r(n) * rbar(n + 1));
+    rbar(n) = ephi(n) * (r(n) + rbar(n + 1)) /...
+              (1 + r(n) * rbar(n + 1));
   end
   
   % reflectivity derivatives
