@@ -76,9 +76,9 @@ title('Single Mirror Thermo-Optic Noise (AlGaAs coating)')
 grid
 %axis tight
 axis([1 1e4 1e-23*wfac 1e-19*wfac])
-text(23, 1.3e-20*wfac, ['T = ' num2str(T*1e6,4) ' ppm'])
-text(23, 5.1e-20*wfac, ['# of layers = ' num2str(length(dReal)) ' '])
-text(23, 2.5e-20*wfac, ['Thickness = ' num2str(sum(dReal), 3) ' \mum'])
+text(7, 3.3e-23*wfac, ['T = ' num2str(T*1e6,2) ' ppm'], 'FontSize', 20)
+text(7, 9.1e-23*wfac, ['# of layers = ' num2str(length(dReal)) ' '], 'FontSize', 20)
+text(7, 5.5e-23*wfac, ['Thickness = ' num2str(sum(dReal), 3) ' \mum'], 'FontSize', 20)
 legend('Substrate Brownian','Brownian',...
     'Thermo-Elastic','Thermo-Refractive','Thermo-Optic',...
        'Location','NorthEast')
