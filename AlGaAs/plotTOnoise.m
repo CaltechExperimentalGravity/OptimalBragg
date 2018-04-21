@@ -56,25 +56,23 @@ cbulk = 8 * kBT * aETM .* phibulk ./ (2 * pi * f);
 % sub brown
 sbr = sqrt(cbulk');
 
-to  = sqrt(StoZ'); % thermo optic
-te  = sqrt(SteZ'); % thermo elastic
-tr  = sqrt(StrZ'); % thermo refractive
-tbr = sqrt(SbrZ'); % coating brownian
-
+to  = sqrt(StoZ); % thermo optic
+te  = sqrt(SteZ); % thermo elastic
+tr  = sqrt(StrZ); % thermo refractive
+tbr = sqrt(SbrZ); % coating brownian
 
 %%
 figure(415)
-loglog(f, sbr(:,1),...
-       f, tbr(:,1) ,...
-       f,  te(:,1),...
-       f,  tr(:,1),...
-       f,  to(:,1),...
+loglog(f, sbr,...
+       f, tbr,...
+       f,  te,...
+       f,  tr,...
+       f,  to,...
        'LineWidth', 6)
-%plotyy(f, to, f, te, f, tr, @loglog)
 
 xlabel('Frequency [Hz]')
 ylabel('Dispacement Noise [m/\surdHz]')
-%title('Single Mirror Thermo-Optic Noise (AlGaAs coating)')
+title('Single Mirror Thermo-Optic Noise (AlGaAs coating)')
 grid
 %axis tight
 axis([1 1e4 1e-23*wfac 1e-19*wfac])
@@ -82,7 +80,7 @@ text(23, 1.3e-20*wfac, ['T = ' num2str(T*1e6,4) ' ppm'])
 text(23, 5.1e-20*wfac, ['# of layers = ' num2str(length(dReal)) ' '])
 text(23, 2.5e-20*wfac, ['Thickness = ' num2str(sum(dReal), 3) ' \mum'])
 legend('Substrate Brownian','Brownian',...
-    'Thermo-Elastic', 'Thermo-Optic','Thermo-Refractive',...
+    'Thermo-Elastic','Thermo-Refractive','Thermo-Optic',...
        'Location','NorthEast')
 
    
@@ -90,14 +88,6 @@ legend('Substrate Brownian','Brownian',...
 set( gca                       , ...
     'FontName'   , 'Times'     , ...
     'FontSize'   , 28          );
-% set([hXLabel, hYLabel], ...
-%     'FontName'   , 'Times',...
-%     'FontSize'   , 34         );
-% set([hLegend, gca]             , ...
-%     'FontSize'   , 22           );
-%set( hTitle                    , ...
-%    'FontSize'   , 12          , ...
-%    'FontWeight' , 'bold'      );
 
 set(gca, ...
   'Box'         , 'on'     , ...
@@ -116,14 +106,12 @@ set(gcf,'Position',[200 80 1000 700])
 set(gcf,'PaperPositionMode','auto')
 fname = ['Figures/' NUMTOOLS.opt_name '_AlGaAs_TOnoise_' tnowstr];
 print('-depsc','-r300',fname)
-[a,b] = system(['Figures/makePDF.sh ' fname '.eps']);
+[a,~] = system(['Figures/makePDF.sh ' fname '.eps']);
 if a ~= 0
     disp('PDF Generation Error')
 end
 
 %% plot coating design
-%dOpt = [dOpt; zeros(length(dOpt2)-length(dOpt),1)]; %zero pad to match lengths
-%dReal = [dReal; zeros(length(dReal2)-length(dReal),1)]; %zero pad to match lengths
 
 figure(20413)
 clf
@@ -167,7 +155,7 @@ set(gcf,'PaperPositionMode','auto')
 %print -depsc -r600 AlGaAs_Layers_60000.eps
 fname = ['Figures/' NUMTOOLS.opt_name '_AlGaAs_Layers_' tnowstr];
 print('-depsc','-r300', fname)
-[a,b] = system(['Figures/makePDF.sh ' fname '.eps']);
+[a,~] = system(['Figures/makePDF.sh ' fname '.eps']);
 if a ~= 0
     disp('PDF Generation Error')
 else
