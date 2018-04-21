@@ -1,36 +1,4 @@
-% IFOMODEL returns a structure describing an IFO for use in
-% benchmark programs and noise simulator. Part of the gwinc
-% package, which provides science-grounded figures of merit for
-% comparing interferometric gravitational wave detector designs. 
-% 
-
-
-% parameters for quad pendulum suspension updated 3rd May 2006, NAR
-% References:
-% LIGO-T000012-00-D
-% 	* Differentiate between silica and sapphire substrate absorption
-% 	* Change ribbon suspension aspect ratio
-% 	* Change pendulum frequency
-% * References:
-% * 1. Electro-Optic Handbook, Waynant & Ediger (McGraw-Hill: 1993)
-% * 2. LIGO/GEO data/experience
-% * 3. Suspension reference design, LIGO-T000012-00
-% * 4. Quartz Glass for Optics Data and Properties, Heraeus data sheet,
-% *    numbers for suprasil
-% * 5. Y.S. Touloukian (ed), Thermophysical Properties of Matter 
-% *    (IFI/Plenum,1970)
-% * 6. Marvin J. Weber (ed) CRC Handbook of laser science and technology, 
-% *    Vol 4, Pt 2
-% * 7. R.S. Krishnan et al.,Thermal Expansion of Crystals, Pergamon Press
-% * 8. P. Klocek, Handbook of infrared and optical materials, Marcel Decker, 
-% *    1991
-% * 9. Rai Weiss, electronic log from 5/10/2006
-% * 10. Wikipedia online encyclopedia, 2006
-% * 11. D.K. Davies, The Generation and Dissipation of Static Charge on
-% * dielectrics in a Vacuum, page 29
-% * 12. Gretarsson & Harry, Gretarsson thesis
-% * 13. Fejer
-% * 14. Braginsky
+% this is a bunch of mirror params to be used for mirror thermal nois calcs
 
 function ifo = AlGaAsModel(varargin)
 
@@ -102,7 +70,8 @@ function ifo = AlGaAsModel(varargin)
   
   %%   Substrate Material parameters for fused silica --------------------
   
-  ifo.Materials.Substrate.c2  = 7.6e-12;                 % Coeff of freq depend. term for bulk mechanical loss, 7.15e-12 for Sup2
+  ifo.Materials.Substrate.c2  = 7.6e-12;                 % Coeff of freq depend. term for bulk mechanical loss,
+                                                         %  7.15e-12 for Sup2
   ifo.Materials.Substrate.MechanicalLossExponent=0.77;   % Exponent for freq dependence of silica loss, 0.822 for Sup2
   ifo.Materials.Substrate.Alphas = 5.2e-12;              % Surface loss limit (ref. 12)
   ifo.Materials.Substrate.MirrorY    = 72.7e9;           % N/m^2; Youngs modulus (ref. 4)
@@ -113,8 +82,8 @@ function ifo = AlGaAsModel(varargin)
   ifo.Materials.Substrate.MassKappa = 1.38;              % J/m/s/K; thermal conductivity (ref. 4)
   ifo.Materials.Substrate.RefractiveIndex = 1.45;        % mevans 25 Apr 2008
   
-  ifo.Materials.MassRadius    = (34e-2)/2;             % m  (1" dia)
-  ifo.Materials.MassThickness = 20e-2;             % m  (1/4" thick)
+  ifo.Materials.MassRadius    = 0.0254 / 2;              % m  (1" dia)
+  ifo.Materials.MassThickness = 0.0254 / 4;              % m  (1/4" thick)
   
   %% Laser-------------------------------------------------------------------
   ifo.Laser.Wavelength                   = 1.064e-6;                                  % m;
@@ -134,24 +103,7 @@ function ifo = AlGaAsModel(varargin)
   ifo.Optics.SubstrateAbsorption = 0.5e-4;       % 1/m; bulk absorption coef (ref. 2)
   ifo.Optics.pcrit = 10;                         % W; tolerable heating power (factor 1 ATC)
   
-  % factor of 2.5 added to simulate LNG modes - remove after new LNG code is added
-  ifo.Optics.ITM.BeamRadius = 0.055 * 2.5;                     % m; 1/e^2 power radius
-  ifo.Optics.ETM.BeamRadius = 0.062 * 2.5;                     % m; 1/e^2 power radius
   
-  ifo.Optics.ITM.CoatingAbsorption = 0.5e-6;            % absorption of ITM
-  ifo.Optics.ITM.Transmittance  = 0.014;                % Transmittance of ITM
-  ifo.Optics.ETM.Transmittance  = 5e-6;                 % Transmittance of ETM
-  ifo.Optics.SRM.Transmittance  = 0.20;                 % Transmittance of SRM
-  ifo.Optics.PRM.Transmittance  = 0.03;
-  
-  % coating layer optical thicknesses - mevans June 2008
-  ifo.Optics.ITM.CoatingThicknessLown = 0.308;
-  ifo.Optics.ITM.CoatingThicknessCap = 0.5;
-  
-  ifo.Optics.ETM.CoatingThicknessLown = 0.27;
-  ifo.Optics.ETM.CoatingThicknessCap = 0.5;
-  
-  %ifo.Optics.SRM.Tunephase = 0.23;           % SRM tuning, 795 Hz narrowband
   ifo.Optics.SRM.Tunephase = 0.0;             % SRM tuning
   ifo.Optics.Quadrature.dc = pi/2;            % demod/detection/homodyne phase
   

@@ -199,9 +199,12 @@ axis([min(lambda_real) max(lambda_real) .9e-6 1.01])
 
 %line(lambda_0*1e9/2*ones(100,1),logspace(-7,0,100),'Color','g')
 
-line(lambda_0*1e9*ones(100,1), logspace(-7,0,100), 'Color','y')
+line(lambda_0*1e9*ones(100,1), logspace(-7,0,100),...
+    'Color',[0.7 0.7 0.0], 'LineWidth', 3)
 %text(1600, 1e-3, ['R @ ' num2str(lambda_0*1e9) ' = ' num2str(R1(1),4)])
-text(1100, 3e-6, ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(T1(1)*1e6,3) ' ppm'])
+text(1100, 33e-6,...
+  ['T @ ' num2str(lambda_0*1e9) ' = ' num2str(T1(1)*1e6,3) ' ppm'],...
+  'FontSize',18)
 
 %text(1300,0.1*1.3^-1,['R @  ' num2str(lambda_0*1e9/2) ' = ' num2str(R1(1))])
 %text(1300,0.1*1.3^-2,['T @  ' num2str(lambda_0*1e9/2) ' = ' num2str(T1(1))])
