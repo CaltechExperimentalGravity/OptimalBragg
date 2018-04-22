@@ -1,0 +1,92 @@
+\documentclass{lscdoc}
+
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{rotating}
+\usepackage{fancyhdr}
+\usepackage{subcaption}
+\usepackage{wrapfig}
+\usepackage{booktabs}
+\usepackage[square,sort,comma,numbers]{natbib}
+%\usepackage{doi}
+\usepackage{tablefootnote}
+\usepackage{bm}
+\usepackage{microtype}
+\usepackage{fouriernc}
+\usepackage{soul}
+%\sisetup{detect-family,detect-display-math = true}
+\captionsetup{labelfont=bf, format=hang,
+  labelfont={sc,bf}, textfont=small}
+
+% Euler for math | Palatino for rm | Helvetica for ss | Courier for tt
+\renewcommand{\rmdefault}{ppl} % rm
+\linespread{1.05}              % Palatino needs more leading
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[scaled]{helvet}    % ss
+\usepackage{courier}           % tt
+\usepackage[euler-digits]{eulervm}
+
+%\usepackage{newtxmath}
+% ---------------------------------------------
+\usepackage{siunitx}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,
+            pdfstartview=FitV,
+            linkcolor=Sienna,
+            citecolor=MediumBlue,
+            urlcolor=IndianRed}
+\renewcommand{\UrlFont}{\scriptsize}
+
+\newcommand{\dcc}[1]{\href{https://dcc.ligo.org/LIGO-#1}{#1}}
+\ligosites
+
+\author{Rana X Adhikari, Gautam Venugopalan, Garret Cole}
+\title{GaAs:AlAs Coating Design for AdLIGO}
+\ligodccnumber{T}{180}{0NNN}{v1}
+
+\begin{document}
+
+%\input{../Sensitivity/GWINC/BlueBird5.tex}
+
+\tableofcontents
+\clearpage
+
+\section{intro}
+This is a description of a design for putting GaAs:AlAs coatings on the Advanced LIGO ETMs and ITMs.
+
+\clearpage
+\section{Baseline Design}
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../Figures/ETM_AlGaAs_TOnoise_180421_2035.pdf}
+  \caption[ETM Displacement noise]{Thermal noise spectra for the ETM design.}
+  \label{fig:ETMnoise}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../Figures/ETM_AlGaAs_Layers_180421_2035.pdf}
+  \caption[ETM Design]{Layer thickness in units of the optical thickness (top) and physical thickness (bottom)}
+  \label{fig:ETMdesign}
+\end{figure}
+
+\clearpage
+\section{Optimization}
+\begin{itemize}
+\item Minimize Brownian noise of the coating
+\item Minimize Thermo-Optic noise of the coating at 100\,Hz
+\item Minimize absorption
+\item Minimize sensitivity to layer thickness variations
+\item Minimize the HR surface E-Field
+\item Match the transmission requirement at 1064\,nm
+
+\end{itemize}
+
+\section{Absorption}
+
+\appendix
+\section{Material Properties}
+
+\end{document}
