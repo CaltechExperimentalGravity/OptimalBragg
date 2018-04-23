@@ -1,8 +1,8 @@
 % run doAlGas.m many times to tune the hyper-parameters
 
-selfies   = [0.5 1 1.5];
-socialies = [0.5 1 1.5];
-N = 3; % how many times to repeat with each setting
+selfies   = linspace(0.1, 2, 5);
+socialies = linspace(0.1, 2, 5);
+N = 10; % how many times to repeat with each setting
 
 scores = zeros(length(selfies), length(socialies), N, 5);
 
