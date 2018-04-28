@@ -93,10 +93,11 @@ def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
 		for ii in range(len(n)-1):
 			t_r = np.arcsin(n[ii]*np.sin(alpha[ii])/n[ii+1])
 			alpha.append(t_r)
-		return np.array(alpha) #Note that angles are all in radians
-
+		return np.array(alpha[1:]) #Note that angles are all in radians
 	#Calculate the array of angles, in radians
 	angles = arrayTheta(n,theta)
+	qAngle = angles[-1]
+	angles = angles[0:-1]
 	def M_i(b_i,qq_i):
 		#Eqn 2 from paper
 		return np.matrix([[np.cos(b_i), 1j*np.sin(b_i)/qq_i],
@@ -118,7 +119,7 @@ def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
 
 	def E0pk(Mtot):
 		q0 = q_i(n[0],theta)
-		qSub = q_i(n[-1],angles[-1])
+		qSub = q_i(n[-1],qAngle)
 		#Eqn 10
 		return 0.25*(np.abs(Mtot[0,0] + Mtot[1,1]*qSub/q0)**2 +
 				np.abs(Mtot[1,0]/q0/1j + Mtot[0,1]*qSub/1j)**2)
@@ -130,10 +131,9 @@ def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
 	E_profile = np.zeros(len(L)*nPts)
 	z = np.zeros(len(L)*nPts)
 	Z=0.
-	correction=1.
 
 	#Initialize the q-parameter at the rightmost interface
-	qSub = q_i(n[-1], angles[-1])
+	qSub = q_i(n[-1], qAngle)
 
 	for ii in range(len(L)):
 		n_i = n[ii+1]
@@ -148,7 +148,7 @@ def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
 			Z += dL
 			z[ii*nPts + jj] = Z
 			Mtotz = delta_h(beta_i(theta_i, n_i, dL),q_i(n_i, theta_i)) * Mtotz
-			E_profile[ii*nPts+jj] = correction * np.abs(Mtotz[0,0])**2 + np.abs(qSub*Mtotz[0,1]/1j)**2
+			E_profile[ii*nPts+jj] = correction * (np.abs(Mtotz[0,0])**2 + np.abs(qSub*Mtotz[0,1]/1j)**2)
 
 	return z, E_profile/E0pk(Mtot)
 
