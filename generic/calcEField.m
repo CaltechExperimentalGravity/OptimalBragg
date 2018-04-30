@@ -11,19 +11,19 @@ function [z, E_prof] = calcEfield(L, n, nLayers, lam, theta, pol, nPts)
 		alpha = alpha(2:end)';
 	end
 	function mm = M_i(b_i, qq_i)
-		mm = [cos(b_i), 1j.*sin(b_i)./qq_i; 1j*sin(b_i).*qq_i, cos(b_i)];
+		mm = [cos(b_i), 1j*sin(b_i)/qq_i; 1j*sin(b_i)*qq_i, cos(b_i)];
 	end
 
 	function qq = q_i(n_i, theta_i)
 		if strcmp(pol,'s')
-			qq = n_i .* cos(theta_i);
+			qq = n_i * cos(theta_i);
 		elseif strcmp(pol,'p')
-			qq = n_i ./ cos(theta_i);
+			qq = n_i / cos(theta_i);
 		end
 	end
 
 	function bb = beta_i(tt_i, nn_i, hh_i, lam)
-		bb = 2.*pi.*cos(tt_i).*nn_i.*hh_i./lam;
+		bb = 2*pi*cos(tt_i)*nn_i*hh_i/lam;
 	end
 
 	function Epk = E0pk(Mtot)
@@ -42,7 +42,9 @@ function [z, E_prof] = calcEfield(L, n, nLayers, lam, theta, pol, nPts)
 	angles = angles(1:end-1);
 	%Evaluate the characteristic matrix for the stack
 	Mt = eye(2);
-	Mt = Mt * M_i(beta_i(angles, n(2:end-1), L,lam), q_i(n(2:end-1), angles));
+	for ii=1:length(L)
+		Mt = Mt * M_i(beta_i(angles(ii),n(ii+1),L(ii),lam), q_i(n(ii+1),angles(ii)));
+	end
 	Mtotz = Mt;
 	%Multiply by inverse of infinitesimal stacks
 	E_profile = zeros(length(nLayers)*nPts,1);
@@ -66,5 +68,4 @@ function [z, E_prof] = calcEfield(L, n, nLayers, lam, theta, pol, nPts)
 	end	       
 	
 	E_prof = E_profile/E0pk(Mt);
-	z = flip(z);
 end
