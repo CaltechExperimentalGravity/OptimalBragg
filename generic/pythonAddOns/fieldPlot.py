@@ -26,6 +26,7 @@ Z,field = fieldDepth(L,n,pol='p',nPts=100)
 #Make the plot
 fig , ax = plt.subplots(nrows=1,ncols=1, figsize=(18,9))
 ax.plot(Z*1e6,field, color='navy', alpha=0.7, rasterized=True)
+#ax.semilogy(Z*1e6,field, color='navy', alpha=0.7, rasterized=True)
 #Add some vlines to denote layer boundaries
 ax.vlines(np.cumsum(L)[1:-1:2]*1e6, 1e-5, 2, color='xkcd:olive green', linewidth=0.6, linestyle='--', rasterized=True)
 ax.vlines(np.cumsum(L)[::2]*1e6, 1e-5, 2, color='xkcd:ruby', linewidth=0.6, linestyle='--', rasterized=True)

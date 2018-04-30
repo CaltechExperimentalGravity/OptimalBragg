@@ -116,7 +116,6 @@ def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
 		Mtot = Mtot * M_i(beta_i(theta_i,n_i,h_i), q_i(n_i,theta_i))
 
 	Mtotz = Mtot
-
 	def E0pk(Mtot):
 		q0 = q_i(n[0],theta)
 		qSub = q_i(n[-1],qAngle)

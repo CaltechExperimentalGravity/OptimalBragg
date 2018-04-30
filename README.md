@@ -10,6 +10,22 @@ For the mirror coatings, we have many constraints to satisfy:
 1. Minimize E-field at HR surface
 1. Layers cannot be less than 1 nm thick or more than 1 micron.
 
+# Description of functions
+The `generic` directory contains the most up-to-date versions of the various scripts.
+ * `multidiel1.m` --- used to calculate coating reflectivity.
+ * `getMirrorCost.m` --- Generic cost function template which will be used by global optimizer, e.g. PSO.
+ * `runSwarm.m` --- Generic calling function that sets up the optimization problem and calls the PSO.
+ * `doSens.m` --- Perturbs a given parameter by +/- 1% and computes sensitivity of coating reflectivity to this perturbation.
+ * `thermalNoiseFuncs` --- Contains a collection of GWINC functions that compute thermal noise psds.
+ * `calcEField.m` --- Computes the E-field squared (normalized to surface E-field units) as a function of penetration depth.
+ * `op2phys.m` --- Convert optical thickness to physical thickness (in units of lambda0)
+ * `theta2.m` --- Snel's law angle calculator
+ * `makeSpecREFLplot.m` --- as the name suggests
+ * `plotLayers.m` --- as the name suggests
+ * `pythonAddOns` --- a set of functions for making matplotlib plots from the output of PSO optimization. Also, for MC Hammering. See below.
+All other functions in `generic` are adaptations of the above list to specific design cases.
+
+
 # Monte-Carlo analysis of sensitivity of coating design to assumed model parameters
 Once a coating design has been generated, we'd like to see how sensitive it is to 
  * Manufacturing tolerances
