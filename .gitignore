@@ -24,6 +24,9 @@ octave-workspace
 # Data files
 **/*.mat
 
+# Excel spreadsheet coating layer thickness files
+**/*.xlsx
+
 #hdf5
 **/*.hdf5
 
