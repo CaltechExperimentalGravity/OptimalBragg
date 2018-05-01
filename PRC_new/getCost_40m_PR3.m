@@ -39,6 +39,15 @@ if strcmp(glob_param.coatingType, 'HR') %HR coating
         n_c  = [n_c n1_IR n2_IR];
     end
     n_IR = [na n_c nb_IR];  % add the indices of the vacuum and the substrate at either end
+%Keeping this in for MC analysis
+    n_c = [];
+    L_green = [];
+    for kk = 1:(no_of_stacks)
+        n_c  = [n_c n1_green n2_green];
+        L_green(2*kk - 1) = L(2*kk - 1)*n1_ratio;
+        L_green(2*kk) = L(2*kk)*n2_ratio;
+    end
+    n_green = [na n_c nb_green];  % add the indices of the vacuum and the substrate at either end
 end
 
 % list of wavelengths to use for the optimization
@@ -122,6 +131,7 @@ if flag == 1 %Make an output structure with all variables of importance..
     y.Rp_IR = Rp_IR;
     y.yy = yy;
     y.n_IR = n_IR;
+    y.n_green = n_green;
     y.weights = weights;
 end
 
