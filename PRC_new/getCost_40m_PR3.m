@@ -70,7 +70,8 @@ yy = [];
 % 5 = sensitivity to change in aoi +/-5%...
 
 %Don't penalize for being better than the spec...
-cost_T_IR = heaviside(Tp_IR - T_1) * ((Tp_IR - T_1)/T_1)^2;
+%cost_T_IR = heaviside(Tp_IR - T_1) * ((Tp_IR - T_1)/T_1)^2;
+cost_T_IR = (Tp_IR/T_1)^2;
 if cost_T_IR > 20
 	yy = [yy (20./log10(20))*log10(cost_T_IR)];    % match the T @ lambda
 else
