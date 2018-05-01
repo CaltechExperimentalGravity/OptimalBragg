@@ -46,7 +46,7 @@ lambda_IR = [lambda_0] / lambda_0;
 
 % Calculate reflectivities for each polarization at the angle of incidence
 % ['tm' = 'p-pol', 'te' = 's-pol'], for the given layer structure
-[Gammap, ~]   = multidiel100(n_IR, L, lambda_IR, aoi, 'tm');
+[Gammap, ~]   = multidiel1(n_IR, L, lambda_IR, aoi, 'tm');
 Rp_IR = abs(Gammap).^2;
 Tp_IR = 1 - Rp_IR;
 
