@@ -27,6 +27,13 @@ n1_IR = glob_param.n1_IR;
 n2_IR = glob_param.n2_IR;
 nb_IR = glob_param.nb_IR;
 
+n1_green = glob_param.n1_green;
+n2_green = glob_param.n2_green;
+nb_green = glob_param.nb_green;
+
+n1_ratio = glob_param.n1_ratio;
+n2_ratio = glob_param.n2_ratio;
+
 %Weight vector for scalarization of cost function
 weights = glob_param.wt;
 
