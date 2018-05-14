@@ -15,6 +15,11 @@ import matplotlib
 import corner
 
 hdfFileName = sys.argv[1]
+if len(sys.argv)>2:
+	print(len(sys.argv))
+	hdf5QW = sys.argv[2]
+	f_QW = h5py.File(hdfFileName,'r')
+	samples_QW = np.array(f_QW['MCout'][:])
 
 if 'gvELOG' in plt.style.available:
     plt.style.use('gvELOG')
@@ -42,6 +47,13 @@ corner.corner(samples.T,
 	    hist_kwargs={'linewidth':3},
             label_kwargs={'fontsize':26, 'fontweight':'bold'},
             title_kwargs={'fontsize':26, 'fontweight':'bold'}, fig=fig)
+if len(sys.argv)>2:
+	corner.corner(samples_QW.T,
+	range=[(15.,60.),(0.,15),(5.,20.),(0.,0.6)],
+	color='xkcd:olive green',
+	hist_kwargs={'linewidth':3,'alpha':0.7},
+	label_kwargs={'fontsize':26, 'fontweight':'bold'},
+	title_kwargs={'fontsize':26, 'fontweight':'bold'}, fig=fig)
 #Make the font size readable
 for aa in ax:
 	for bb in aa:

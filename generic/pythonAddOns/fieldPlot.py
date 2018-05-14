@@ -1,5 +1,5 @@
 '''
-'Python script that makes a spectral reflectivity plot of a given coating design
+'Python script that makes plots the E field inside layers for a given coating
 Example usage:
 	fieldPlot.py aLIGO_ETM_20layers.mat
 will take the coating design in aLIGO_ETM_20layers.mat and make a plot of the
