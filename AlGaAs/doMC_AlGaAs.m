@@ -33,7 +33,7 @@ if filename == 0
     else
         NUMTOOLS.opt_name = 'ITM';
     end
-    funame = [NUMTOOLS.opt_name '_layers_' tnowstr '.mat'];
+    funame = [NUMTOOLS.opt_name '_layers_' tnowstr];
     filename = ['Data/' funame];
 end
 
@@ -93,13 +93,17 @@ end
 
 % Save everything for corner plotting with python 
 % (why not use regular save command? Its HDF5 naturally)
-goober = horzcat(T_IR, 1e21*TOnoise, 1e21*BRnoise, surfField).';
+MCout = horzcat(T_IR, 1e21*TOnoise, 1e21*BRnoise, surfField).';
 
 disp(['Saving into ' funame])
-save(['MCout/' funame], 'goober')
+save(['MCout/' funame], 'MCout')
 
-h5create(savename,'/MCout', [nVars N]);
-h5write(savename, '/MCout', goober);
+if savename == 0
+    savename = ['MCout/' funame '.h5'];
+end
+system(['rm ' savename])
+h5create(savename, '/MCout', [nVars N]);
+h5write( savename, '/MCout', MCout);
 
 end
 

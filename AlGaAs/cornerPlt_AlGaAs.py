@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 import sys
 import matplotlib
 import corner
+from scipy.io import loadmat
 
+# use argparse instead
 hdfFileName = sys.argv[1]
 
 #if 'gvELOG' in plt.style.available:
@@ -23,7 +25,8 @@ hdfFileName = sys.argv[1]
 
 #Open the file, load the data
 f = h5py.File(hdfFileName,'r')
-samples=np.array(f['MCout'][:])
+#f = loadmat(hdfFileName)
+samples = np.array(f['MCout'][:])
 samples[2,-1] = samples[2,-2]
 samples[3,-1] = samples[3,-2]
 
@@ -38,11 +41,11 @@ corner.corner(samples,
             #quantiles=[0.9, 0.95, 0.98],
             show_titles=True, use_math_text=True,
             bins=50,
-            range=[(0.,15.),(0.4,1.4),(2.27,2.34),(5,12)],
+            range=[(0,20), (0.4,1.4), (2.27,2.34), (0,15)],
             #   levels=(0.95,),
-	    color='xkcd:bright blue',
+	    color='xkcd:umber',
             hist_kwargs={'linewidth':2},
             label_kwargs={'fontsize':16, 'fontweight':'bold'},
             title_kwargs={'fontsize':16, 'fontweight':'bold'}, fig=fig)
 
-plt.savefig('Figures/AlGaAs_cornerPlt.pdf')
+plt.savefig(hdfFileName + '.pdf')
