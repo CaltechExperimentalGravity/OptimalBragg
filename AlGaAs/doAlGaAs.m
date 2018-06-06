@@ -9,8 +9,25 @@ catch
     %addpath(genpath('../../gwincDev'));  % add GWINCdev path to get TO coating noise
 end
 
+% setup parpoo with good params if running on sandbox1
+if isempty(gcp('nocreate'))
+    [~,host_name] = system('hostname');
+    if strfind(host_name, 'sandbox')
+        myPool = parpool('local', 20, 'IdleTimeout',140)
+    end
+end
+
+% allows running in a for loop for hyper param opt
+try
+    selfie;
+catch
+    selfie   = 1;
+    socialie = 0.55;
+end
+
+
 % Initial guess vector of layer thicknesses in units of lambda
-no_of_pairs = 44;
+no_of_pairs = 40;
 x0 = [];
 x0 = [x0; 0.25*ones(2*no_of_pairs,1)];
 
@@ -25,7 +42,7 @@ NUMTOOLS.T         = 5e-6;  % desired power transmission
 
 ifo = AlGaAsModel;
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
-ifo.Materials.Substrate.Temp = 293;
+ifo.Materials.Substrate.Temp = ifo.Constants.Temp;
 ifo.Materials.Coating.Type = 'AlGaAs';  % high index (GaAs) cap layer
 
 % load this lookup table for speedup
@@ -42,13 +59,13 @@ ifo.Optics.ITM.BeamRadius = NUMTOOLS.wBeam;
 
 %% Do the optimization
 % setting the bounds for the variables to be searched over
-minThick = 0.002;
-maxThick = 0.600;
+minThick = 0.020 * 3;  % from G Cole; physical thickness of cap > 20 nm
+maxThick = 0.500;
 LB = minThick * ones(size(x0));     % bounds on the layer thicknesses
 UB = maxThick * ones(size(x0));     %              "
 nvars = length(UB);
 
-nswarms = 19;
+nswarms = 180;
 x0 = 0.25 + 0.1*(rand(nswarms, nvars) *(maxThick-minThick) + minThick);
 
 % set particle swarm optimization options
@@ -63,9 +80,9 @@ options = optimoptions('particleswarm',...
                        'SwarmSize', nvars*nswarms,...
                        'UseParallel', 1,...
                        'MaxIter', 211,...
-                       'SelfAdjustment',   0.49,...
-                       'SocialAdjustment', 0.49,...
-                       'TolFun', 1e-2,...
+                       'SelfAdjustment',   selfie,...
+                       'SocialAdjustment', socialie,...
+                       'TolFun', 1e-1,...
                        'Display', 'iter',...
                        'HybridFcn',{@fmincon, hybridopts});
 
@@ -75,6 +92,7 @@ tic
     particleswarm(@(x) getMirrorCost(x, NUMTOOLS, 0),...
                                     nvars, LB, UB, options);
 toc
+t_toc = toc;
 
 % Check for thin layers
 if find(xout < 0.001)
@@ -82,7 +100,7 @@ if find(xout < 0.001)
 end
 
 %% Run it one final time with the flag option turned on
-TNout = getMirrorCost(xout, NUMTOOLS, 1);
+TNout   = getMirrorCost(xout, NUMTOOLS, 1);
 tnowstr = datestr(now, 'yymmdd_HHMM');
 
 %% SAVE layer structure, IFOmodel, and noise
@@ -113,4 +131,4 @@ else
 end
 
 %% plot layer structure and thermo-optic noise
-plotTOnoise
+%plotTOnoise
