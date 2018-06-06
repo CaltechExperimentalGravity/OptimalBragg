@@ -30,7 +30,8 @@ samples = np.array(f['MCout'][:])
 samples[2,-1] = samples[2,-2]
 samples[3,-1] = samples[3,-2]
 
-#Make the plot
+# TODO: add text about deposition errors on the plot in the unused space
+# Make the plot
 fig,ax = plt.subplots(np.shape(samples)[1], np.shape(samples)[1], figsize=(18,18))
 #fig.subplots_adjust(wspace=0.5,hspace=0.35)
 corner.corner(samples,

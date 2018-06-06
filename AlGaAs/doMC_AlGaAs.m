@@ -101,7 +101,7 @@ save(['MCout/' funame], 'MCout')
 if savename == 0
     savename = ['MCout/' funame '.h5'];
 end
-system(['rm ' savename])
+system(['rm ' savename]);
 h5create(savename, '/MCout', [nVars N]);
 h5write( savename, '/MCout', MCout);
 
