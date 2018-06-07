@@ -64,44 +64,55 @@ Ei    = 27.46; % [V/m], for surface field calculation ???
 f_to  = 100;   % [Hz]
 wBeam = 0.065; % [meters]
 
+reverseStr = '';
 %%%%%   Apply the perturbations   %%%%%%%%
 for i = 1:N
+
+    % Display the progress
+
+    if  mod(i, 100) < 1
+        percentDone = 100 * i / N;
+        msg = sprintf('Percent done: %3.1f', percentDone);
+        fprintf([reverseStr, msg]);
+        reverseStr = repmat(sprintf('\b'), 1, length(msg));
+    end
     n_IRs   = n;
     Ls      = L_phys;
     perturb = 1 + perturbs(i,:);
     % All physical thicknesses with equal error
-    Ls = Ls * perturb(1);   
+    Ls = Ls * perturb(1);
     % Error in refractive index of low index layers
     n_IRs(2:2:end-1) = n_IRs(2:2:end-1) .* perturb(2);
     % Error in refractive index of high index layers
     n_IRs(3:2:end-1) = n_IRs(3:2:end-1) .* perturb(3);
 
     % Compute reflectivity, surface field, Brownian noise and TO noise.
-    [Gamma, ~] = multidiel1(n_IRs, Ls.*n_IRs(2:end-1), TNout.lambda);
+    [Gamma, ~] = multidiel1(n_IRs, Ls .* n_IRs(2:end-1), TNout.lambda);
     T_IR(i)    = 1e6*(1 - abs(Gamma).^2);
-    % Thermo-Optic 
+    % Thermo-Optic
     ifo.Materials.Coating.Indices = n_IRs;
     [StoZ, ~, ~, ~]  = getCoatThermoOptic(f_to, ifo, wBeam,...
-                                           Ls'.*n_IRs(2:end-1)');
+                                           Ls.' .* n_IRs(2:end-1).');
     TOnoise(i) = sqrt(StoZ);
     % Brownian
-    SbrZ = getCoatBrownian(f_to, ifo, wBeam, Ls.*n_IRs(2:end-1));
+    SbrZ = getCoatBrownian(f_to, ifo, wBeam, Ls .* n_IRs(2:end-1));
     BRnoise(i) = sqrt(SbrZ);
     % Surface Field
     surfField(i) = Ei * abs(1+Gamma);
 end
 
-% Save everything for corner plotting with python 
+% Save everything for corner plotting with python
 % (why not use regular save command? Its HDF5 naturally)
 MCout = horzcat(T_IR, 1e21*TOnoise, 1e21*BRnoise, surfField).';
 
+disp('  ')
 disp(['Saving into ' funame])
-save(['MCout/' funame], 'MCout')
+%save(['MCout/' funame], 'MCout')
 
 if savename == 0
     savename = ['MCout/' funame '.h5'];
 end
-system(['rm ' savename]);
+[a,b] = system(['rm ' savename]);
 h5create(savename, '/MCout', [nVars N]);
 h5write( savename, '/MCout', MCout);
 
