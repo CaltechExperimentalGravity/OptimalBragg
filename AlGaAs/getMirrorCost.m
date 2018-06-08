@@ -101,8 +101,8 @@ Y_low    = ifo.Materials.Coating.Ylown;
 Y_sub  = ifo.Materials.Substrate.MirrorY;
 
 % Total thickness
-z_low  = sum(L(1:2:length(L)));
-z_high = sum(L(2:2:length(L)));
+z_high = sum(L(1:2:length(L)));
+z_low  = sum(L(2:2:length(L)));
 
 a = phi_high / phi_low;
 b = n_low / n_high;
@@ -131,7 +131,7 @@ yy = [yy 5*asinh(abs((T1(1) - T_1)/T_1)^2)];    % match the T @ lambda
 %yy = [yy 1*((T1(2) - T_2)/T_2)^1];    % match the T @ lambda/2
 % Thermo-Optic noise cancellation
 % the weight factor is chosen so that StoZ / Sbrown ~= 1
-yy = [yy StoZ * 5e44];
+yy = [yy StoZ * 1e42];
 
 % also add some costs to minimize the first derivatives
 % minimize sensitivity to thickness cal of deposition
@@ -143,10 +143,10 @@ yy = [yy StoZ * 5e44];
 %yy = [yy 1*(abs(dTdn1(1)))];  % dn1 = 1%
 %yy = [yy 1*(abs(dTdn2(1)))];  % dn2 = 1%
 
-% minimize reflected E-field (usually by 1/2 wave cap on top)
+% minimize HR surface E-field (usually by 1/2 wave cap on top)
 % only at main wavelength
-r_refl = abs(1 + Gamma1(1));
-yy = [yy 5*r_refl^2];
+surf_field = abs(1 + Gamma1(1));
+yy = [yy 20*surf_field^2];
 
 if flag==2
     yy
@@ -156,7 +156,7 @@ elseif flag==3
 end
 
 % choose which terms in the cost function to use
-y = sum(yy([2 3]));
+y = sum(yy([1 2 3 4]));
 
 sss = y;
 
