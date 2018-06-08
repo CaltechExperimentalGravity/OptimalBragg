@@ -48,19 +48,22 @@ samples[3,-1] = samples[3,-2]
 fig,ax = plt.subplots(np.shape(samples)[1], np.shape(samples)[1], figsize=(12,12))
 #fig.subplots_adjust(wspace=0.5,hspace=0.35)
 corner.corner(samples,
-        labels=['$\\mathrm{T}_{1064 \\mathrm{nm}}$ [ppm]', 
+        labels=['$\\mathrm{T}_{1064} \\mathrm{[ppm]}$', 
             '$\\mathrm{S}_{\\mathrm{TO}} [\\times 10^{-21} \\mathrm{m}/\\sqrt{\\mathrm{Hz}}]$',
             '$\\mathrm{S}_{\\mathrm{Br}} [\\times 10^{-21} \\mathrm{m}/\\sqrt{\\mathrm{Hz}}]$',
-            '$\\vec{E}_{\\mathrm{Surface}}$ [V/m]'],
+            '$\\vec{E}_{\\mathrm{Surf}} \\mathrm{[V/m]}$'],
             #quantiles=[0.9, 0.95, 0.98],
+            truths = [5, 1, 2.3, 2],
             show_titles=True, use_math_text=True,
-            bins=50,
-            range=[(0,20), (0.4,1.4), (2.24,2.34), (0,15)],
+            bins = 50,
+            range=[(0,20), (0,1.4), (2.2,2.4), (0,15)],
             #   levels=(0.95,),
-	    color='xkcd:poop',
-            hist_kwargs={'linewidth':2.5},
-            label_kwargs={'fontsize':'large', 'fontweight':'bold'},
-            title_kwargs={'fontsize':'large', 'fontweight':'bold'}, fig=fig)
+            color = 'xkcd:browny orange',
+            smooth = 1,
+            hist_kwargs  = {'linewidth':2.5},
+            label_kwargs = {'fontsize':'large', 'fontweight':'bold'},
+            title_kwargs = {'fontsize':'large', 'fontweight':'bold'},
+                  fig = fig)
 
 fubu = hdfFileName + '.pdf'
 print("File saved as " + fubu)
