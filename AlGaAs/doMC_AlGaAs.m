@@ -1,14 +1,20 @@
 function doMC_AlGaAs(filename, N, nDim, savename)
-
-% OMG - I need a decent help comment + examples !!!! Aaahhhhhh!
-
 % Function to perturb a given coating design to see how sensitive 
 % derived parameters like Transmission etc depend on perturbations
 % Since perturbations are assumed to be iid, no fancy MCMC sampler is used
 % If we desire, we can adapt this code to use 
-%   https://www.mathworks.com/matlabcentral/fileexchange/49820-ensemble-mcmc-sampler
+% https://www.mathworks.com/matlabcentral/fileexchange/49820-ensemble-mcmc-sampler
+% Input arguments:
+%   - filename = Path to .mat file that is output from PSO optimization, for which MC calculation is to be done
+%   - N        = number of MC samples to generate
+%   - nDim     = number of output variables of interest from this MC study
+%   - savename = Path to .hdf5 file to which the MC output is to be saved. This will be used for nice corner plotting with Python
+% Outputs: NONE
+%
+% Example usage:
+%		doMC_AlGaAs('Data/ETM_layers_180607_0028.mat', 1e5, 5, 'Data/ETM_layers_180607_0028.hdf5')
 
-% this is a hacky way of doing matlab coding
+
 clc
 close all
 
@@ -60,7 +66,7 @@ L   = TNout.L;
 L_phys = op2phys(L, n(2:end-1));
 
 % Nominal params for calculation
-Ei    = 27.46; % [V/m], for surface field calculation ???
+Ei    = 27.46; % [V/m], for surface field calculation. Corresponds to 1 W/m^2 peak intensity incident Gaussian beam. 
 f_to  = 100;   % [Hz]
 wBeam = 0.065; % [meters]
 
