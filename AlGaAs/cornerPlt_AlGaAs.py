@@ -29,13 +29,6 @@ args = parser.parse_args()
 # use argparse instead
 hdfFileName = args.filename
 
-#if 'gvELOG' in plt.style.available:
-#    plt.style.use('gvELOG')
-#else:
-#    plt.style.use('bmh')
-
-
-
 #Open the file, load the data
 f = h5py.File(hdfFileName,'r')
 #f = loadmat(hdfFileName)
@@ -51,18 +44,19 @@ corner.corner(samples,
         labels=['$\\mathrm{T}_{1064} \\mathrm{[ppm]}$', 
             '$\\mathrm{S}_{\\mathrm{TO}} [\\times 10^{-21} \\mathrm{m}/\\sqrt{\\mathrm{Hz}}]$',
             '$\\mathrm{S}_{\\mathrm{Br}} [\\times 10^{-21} \\mathrm{m}/\\sqrt{\\mathrm{Hz}}]$',
-            '$\\vec{E}_{\\mathrm{Surf}} \\mathrm{[V/m]}$'],
+            '$\\vec{E}_{\\mathrm{Surf}} \\mathrm{[V/m]}$',
+	    'Absorption [ppm]'],
             #quantiles=[0.9, 0.95, 0.98],
-            truths = [5, 1, 2.3, 2],
+            truths = [5.8, 0.43, 2.25, 1.9, 0.8],
             show_titles=True, use_math_text=True,
             bins = 50,
-            range=[(0,20), (0,1.4), (2.2,2.4), (0,15)],
+            range=[(0,20), (0,1.4), (2.2,2.4), (0,15), (0.7,1.1)],
             #   levels=(0.95,),
             color = 'xkcd:browny orange',
             smooth = 1,
             hist_kwargs  = {'linewidth':2.5},
             label_kwargs = {'fontsize':'large', 'fontweight':'bold'},
-            title_kwargs = {'fontsize':'large', 'fontweight':'bold'},
+            title_kwargs = {'fontsize':'medium', 'fontweight':'bold'},
                   fig = fig)
 
 fubu = hdfFileName + '.pdf'
