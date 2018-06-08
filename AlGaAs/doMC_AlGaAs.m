@@ -7,7 +7,7 @@ function doMC_AlGaAs(filename, N, nDim, savename)
 % Input arguments:
 %   - filename = Path to .mat file that is output from PSO optimization, for which MC calculation is to be done
 %   - N        = number of MC samples to generate
-%   - nDim     = number of output variables of interest from this MC study
+%   - nDim     = number of variables being perturbed in this MC study
 %   - savename = Path to .hdf5 file to which the MC output is to be saved. This will be used for nice corner plotting with Python
 % Outputs: NONE
 %
@@ -46,7 +46,7 @@ end
 load(filename);
 
 % number of output variables
-nVars = 4;
+nVars = 5;
 
 % Generate the perturbations...
 means    = zeros(nDim, 1);
@@ -58,6 +58,7 @@ T_IR      = zeros(N,1);
 surfField = zeros(N,1);
 TOnoise   = zeros(N,1);
 BRnoise   = zeros(N,1);
+absorp    = zeros(N,1);
 
 % Nominal values from coating design
 aoi = 0;
@@ -66,9 +67,13 @@ L   = TNout.L;
 L_phys = op2phys(L, n(2:end-1));
 
 % Nominal params for calculation
-Ei    = 27.46; % [V/m], for surface field calculation. Corresponds to 1 W/m^2 peak intensity incident Gaussian beam. 
-f_to  = 100;   % [Hz]
-wBeam = 0.065; % [meters]
+Ei    = 27.46;      % [V/m], for surface field calculation. Corresponds to 1 W/m^2 peak intensity incident Gaussian beam. 
+f_to  = 100;        % [Hz]
+wBeam = 0.065;      % [meters]
+lam   = 1064e-9;    % [m], laser wavelength
+nPts   = 10;        % [m], number of points inside each layer at which to evaluate E field squared
+alpha_GaAs = 1.5;   % [m^-1], Absorption of GaAs layers
+alpha_AlGaAs = 4.5; % [m^-1], Absorption of GaAs layers
 
 reverseStr = '';
 %%%%%   Apply the perturbations   %%%%%%%%
@@ -105,11 +110,15 @@ for i = 1:N
     BRnoise(i) = sqrt(SbrZ);
     % Surface Field
     surfField(i) = Ei * abs(1+Gamma);
+
+    % Absorption
+    [zz, E_prof] = calcEField_AlGaAs(1064e-9*Ls, n_IRs, length(Ls), 1064e-9, 0.,'p',nPts);
+    absorp(i) = calcAbsorption_AlGaAs(E_prof, 1064e-9*Ls, nPts, alpha_GaAs, alpha_AlGaAs);
 end
 
 % Save everything for corner plotting with python
 % (why not use regular save command? Its HDF5 naturally)
-MCout = horzcat(T_IR, 1e21*TOnoise, 1e21*BRnoise, surfField).';
+MCout = horzcat(T_IR, 1e21*TOnoise, 1e21*BRnoise, surfField, absorp).';
 
 disp('  ')
 disp(['Saving into ' funame])
