@@ -10,18 +10,24 @@ The above will make a corner plot from the data in aLIGO_ETM_MC.hdf5
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-import sys
+#import sys
 import matplotlib
 import corner
 from scipy.io import loadmat
+import os
+import glob
+
+import argparse
+
+newest = max(glob.iglob('MCout/*.[Hh]5'), key=os.path.getctime)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-f", "--filename", type=str, default=newest,
+                    help="file with MCMC data")
+args = parser.parse_args()
 
 # use argparse instead
-hdfFileName = sys.argv[1]
-
-#if 'gvELOG' in plt.style.available:
-#    plt.style.use('gvELOG')
-#else:
-#    plt.style.use('bmh')
+hdfFileName = args.filename
 
 #Open the file, load the data
 f = h5py.File(hdfFileName,'r')
@@ -32,21 +38,27 @@ samples[3,-1] = samples[3,-2]
 
 # TODO: add text about deposition errors on the plot in the unused space
 # Make the plot
-fig,ax = plt.subplots(np.shape(samples)[1], np.shape(samples)[1], figsize=(18,18))
+fig,ax = plt.subplots(np.shape(samples)[1], np.shape(samples)[1], figsize=(12,12))
 #fig.subplots_adjust(wspace=0.5,hspace=0.35)
 corner.corner(samples,
-        labels=['$\\mathrm{T}_{1064 \\mathrm{nm}}$ [ppm]', 
+        labels=['$\\mathrm{T}_{1064} \\mathrm{[ppm]}$', 
             '$\\mathrm{S}_{\\mathrm{TO}} [\\times 10^{-21} \\mathrm{m}/\\sqrt{\\mathrm{Hz}}]$',
             '$\\mathrm{S}_{\\mathrm{Br}} [\\times 10^{-21} \\mathrm{m}/\\sqrt{\\mathrm{Hz}}]$',
-            '$\\vec{E}_{\\mathrm{Surface}}$ [V/m]'],
+            '$\\vec{E}_{\\mathrm{Surf}} \\mathrm{[V/m]}$',
+	    'Absorption [ppm]'],
             #quantiles=[0.9, 0.95, 0.98],
+            truths = [5.8, 0.43, 2.25, 1.9, 0.8],
             show_titles=True, use_math_text=True,
-            bins=50,
-            range=[(0,20), (0.4,1.4), (2.27,2.34), (0,15)],
+            bins = 50,
+            range=[(0,20), (0,1.4), (2.2,2.4), (0,15), (0.7,1.1)],
             #   levels=(0.95,),
-	    color='xkcd:umber',
-            hist_kwargs={'linewidth':2},
-            label_kwargs={'fontsize':16, 'fontweight':'bold'},
-            title_kwargs={'fontsize':16, 'fontweight':'bold'}, fig=fig)
+            color = 'xkcd:browny orange',
+            smooth = 1,
+            hist_kwargs  = {'linewidth':2.5},
+            label_kwargs = {'fontsize':'large', 'fontweight':'bold'},
+            title_kwargs = {'fontsize':'medium', 'fontweight':'bold'},
+                  fig = fig)
 
-plt.savefig(hdfFileName + '.pdf')
+fubu = hdfFileName + '.pdf'
+print("File saved as " + fubu)
+plt.savefig(fubu)
