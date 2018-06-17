@@ -19,7 +19,7 @@ function doMC_AlGaAs(varargin)
 if nargin == 0
     filename = 0;
     N        = 1e5;
-    nDim     = 4;
+    nDim     = 5;
     savename = 0;
 elseif nargin == 4
     filename = varargin{1};
