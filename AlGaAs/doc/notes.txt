@@ -1,0 +1,8 @@
+June 2018
+---------
+1) Gautam points out that the surface E-field is high. ~8x more than for our silca/tantal coatings. Increase weight on that cost by 4x, and now the zero e-field is achieved, but the mean e-field in a MCMC is still ~2 V/m. Good enough?
+
+2) How tight should the tolerance be on the T_ETM? Goal is 5 ppm, but sigma = 3 ppm.
+
+----
+* trying with a wider distribution in initiial swarm and increase swarm size from 180 to 250.
