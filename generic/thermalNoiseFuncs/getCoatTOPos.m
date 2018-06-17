@@ -43,7 +43,7 @@ function [dTO, dTR, dTE, T, R] = getCoatTOPos(ifo, wBeam, dOpt)
   T = 1 - R;
   
   % for debugging
-  disp(fprintf('R = %.3f, T = %.0f ppm', R, 1e6 * T))
+  % disp(fprintf('R = %.3f, T = %.0f ppm', R, 1e6 * T))
   
   % convert from phase to meters, subtracting substrate
   dTR  = dphi_TR * lambda / (4 * pi);
