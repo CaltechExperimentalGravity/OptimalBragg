@@ -1,4 +1,4 @@
-function doMC_AlGaAs(filename, N, nDim, savename)
+function doMC_AlGaAs(varargin)
 
 % OMG - I need a decent help comment + examples !!!! Aaahhhhhh!
 
@@ -8,9 +8,24 @@ function doMC_AlGaAs(filename, N, nDim, savename)
 % If we desire, we can adapt this code to use 
 %   https://www.mathworks.com/matlabcentral/fileexchange/49820-ensemble-mcmc-sampler
 
+if nargin == 0
+    filename = 0;
+    N        = 1e5;
+    nDim     = 4;
+    savename = 0;
+elseif nargin == 4
+    filename = varargin{1};
+    N        = varargin{2};
+    nDim     = varargin{3};
+    savename = varargin{4};
+else
+    warning('Illegal Number of INput Args !!')
+end
+
+
 % this is a hacky way of doing matlab coding
-clc
-close all
+%clc
+%close all
 
 try % set path if its not there already
     op2phys(4, 2);
@@ -54,12 +69,12 @@ TOnoise   = zeros(N,1);
 BRnoise   = zeros(N,1);
 
 % Nominal values from coating design
-aoi = 0;
-n   = TNout.n;
-L   = TNout.L;
+aoi    = 0;
+n      = TNout.n;
+L      = TNout.L;
 L_phys = op2phys(L, n(2:end-1));
 
-% Nominal params for calculation
+% Nominal params for calculation (why not load from ifo struct?)
 Ei    = 27.46; % [V/m], for surface field calculation ???
 f_to  = 100;   % [Hz]
 wBeam = 0.065; % [meters]
@@ -69,13 +84,13 @@ reverseStr = '';
 for i = 1:N
 
     % Display the progress
-
     if  mod(i, 100) < 1
         percentDone = 100 * i / N;
         msg = sprintf('Percent done: %3.1f', percentDone);
         fprintf([reverseStr, msg]);
         reverseStr = repmat(sprintf('\b'), 1, length(msg));
     end
+
     n_IRs   = n;
     Ls      = L_phys;
     perturb = 1 + perturbs(i,:);
