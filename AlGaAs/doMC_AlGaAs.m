@@ -83,30 +83,32 @@ n      = TNout.n;
 L      = TNout.L;
 L_phys = op2phys(L, n(2:end-1));
 
+zifo = ifo;  % weird that this is necessary for parfor to use this variable
+
 % Nominal params for calculation
-% Corresponds to 1 W/m^2 peak intensity incident Gaussian beam.
-Ei    = 27.46;      % [V/m], for surface field calculation.
-f_to  = 100;        % [Hz]
-wBeam = 0.065;      % [m] 1/e^2 beam radius
-lam   = ifo.Laser.Wavelength; % [m], laser wavelength
-nPts         = 10;  % num pts in each layer to eval E field
-alpha_GaAs   = 1.5; % [m^-1], Absorption of GaAs layers
-alpha_AlGaAs = 4.5; % [m^-1], Absorption of GaAs layers
+% Corresponds to 1 W/m^2 peak intensity incident Gaussian beam. 
+Ei     = 27.46;      % [V/m], for surface field calculation. 
+f_to   = 100;        % [Hz]
+wBeam  = 0.065;      % [meters]
+lam    = 1064e-9;    % [m], laser wavelength
+nPts   = 10;         % [m], number of points inside each layer at which to evaluate E field squared
+alpha_GaAs   = 1.5;  % [m^-1], Absorption of GaAs   layers
+alpha_AlGaAs = 4.5;  % [m^-1], Absorption of AlGaAs layers
 
+%reverseStr = '';
+%kk = 0;
 
-reverseStr = '';
 %%%%%   Apply the perturbations   %%%%%%%%
-% --- this should be done in parallel or with emcee
-for i = 1:N
+parfor i = 1:N
 
     % Display the progress
-    if  mod(i, 100) < 1
-        percentDone = 100 * i / N;
-        msg = sprintf('Percent done: %3.1f', percentDone);
-        fprintf([reverseStr, msg]);
-        reverseStr = repmat(sprintf('\b'), 1, length(msg));
-    end
-
+% $$$     if  mod(kk, 100) < 1                
+% $$$       percentDone = 100 * i / N;
+% $$$       msg = sprintf('Percent done: %3.1f', percentDone);
+% $$$       fprintf([reverseStr, msg]);
+% $$$       reverseStr = repmat(sprintf('\b'), 1, length(msg));
+% $$$     end
+    
     n_IRs   = n;
     Ls      = L_phys;
     perturb = 1 + perturbs(i,:);
@@ -118,24 +120,27 @@ for i = 1:N
     n_IRs(3:2:end-1) = n_IRs(3:2:end-1) .* perturb(3);
 
     % Compute reflectivity, surface field, Brownian noise and TO noise.
-    [Gamma, ~] = multidiel1(n_IRs, Ls .* n_IRs(2:end-1), TNout.lambda);
+    [Gamma, ~] = multidiel1(n_IRs, Ls .* n_IRs(2:end-1), lam);
     T_IR(i)    = 1e6*(1 - abs(Gamma).^2);
+
     % Thermo-Optic
-    ifo.Materials.Coating.Indices = n_IRs;
-    [StoZ, ~, ~, ~]  = getCoatThermoOptic(f_to, ifo, wBeam,...
-                                           Ls.' .* n_IRs(2:end-1).');
+    [StoZ, ~, ~, ~]  = getCoatThermoOptic(f_to,...
+                          myfoe(zifo, n_IRs), wBeam, Ls.' .* n_IRs(2:end-1).');
     TOnoise(i) = sqrt(StoZ);
+    
     % Brownian
-    SbrZ = getCoatBrownian(f_to, ifo, wBeam, Ls .* n_IRs(2:end-1));
+    SbrZ = getCoatBrownian(f_to,...
+               myfoe(zifo, n_IRs), wBeam, Ls .* n_IRs(2:end-1));
     BRnoise(i) = sqrt(SbrZ);
 
     % Surface Field
     surfField(i) = Ei * abs(1+Gamma);
 
     % Absorption
-    [zz, E_prof] = calcEField_AlGaAs(lam*Ls, n_IRs, length(Ls), lam, 0,'p',nPts);
-    absorp(i) = calcAbsorption_AlGaAs(E_prof, lam*Ls, nPts,...
-                                      alpha_GaAs, alpha_AlGaAs);
+    [zz, E_prof] = calcEField_AlGaAs(lam*Ls, n_IRs,...
+                                     length(Ls), lam, 0,'p',nPts);
+    absorp(i) = calcAbsorption_AlGaAs(E_prof,...
+                          lam*Ls, nPts, alpha_GaAs, alpha_AlGaAs);
 end
 
 % Save everything for corner plotting with python
@@ -155,3 +160,7 @@ h5write( savename, '/MCout', MCout);
 
 end
 
+
+function ifo = myfoe(ifo, n_IRs)
+        ifo.Materials.Coating.Indices = n_IRs;
+end
