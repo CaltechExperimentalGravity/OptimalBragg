@@ -78,22 +78,25 @@ BRnoise   = zeros(N,1);
 absorp    = zeros(N,1);
 
 % Nominal values from coating design
-aoi    = 0;
+aoi    = 0;  % the beam is at normal incidence
 n      = TNout.n;
 L      = TNout.L;
 L_phys = op2phys(L, n(2:end-1));
 
 % Nominal params for calculation
-Ei    = 27.46;      % [V/m], for surface field calculation. Corresponds to 1 W/m^2 peak intensity incident Gaussian beam. 
+% Corresponds to 1 W/m^2 peak intensity incident Gaussian beam.
+Ei    = 27.46;      % [V/m], for surface field calculation.
 f_to  = 100;        % [Hz]
-wBeam = 0.065;      % [meters]
-lam   = 1064e-9;    % [m], laser wavelength
-nPts   = 10;        % [m], number of points inside each layer at which to evaluate E field squared
-alpha_GaAs = 1.5;   % [m^-1], Absorption of GaAs layers
+wBeam = 0.065;      % [m] 1/e^2 beam radius
+lam   = ifo.Laser.Wavelength; % [m], laser wavelength
+nPts         = 10;  % num pts in each layer to eval E field
+alpha_GaAs   = 1.5; % [m^-1], Absorption of GaAs layers
 alpha_AlGaAs = 4.5; % [m^-1], Absorption of GaAs layers
+
 
 reverseStr = '';
 %%%%%   Apply the perturbations   %%%%%%%%
+% --- this should be done in parallel or with emcee
 for i = 1:N
 
     % Display the progress
@@ -125,12 +128,14 @@ for i = 1:N
     % Brownian
     SbrZ = getCoatBrownian(f_to, ifo, wBeam, Ls .* n_IRs(2:end-1));
     BRnoise(i) = sqrt(SbrZ);
+
     % Surface Field
     surfField(i) = Ei * abs(1+Gamma);
 
     % Absorption
-    [zz, E_prof] = calcEField_AlGaAs(1064e-9*Ls, n_IRs, length(Ls), 1064e-9, 0.,'p',nPts);
-    absorp(i) = calcAbsorption_AlGaAs(E_prof, 1064e-9*Ls, nPts, alpha_GaAs, alpha_AlGaAs);
+    [zz, E_prof] = calcEField_AlGaAs(lam*Ls, n_IRs, length(Ls), lam, 0,'p',nPts);
+    absorp(i) = calcAbsorption_AlGaAs(E_prof, lam*Ls, nPts,...
+                                      alpha_GaAs, alpha_AlGaAs);
 end
 
 % Save everything for corner plotting with python
