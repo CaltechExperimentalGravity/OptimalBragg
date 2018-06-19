@@ -9,10 +9,14 @@ function doMC_AlGaAs(varargin)
 %   - filename = Path to .mat file that is output from PSO optimization, for which MC calculation is to be done
 %   - N        = number of MC samples to generate
 %   - nDim     = number of variables being perturbed in this MC study
-%   - savename = Path to .hdf5 file to which the MC output is to be saved. This will be used for nice corner plotting with Python
+%   - savename = Path to .hdf5 file to which the MC output is to be
+%                saved. This will be used for nice corner plotting with Python
 % Outputs: NONE
 %
-% Example usage:
+% Ex 1:
+%       doMC_AlGaAs     (runs the latest file with default params)
+%
+% Ex 2:
 %	doMC_AlGaAs('Data/ETM_layers_180607_0028.mat', 1e5, 5, 'Data/ETM_layers_180607_0028.hdf5')
 
 
@@ -27,7 +31,7 @@ elseif nargin == 4
     nDim     = varargin{3};
     savename = varargin{4};
 else
-    warning('Illegal Number of INput Args !!')
+    warning('Illegal Number of Input Args ---')
 end
 
 
@@ -90,30 +94,30 @@ zifo = ifo;  % weird that this is necessary for parfor to use this variable
 Ei     = 27.46;      % [V/m], for surface field calculation. 
 f_to   = 100;        % [Hz]
 wBeam  = 0.065;      % [meters]
-lam    = 1064e-9;    % [m], laser wavelength
-nPts   = 10;         % [m], number of points inside each layer at which to evaluate E field squared
+lam    = ifo.Laser.Wavelength;
+nPts   = 10;         % [m], num pts in layer at which to eval E field
 alpha_GaAs   = 1.5;  % [m^-1], Absorption of GaAs   layers
 alpha_AlGaAs = 4.5;  % [m^-1], Absorption of AlGaAs layers
 
 %reverseStr = '';
 %kk = 0;
-
+t0 = tic;
 %%%%%   Apply the perturbations   %%%%%%%%
 parfor i = 1:N
 
     % Display the progress
-% $$$     if  mod(kk, 100) < 1                
-% $$$       percentDone = 100 * i / N;
-% $$$       msg = sprintf('Percent done: %3.1f', percentDone);
-% $$$       fprintf([reverseStr, msg]);
-% $$$       reverseStr = repmat(sprintf('\b'), 1, length(msg));
-% $$$     end
-    
+%    if  mod(kk, 100) < 1
+%       percentDone = 100 * i / N;
+%       msg = sprintf('Percent done: %3.1f', percentDone);
+%       fprintf([reverseStr, msg]);
+%       reverseStr = repmat(sprintf('\b'), 1, length(msg));
+%    end
+
     n_IRs   = n;
     Ls      = L_phys;
     perturb = 1 + perturbs(i,:);
     % All physical thicknesses with equal error
-    Ls = Ls * perturb(1);
+    Ls      = Ls * perturb(1);
     % Error in refractive index of low index layers
     n_IRs(2:2:end-1) = n_IRs(2:2:end-1) .* perturb(2);
     % Error in refractive index of high index layers
@@ -121,20 +125,20 @@ parfor i = 1:N
 
     % Compute reflectivity, surface field, Brownian noise and TO noise.
     [Gamma, ~] = multidiel1(n_IRs, Ls .* n_IRs(2:end-1), lam);
-    T_IR(i)    = 1e6*(1 - abs(Gamma).^2);
+    T_IR(i)    = 1e6 * (1 - abs(Gamma).^2);
 
     % Thermo-Optic
     [StoZ, ~, ~, ~]  = getCoatThermoOptic(f_to,...
                           myfoe(zifo, n_IRs), wBeam, Ls.' .* n_IRs(2:end-1).');
     TOnoise(i) = sqrt(StoZ);
-    
+
     % Brownian
-    SbrZ = getCoatBrownian(f_to,...
-               myfoe(zifo, n_IRs), wBeam, Ls .* n_IRs(2:end-1));
+    SbrZ       = getCoatBrownian(f_to,...
+                            myfoe(zifo, n_IRs), wBeam, Ls .* n_IRs(2:end-1));
     BRnoise(i) = sqrt(SbrZ);
 
     % Surface Field
-    surfField(i) = Ei * abs(1+Gamma);
+    surfField(i) = Ei * abs(1 + Gamma);
 
     % Absorption
     [zz, E_prof] = calcEField_AlGaAs(lam*Ls, n_IRs,...
@@ -142,6 +146,7 @@ parfor i = 1:N
     absorp(i) = calcAbsorption_AlGaAs(E_prof,...
                           lam*Ls, nPts, alpha_GaAs, alpha_AlGaAs);
 end
+disp(['Elapsed time = ' num2str(toc - t0, 3) ' s'])
 
 % Save everything for corner plotting with python
 % (why not use regular save command? Its HDF5 naturally)

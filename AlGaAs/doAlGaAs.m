@@ -13,7 +13,7 @@ end
 if isempty(gcp('nocreate'))
     [~,host_name] = system('hostname');
     if strfind(host_name, 'sandbox')
-        myPool = parpool('local', 20, 'IdleTimeout',140)
+        myPool = parpool('local', 20, 'IdleTimeout',240)
     end
 end
 
@@ -27,7 +27,7 @@ end
 
 
 % Initial guess vector of layer thicknesses in units of lambda
-no_of_pairs = 40;
+no_of_pairs = 43;
 x0 = [];
 x0 = [x0; 0.25*ones(2*no_of_pairs,1)];
 
@@ -60,29 +60,39 @@ ifo.Optics.ITM.BeamRadius = NUMTOOLS.wBeam;
 %% Do the optimization
 % setting the bounds for the variables to be searched over
 minThick = 0.020 * 3;  % from G Cole; physical thickness of cap > 20 nm
-maxThick = 0.500;
+maxThick = 0.499;
 LB = minThick * ones(size(x0));     % bounds on the layer thicknesses
 UB = maxThick * ones(size(x0));     %              "
 nvars = length(UB);
 
-nswarms = 180;
-x0 = 0.25 + 0.1*(rand(nswarms, nvars) *(maxThick-minThick) + minThick);
+% Make initial swarm; all layers 1/4 wave
+% + some random Gaussian perturbation on
+% the first upsilon layers
+nswarms = 100;
+x0 = 0.25 * ones(nswarms, nvars);
+ds = 1:nvars;
+upsilon = 5; % length scale for perturbations
+for q = 1:nswarms
+    dx = 0.1 * exp(-ds/upsilon) .* randn(1,nvars);
+    x0(q,:) = x0(q,:) + dx;
+end
+
 
 % set particle swarm optimization options
 hybridopts = optimoptions('fmincon',...
                   'Display','iter',...
-                  'MaxIter', 611,...
+                  'MaxIter', 5000,...
                   'TolFun', 1e-2,...
-                  'MaxFunEvals', 21111);
+                  'MaxFunEvals', 54321);
 
 options = optimoptions('particleswarm',...
                        'InitialSwarmMatrix', x0,...
                        'SwarmSize', nvars*nswarms,...
                        'UseParallel', 1,...
-                       'MaxIter', 211,...
+                       'MaxIter', 210,...
                        'SelfAdjustment',   selfie,...
                        'SocialAdjustment', socialie,...
-                       'TolFun', 1e-1,...
+                       'TolFun', 2e-1,...
                        'Display', 'iter',...
                        'HybridFcn',{@fmincon, hybridopts});
 
