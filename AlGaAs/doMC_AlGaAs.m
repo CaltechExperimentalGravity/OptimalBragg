@@ -35,16 +35,20 @@ else
 end
 
 
-% this is a hacky way of doing matlab coding
-%clc
-%close all
-
 try % set path if its not there already
     op2phys(4, 2);
 catch
     addpath(genpath('../'));
     addpath(genpath('../generic/'));
     %addpath(genpath('../../gwincDev'));  % add GWINCdev path to get TO coating noise
+end
+
+% setup parpoo with good params if running on sandbox1
+if isempty(gcp('nocreate'))
+    [~,host_name] = system('hostname');
+    if strfind(host_name, 'sandbox')
+        myPool = parpool('local', 20, 'IdleTimeout',240)
+    end
 end
 
 % Load the coating file...
