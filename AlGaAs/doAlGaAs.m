@@ -68,21 +68,24 @@ nvars = length(UB);
 % Make initial swarm; all layers 1/4 wave
 % + some random Gaussian perturbation on
 % the first upsilon layers
-nswarms = 100;
+nswarms = 500;
 x0 = 0.25 * ones(nswarms, nvars);
+
+% perturb the first 'upsilon' layers
 ds = 1:nvars;
-upsilon = 5; % length scale for perturbations
+upsilon = 10; % length scale for perturbations
 for q = 1:nswarms
-    dx = 0.1 * exp(-ds/upsilon) .* randn(1,nvars);
+    dx = 0.2 * (exp(-ds/upsilon) .* rand(1,nvars) - 0.5);
     x0(q,:) = x0(q,:) + dx;
 end
+
 
 
 % set particle swarm optimization options
 hybridopts = optimoptions('fmincon',...
                   'Display','iter',...
                   'MaxIter', 5000,...
-                  'TolFun', 1e-2,...
+                  'TolFun', 3e-2,...
                   'MaxFunEvals', 54321);
 
 options = optimoptions('particleswarm',...

@@ -101,7 +101,7 @@ alpha_AlGaAs = 4.5;  % [m^-1], Absorption of AlGaAs layers
 
 %reverseStr = '';
 %kk = 0;
-t0 = tic;
+tic
 %%%%%   Apply the perturbations   %%%%%%%%
 parfor i = 1:N
 
@@ -124,8 +124,8 @@ parfor i = 1:N
     n_IRs(3:2:end-1) = n_IRs(3:2:end-1) .* perturb(3);
 
     % Compute reflectivity, surface field, Brownian noise and TO noise.
-    [Gamma, ~] = multidiel1(n_IRs, Ls .* n_IRs(2:end-1), lam);
-    T_IR(i)    = 1e6 * (1 - abs(Gamma).^2);
+    [Gamma, ~] = multidiel1(n_IRs, Ls .* n_IRs(2:end-1), 1);
+    T_IR(i)    = 1 - abs(Gamma).^2;
 
     % Thermo-Optic
     [StoZ, ~, ~, ~]  = getCoatThermoOptic(f_to,...
@@ -146,22 +146,26 @@ parfor i = 1:N
     absorp(i) = calcAbsorption_AlGaAs(E_prof,...
                           lam*Ls, nPts, alpha_GaAs, alpha_AlGaAs);
 end
-disp(['Elapsed time = ' num2str(toc - t0, 3) ' s'])
+
+disp(['Elapsed time = ' num2str(toc, 4) ' s'])
 
 % Save everything for corner plotting with python
 % (why not use regular save command? Its HDF5 naturally)
-MCout = horzcat(T_IR, 1e21*TOnoise, 1e21*BRnoise, surfField, absorp).';
+MCout = horzcat(1e6*T_IR, 1e21*TOnoise, 1e21*BRnoise, surfField, absorp).';
 
-disp('  ')
-disp(['Saving into ' funame])
-%save(['MCout/' funame], 'MCout')
+
 
 if savename == 0
     savename = ['MCout/' funame '.h5'];
 end
+
 [a,b] = system(['rm ' savename]);
 h5create(savename, '/MCout', [nVars N]);
 h5write( savename, '/MCout', MCout);
+disp('  ')
+disp(['Saving into ' savename])
+%save(['MCout/' funame], 'MCout')
+
 
 end
 
