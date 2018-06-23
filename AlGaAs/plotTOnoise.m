@@ -1,14 +1,17 @@
 % PLOTTO
 %
 % plot thermo-optic noise for some mirror
-%
 
-% try
-%     precompIFO;
-% catch me
-%     addpath(genpath('../'));
-%     addpath(genpath('../../gwincDev'));
-% end
+try % set path if its not there already
+    op2phys(4, 2);
+catch
+    addpath(genpath('../'));
+    addpath(genpath('../generic/'));
+    %addpath(genpath('../../gwincDev'));  % add GWINCdev path to get TO coating noise
+end
+
+plotFields = 1;
+
 
 f = logspace(0, 4, 300);
 
@@ -75,10 +78,10 @@ ylabel('Dispacement Noise [m/\surdHz]')
 title('Single Mirror Thermo-Optic Noise (AlGaAs coating)')
 grid
 %axis tight
-axis([1 1e4 1e-23*wfac 1e-19*wfac])
-text(7, 3.3e-23*wfac, ['T = ' num2str(T*1e6,2) ' ppm'], 'FontSize', 20)
-text(7, 9.1e-23*wfac, ['# of layers = ' num2str(length(dReal)) ' '], 'FontSize', 20)
-text(7, 5.5e-23*wfac, ['Thickness = ' num2str(sum(dReal), 3) ' \mum'], 'FontSize', 20)
+axis([1 1e4 8e-23*wfac 2e-19*wfac])
+text(7, 13e-23*wfac, ['T = ' num2str(T*1e6,2) ' ppm'], 'FontSize', 20)
+text(7, 21e-23*wfac, ['# of layers = ' num2str(length(dReal)) ' '], 'FontSize', 20)
+text(7, 35e-23*wfac, ['Thickness = ' num2str(sum(dReal), 3) ' \mum'], 'FontSize', 20)
 legend('Substrate Brownian','Brownian',...
     'Thermo-Elastic','Thermo-Refractive','Thermo-Optic',...
        'Location','NorthEast')
@@ -104,15 +107,26 @@ set(gca, ...
 orient landscape
 set(gcf,'Position',[200 80 1000 700])
 set(gcf,'PaperPositionMode','auto')
-fname = ['Figures/' NUMTOOLS.opt_name '_AlGaAs_TOnoise_' tnowstr];
-print('-depsc','-r300',fname)
-[a,~] = system(['Figures/makePDF.sh ' fname '.eps']);
+foname = ['Figures/' NUMTOOLS.opt_name '_AlGaAs_TOnoise_' tnowstr];
+print('-depsc','-r300', foname)
+[a,~] = system(['Figures/makePDF.sh ' foname '.eps']);
 if a ~= 0
     disp('PDF Generation Error')
+else
+    system('rm Figures/*.eps');
 end
 
 %% plot coating design
 
+if plotFields
+   
+    [a,b] = system(['python plotLayers_AlGaAs.py ' fname]);
+    if a
+        warning('Failure in plotLayers.py')
+    end
+    
+else
+    
 figure(20413)
 clf
 subplot('Position', [0.085 0.5 0.85 0.4])
@@ -162,3 +176,4 @@ else
     system('rm Figures/*.eps');
 end
 
+end

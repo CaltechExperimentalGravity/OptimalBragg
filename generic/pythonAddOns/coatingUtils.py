@@ -7,7 +7,7 @@ import sys
 #Import the pygwinc functions
 #sys.path.append('/ligo/svncommon/pygwinc')
 #from gwinc import *
-from itertools import izip
+#from itertools import izip   # not for python3
 
 #Some function definitions
 def multidiel1(n,L,lamb,theta=0,pol='te'):
@@ -112,7 +112,7 @@ def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
 
 	#Calculate the total matrix, as per Eqn 7.
 	Mtot = np.eye(2)
-	for n_i, h_i, theta_i in izip(n[1:-1], L, angles):
+	for n_i, h_i, theta_i in zip(n[1:-1], L, angles):
 		Mtot = Mtot * M_i(beta_i(theta_i,n_i,h_i), q_i(n_i,theta_i))
 
 	Mtotz = Mtot
