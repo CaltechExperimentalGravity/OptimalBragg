@@ -6,3 +6,11 @@ June 2018
 
 ----
 * trying with a wider distribution in initiial swarm and increase swarm size from 180 to 250.
+
+* probably need to add derivatives back into cost to get tolerances low
+
+* what should the 1 sigma limits be?
+  - T_ETM > 3 ppm,  < 8 ppm
+  - Brownian < 2.5 ?
+  - TO noise < 1 ?
+  - Absorption < 1 ppm
