@@ -22,7 +22,7 @@ try
     selfie;
 catch
     selfie   = 1;
-    socialie = 0.55;
+    socialie = 1;
 end
 
 
@@ -68,14 +68,21 @@ nvars = length(UB);
 % Make initial swarm; all layers 1/4 wave
 % + some random Gaussian perturbation on
 % the first upsilon layers
-nswarms = 500;
+nswarms = 150;
 x0 = 0.25 * ones(nswarms, nvars);
 
 % perturb the first 'upsilon' layers
 ds = 1:nvars;
-upsilon = 10; % length scale for perturbations
+upsilon = 20; % length scale for perturbations
 for q = 1:nswarms
-    dx = 0.2 * (exp(-ds/upsilon) .* rand(1,nvars) - 0.5);
+    dx = 0.2 * (exp(-ds/upsilon) .* (rand(1,nvars) - 0.5));
+    x0(q,:) = x0(q,:) + dx;
+end
+
+% perturb them all
+pfft = 0; % how much to perturb
+for q = 1:nswarms
+    dx = pfft * (rand(1,nvars) - 0.5);
     x0(q,:) = x0(q,:) + dx;
 end
 
@@ -95,7 +102,7 @@ options = optimoptions('particleswarm',...
                        'MaxIter', 210,...
                        'SelfAdjustment',   selfie,...
                        'SocialAdjustment', socialie,...
-                       'TolFun', 2e-1,...
+                       'TolFun', 0.1,...
                        'Display', 'iter',...
                        'HybridFcn',{@fmincon, hybridopts});
 
