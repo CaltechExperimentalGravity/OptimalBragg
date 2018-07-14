@@ -1,13 +1,3 @@
-'''
-Script to take output of MC analysis and make a corner plot
-Example usage:
-    python cornerPlt.py aLIGO_ETM_MC.hdf5
-
-Plot latest file in MCout/ dir:
-    python cornerPlt.py
-
-'''
-
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
@@ -41,9 +31,9 @@ mpl.rcParams.update({'text.usetex': False,
 
 newest = max(glob.iglob('MCout/*.[Hh]5'), key=os.path.getctime)
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description='Script to take output of MC analysis and make a corner plot')
 parser.add_argument("-f", "--filename", type=str, default=newest,
-                    help="file with MCMC data")
+                    help="HDF5 File with MCMC data (defaults to newest by datestring in MCout directory)")
 args = parser.parse_args()
 
 hdfFileName = args.filename
