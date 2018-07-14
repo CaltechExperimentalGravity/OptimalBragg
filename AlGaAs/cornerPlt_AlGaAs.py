@@ -38,17 +38,24 @@ args = parser.parse_args()
 
 hdfFileName = args.filename
 
-#Open the file, load the data
+# Open the file, load the data
 f = h5py.File(hdfFileName,'r')
 samples = np.array(f['MCout'][:])
 samples[2,-1] = samples[2,-2]
 samples[3,-1] = samples[3,-2]
 
+# Eventually, these parameters will be loaded from the hdf5 file itself
+N = 1e5
+sigma_nLow = 0.005
+sigma_nHigh = 0.005
+parText = "$N_s = ${} \n"\
+	"$\sigma_nL$ = {} \n"\
+	"$\sigma_nH$ = {}".format(N, sigma_nLow, sigma_nHigh)
+
 # TODO: add text about deposition errors on the plot in the unused space
 # Make the plot
 fig,ax = plt.subplots(np.shape(samples)[1],
                       np.shape(samples)[1], figsize=(12,12))
-#fig.subplots_adjust(wspace=0.5,hspace=0.35)
 corner.corner(samples,
         labels=['$\\mathrm{T}_{1064} \\mathrm{[ppm]}$', 
             '$\\mathrm{S}_{\\mathrm{TO}} [\\times 10^{-21} \\mathrm{m}/\\sqrt{\\mathrm{Hz}}]$',
@@ -70,6 +77,8 @@ corner.corner(samples,
             title_kwargs = {'fontsize':'medium', 'fontweight':'bold'},
                   fig = fig)
 
+# Print the MC parameters onto the plot
+ax[0,3].text(0.005,0.27,parText,wrap=True,transform=ax[0,3].transAxes)
 pdfFile = 'Figures/'+ hdfFileName.strip('.h5').strip('MCout/') + '.pdf'
 print("File saved as " + pdfFile)
 fig.savefig(pdfFile)
