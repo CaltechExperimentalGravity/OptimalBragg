@@ -11,12 +11,12 @@ Plot latest file in MCout/ dir:
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-#import sys
 import matplotlib as mpl
 import corner
 from scipy.io import loadmat
 import os
 import glob
+import argparse
 
 mpl.rcParams.update({'text.usetex': False,
                      'lines.linewidth': 2.5,
@@ -38,7 +38,6 @@ mpl.rcParams.update({'text.usetex': False,
                      'savefig.dpi': 80,
                      'pdf.compression': 9})
 
-import argparse
 
 newest = max(glob.iglob('MCout/*.[Hh]5'), key=os.path.getctime)
 
@@ -47,12 +46,10 @@ parser.add_argument("-f", "--filename", type=str, default=newest,
                     help="file with MCMC data")
 args = parser.parse_args()
 
-# use argparse instead
 hdfFileName = args.filename
 
 #Open the file, load the data
 f = h5py.File(hdfFileName,'r')
-#f = loadmat(hdfFileName)
 samples = np.array(f['MCout'][:])
 samples[2,-1] = samples[2,-2]
 samples[3,-1] = samples[3,-2]
@@ -83,6 +80,6 @@ corner.corner(samples,
             title_kwargs = {'fontsize':'medium', 'fontweight':'bold'},
                   fig = fig)
 
-fubu = hdfFileName + '.pdf'
-print("File saved as " + fubu)
-plt.savefig(fubu)
+pdfFile = 'Figures/'+ hdfFileName.strip('.h5').strip('MCout/') + '.pdf'
+print("File saved as " + pdfFile)
+fig.savefig(pdfFile)
