@@ -11,6 +11,38 @@ import sys
 
 #Some function definitions
 def multidiel1(n,L,lamb,theta=0,pol='te'):
+    '''
+    Calculates reflectivity and compelx impedance of a dielectric stack.
+
+    Parameters:
+    -----------
+    n: array_like
+        Array of refractive indices, including the incident and transmitted media. Ordered from incident medium to transmitted medium.
+    L: array_like
+        Array of optical thicknesses comprising the dielectric stack, ordered from incident medium to transmitted medium.. Should have 2 fewer elements than n.
+    lamb: float or array_like
+        Wavelength(s) at which the reflectivity is to be evaluated, in units of some central (design) wavelength. 
+    theta: float
+        Angle of incidence in degrees. Defaults to 0 degrees (normal incidence)
+    pol: str, 'te' or 'tm'
+        Polarization at which reflectivity is to be evaluated. Defaults to 'te' (s-polarization)
+
+    Returns:
+    --------
+    Gamma1: complex
+        Amplitude reflectivity for the input dielectric stack.
+    Z1:
+        Complex impedance at the interface 
+
+    Example usage:
+    --------------
+    r_p, _ = multidiel1(n, L, [1.0, 0.5], 45.3, 'te')
+    evaluates the amplitude reflectivity for the dielectric stack specified by n and L (which are wavelength dependent in general), at a design wavelength and the second harmonic wavelength, at an angle of incidence of 45.3 degrees for 'te' polarized (s-pol) light.
+
+    References:
+    -----------
+    [1]: http://eceweb1.rutgers.edu/~orfanidi/ewa/
+    '''
     M = len(n)-2                # number of slabs
     if M==0:
         L = np.array([])
@@ -32,6 +64,21 @@ def multidiel1(n,L,lamb,theta=0,pol='te'):
     return Gamma1,Z1
 
 def op2phys(L,n):
+    '''
+    Converts optical lengths to physical lengths.
+
+    Parameters:
+    -----------
+    L: array_like
+        Array of optical thicknesses
+    n: array_like
+        Array of refractive indices, of the same length as L.
+
+    Returns:
+    --------
+    phys: array_like
+        Array of physical thicknesses for the dielectric stack specified by L and n.
+    '''
     phys = L/n
     return phys
 
@@ -40,10 +87,46 @@ def lnprob(x, mu, icov):
     return -np.dot(diff,np.dot(icov,diff))/2.0
 
 def surfaceField(gamm,Ei=27.46):
-	sField = Ei * np.abs(1+gamm)
-	return sField
+    '''
+    Calculates the surface electric field for a dielectric coating with given amplitude reflectivity at the interface of incidence, for an incident electric field.
+    Parameters:
+    -----------
+    gamm: float
+        Amplitude reflectivity of coating at interface of incidence.
+    Ei: float
+        Incident electric field, in V/m. Defaults to 27.46 V/m, corresponding to an intensity of 1W/m^2.
+    '''
+    sField = Ei * np.abs(1+gamm)
+    return sField
 
 def specREFL(matFileName, dispFileName, lambda_0=1064e-9, lam=np.linspace(0.4,1.6,2200), aoi=0., pol='tm'):
+    '''
+    Computes the spectral (power) reflectivity for coating output from the optimization code.
+
+    Parameters:
+    -----------
+    matFileName: str
+        Path to the MATLAB output file from the coating optimization code.
+    dispFileName: str
+        Path to a .mat file containing the dispersion data for the coating.
+    lambda_0: float
+        Design (central) wavelength for the coating optimization, in meters. Defaults to 1064nm.
+    lam: array_like
+        Array of wavelengths at whihc to evaluate the reflectivity. Defaults to [400nm 1600nm].
+    aoi: float
+        Angle of incidence at which to evaluate reflectivity. Defaults to 0 (normal incidence)
+    pol: str
+        Polarization to evaluate reflectivity. Defaults to 'tm' (p-polarization).
+
+    Returns:
+    --------
+    Rp: array_like
+        Reflectivity of coating 
+    Tp: array_like
+        Transmissivity of coating
+    ll: array_like
+        Array of wavelengths at which the reflectivity was evaluated.
+    '''
     data = scio.loadmat(matFileName, struct_as_record=False, squeeze_me=True)
     dispersion=scio.loadmat(dispFileName, struct_as_record=False, squeeze_me=True)
     aoi = float(np.copy(data['costOut'].aoi))
@@ -75,14 +158,26 @@ def specREFL(matFileName, dispFileName, lambda_0=1064e-9, lam=np.linspace(0.4,1.
         [Gammap, Z1] = multidiel1(n_c, L_temp, lam[ii],aoi,pol)
         Rp[ii] = np.abs(Gammap)**2
         Tp[ii] = 1 - Rp[ii]
-    return Rp, Tp
+    return Rp, Tp, lambda_0*lam
 
 def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
 	'''
 	Function that calculates "Normalized" E-Field strength squared
 	as a function of penetration depth in a dielectric coating.
-	Input argument L is an array of PHYSICAL thickness of coating layers.
-	Input argument n is an array of refractive indices.
+
+        Parameters:
+        ------------
+        L: array_like
+            Array of PHYSICAL thickness of coating layers.
+        n: array_like 
+            Array of refractive indices.
+
+        Returns:
+        --------
+        z: array_like
+            Array of penetration depths at which E-field is evaluated.
+        Enorm: array_like
+            Electric field normalized to that at the interface of incidence.
 
 	Following derivation set out in Arnon and Baumeister, 1980
 	https://www.osapublishing.org/ao/abstract.cfm?uri=ao-19-11-1853
