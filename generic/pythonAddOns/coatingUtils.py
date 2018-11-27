@@ -161,9 +161,9 @@ def specREFL(matFileName, dispFileName, lambda_0=1064e-9, lam=np.linspace(0.4,1.
     return Rp, Tp, lambda_0*lam
 
 def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
-	'''
-	Function that calculates "Normalized" E-Field strength squared
-	as a function of penetration depth in a dielectric coating.
+    '''
+    Function that calculates "Normalized" E-Field strength squared
+    as a function of penetration depth in a dielectric coating.
 
         Parameters:
         ------------
@@ -179,71 +179,73 @@ def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
         Enorm: array_like
             Electric field normalized to that at the interface of incidence.
 
-	Following derivation set out in Arnon and Baumeister, 1980
-	https://www.osapublishing.org/ao/abstract.cfm?uri=ao-19-11-1853
-	'''
-	def arrayTheta(n,theta0):
-		alpha=[]
-		alpha.append(np.deg2rad(theta0))
-		for ii in range(len(n)-1):
-			t_r = np.arcsin(n[ii]*np.sin(alpha[ii])/n[ii+1])
-			alpha.append(t_r)
-		return np.array(alpha[1:]) #Note that angles are all in radians
-	#Calculate the array of angles, in radians
-	angles = arrayTheta(n,theta)
-	qAngle = angles[-1]
-	angles = angles[0:-1]
-	def M_i(b_i,qq_i):
-		#Eqn 2 from paper
-		return np.matrix([[np.cos(b_i), 1j*np.sin(b_i)/qq_i],
-			[1j*np.sin(b_i)*qq_i, np.cos(b_i)]])
-	def q_i(n_i, theta_i):
-		if pol == 's':
-			return n_i*np.cos(theta_i) #Eqn 5
-		elif pol == 'p':
-			return n_i / np.cos(theta_i) #Eqn 6
-	def beta_i(tt_i, nn_i, hh_i):
-		return 2*np.pi*np.cos(tt_i)*nn_i*hh_i/lam #Eqn 3
+    Following derivation set out in Arnon and Baumeister, 1980
+    https://www.osapublishing.org/ao/abstract.cfm?uri=ao-19-11-1853
+    '''
+    def arrayTheta(n,theta0):
+        alpha=[]
+        alpha.append(np.deg2rad(theta0))
+        for ii in range(len(n)-1):
+            t_r = np.arcsin(n[ii]*np.sin(alpha[ii])/n[ii+1])
+            alpha.append(t_r)
+        return np.array(alpha[1:]) #Note that angles are all in radians
+    #Calculate the array of angles, in radians
+    angles = arrayTheta(n,theta)
+    qAngle = angles[-1]
+    angles = angles[0:-1]
+    def M_i(b_i,qq_i):
+        #Eqn 2 from paper
+        return np.matrix([[np.cos(b_i), 1j*np.sin(b_i)/qq_i],
+            [1j*np.sin(b_i)*qq_i, np.cos(b_i)]])
+    def q_i(n_i, theta_i):
+        if pol == 's':
+            return n_i*np.cos(theta_i) #Eqn 5
+        elif pol == 'p':
+            return n_i / np.cos(theta_i) #Eqn 6
+    def beta_i(tt_i, nn_i, hh_i):
+        return 2*np.pi*np.cos(tt_i)*nn_i*hh_i/lam #Eqn 3
 
-	#Calculate the total matrix, as per Eqn 7.
-	Mtot = np.eye(2)
-	for n_i, h_i, theta_i in zip(n[1:-1], L, angles):
-		Mtot = Mtot * M_i(beta_i(theta_i,n_i,h_i), q_i(n_i,theta_i))
+    #Calculate the total matrix, as per Eqn 7.
+    Mtot = np.eye(2)
+    for n_i, h_i, theta_i in zip(n[1:-1], L, angles):
+        Mtot = Mtot * M_i(beta_i(theta_i,n_i,h_i), q_i(n_i,theta_i))
 
-	Mtotz = Mtot
-	def E0pk(Mtot):
-		q0 = q_i(n[0],theta)
-		qSub = q_i(n[-1],qAngle)
-		#Eqn 10
-		return 0.25*(np.abs(Mtot[0,0] + Mtot[1,1]*qSub/q0)**2 +
-				np.abs(Mtot[1,0]/q0/1j + Mtot[0,1]*qSub/1j)**2)
-	def delta_h(bb_i, qq_i):
-		#Equation 11
-		return M_i(bb_i, -qq_i)
+    Mtotz = Mtot
+    def E0pk(Mtot):
+        q0 = q_i(n[0],theta)
+        qSub = q_i(n[-1],qAngle)
+        #Eqn 10
+        return 0.25*(np.abs(Mtot[0,0] + Mtot[1,1]*qSub/q0)**2 +
+                np.abs(Mtot[1,0]/q0/1j + Mtot[0,1]*qSub/1j)**2)
+    def delta_h(bb_i, qq_i):
+        #Equation 11
+        return M_i(bb_i, -qq_i)
 
-	#Initialize some arrays to store the calculated E field profile
-	E_profile = np.zeros(len(L)*nPts)
-	z = np.zeros(len(L)*nPts)
-	Z=0.
+    #Initialize some arrays to store the calculated E field profile
+    E_profile = np.zeros(len(L)*nPts)
+    z = np.zeros(len(L)*nPts)
+    Z=0.
 
-	#Initialize the q-parameter at the rightmost interface
-	qSub = q_i(n[-1], qAngle)
+    #Initialize the q-parameter at the rightmost interface
+    qSub = q_i(n[-1], qAngle)
 
-	for ii in range(len(L)):
-		n_i = n[ii+1]
-		dL = L[ii] / nPts
-		theta_i = angles[ii]
+    for ii in range(len(L)):
+        n_i = n[ii+1]
+        dL = L[ii] / nPts
+        theta_i = angles[ii]
 
-		if pol=='p':
-			#correction=(np.cos(theta[0])/np.cos(theta_i))**2
-			correction=(np.cos(theta)/np.cos(theta_i))**2
+        if pol=='p':
+            #correction=(np.cos(theta[0])/np.cos(theta_i))**2
+            correction=(np.cos(theta)/np.cos(theta_i))**2
+        elif pol=='s':
+            correction=1
 
-		for jj in range(0,nPts):
-			Z += dL
-			z[ii*nPts + jj] = Z
-			Mtotz = delta_h(beta_i(theta_i, n_i, dL),q_i(n_i, theta_i)) * Mtotz
-			E_profile[ii*nPts+jj] = correction * (np.abs(Mtotz[0,0])**2 + np.abs(qSub*Mtotz[0,1]/1j)**2)
+        for jj in range(0,nPts):
+            Z += dL
+            z[ii*nPts + jj] = Z
+            Mtotz = delta_h(beta_i(theta_i, n_i, dL),q_i(n_i, theta_i)) * Mtotz
+            E_profile[ii*nPts+jj] = correction * (np.abs(Mtotz[0,0])**2 + np.abs(qSub*Mtotz[0,1]/1j)**2)
 
-	return z, E_profile/E0pk(Mtot)
+    return z, E_profile/E0pk(Mtot)
 
 
