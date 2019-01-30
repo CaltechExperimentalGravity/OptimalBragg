@@ -44,3 +44,6 @@ Tools to do this sort of analysis are available in `generic/pythonAddOns`. A des
 	* Surface E-field 
 	* Absorption (to be added)
 6. `cornerPlt.py` takes in the output file from `doMC.py` and generates a visualization of the MC simulation.
+
+# Paper draft
+A paper draft of this work lives at [this git repo](https://github.com/CaltechExperimentalGravity/OptimalCoatingDesign)
