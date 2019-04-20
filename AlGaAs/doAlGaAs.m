@@ -39,6 +39,9 @@ NUMTOOLS.lambda    = 1064e-9;
 NUMTOOLS.func      = 'getMirrorCost';
 NUMTOOLS.opt_name  = 'ETM';
 NUMTOOLS.T         = 5e-6;  % desired power transmission
+NUMTOOLS.nPts   = 10;         % [m], num pts in layer at which to eval E field
+NUMTOOLS.alpha_GaAs   = 1.5;  % [m^-1], Absorption of GaAs   layers
+NUMTOOLS.alpha_AlGaAs = 4.5;  % [m^-1], Absorption of AlGaAs layers
 
 ifo = AlGaAsModel;
 ifo.Laser.Wavelength = NUMTOOLS.lambda;
