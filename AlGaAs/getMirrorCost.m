@@ -165,7 +165,7 @@ end
 
 % choose which terms in the cost function to use
 if minAbsorp
-    y = sum(yy([1 2 3 4 5]));
+    y = sum(yy([1 2 3 5]));
 else
     y = sum(yy([1 2 3 4]));
 end
