@@ -49,7 +49,7 @@ function OUT = runSwarm_aLIGO_ETM(settings)
     NUMTOOLS.n2_IR = interp1(Ta2O5(:,1),Ta2O5(:,2),1064,'pchip');
     NUMTOOLS.nb_IR = 1.449641;   %From Ramin
     NUMTOOLS.aoi = 0;            %Angle of incidence
-    NUMTOOLS.alpha1 = 1e-3;      %m^-1
+    NUMTOOLS.alpha1 = 1e-3;      %m^-1, as per https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
     NUMTOOLS.alpha2 = 1e-2;      %m^-1 (hypothetically x10 of the SiO2 layers)
     NUMTOOLS.nPts = 5;           % Number of points at which to evaluate field in each coating layer, for absorption calc
     % Initial guess vector of layer thicknesses in units of lambda
