@@ -3,11 +3,8 @@
 import numpy as np
 import scipy.io as scio
 from scipy.interpolate import interp1d, PchipInterpolator
-import sys
-#Import the pygwinc functions
-#sys.path.append('/ligo/svncommon/pygwinc')
-#from gwinc import *
-#from itertools import izip   # not for python3
+import yaml
+import gwinc
 
 #Some function definitions
 def multidiel1(n,L,lamb,theta=0,pol='te'):
@@ -248,4 +245,19 @@ def fieldDepth(L, n, lam=1064e-9, theta=0., pol='s',nPts=30):
 
     return z, E_profile/E0pk(Mtot)
 
-
+def importParams(paramFile):
+    '''
+    Function to load some parameters from a yaml config file to run an optimizer.
+    Parameters:
+    -----------
+    paramFile: str
+        Path to parameter file
+    Returns:
+    --------
+    pars: dict
+        A dictionary from which we can access various params to set up the optimizer
+    '''
+    with open(paramFile,'r') as f:
+        params = yaml.load(f)
+    return(params)
+ 
