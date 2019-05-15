@@ -34,7 +34,10 @@ def multidiel1(n,L,lamb,theta=0,pol='te'):
     Example usage:
     --------------
     r_p, _ = multidiel1(n, L, [1.0, 0.5], 45.3, 'te')
-    evaluates the amplitude reflectivity for the dielectric stack specified by n and L (which are wavelength dependent in general), at a design wavelength and the second harmonic wavelength, at an angle of incidence of 45.3 degrees for 'te' polarized (s-pol) light.
+    evaluates the amplitude reflectivity for the dielectric stack 
+    specified by n and L (which are wavelength dependent in general), 
+    at a design wavelength and the second harmonic wavelength, 
+    at an angle of incidence of 45.3 degrees for 'te' polarized (s-pol) light.
 
     References:
     -----------
@@ -74,7 +77,8 @@ def op2phys(L,n):
     Returns:
     --------
     phys: array_like
-        Array of physical thicknesses for the dielectric stack specified by L and n.
+        Array of physical thicknesses for the dielectric stack 
+        specified by L and n.
     '''
     phys = L/n
     return phys
@@ -85,20 +89,25 @@ def lnprob(x, mu, icov):
 
 def surfaceField(gamm,Ei=27.46):
     '''
-    Calculates the surface electric field for a dielectric coating with given amplitude reflectivity at the interface of incidence, for an incident electric field.
+    Calculates the surface electric field for a dielectric coating 
+    with given amplitude reflectivity at the interface of incidence, 
+    for an incident electric field.
     Parameters:
     -----------
     gamm: float
         Amplitude reflectivity of coating at interface of incidence.
     Ei: float
-        Incident electric field, in V/m. Defaults to 27.46 V/m, corresponding to an intensity of 1W/m^2.
+        Incident electric field, in V/m. Defaults to 27.46 V/m, 
+        corresponding to an intensity of 1 W/m^2.
     '''
     sField = Ei * np.abs(1+gamm)
     return sField
 
-def specREFL(matFileName, dispFileName, lambda_0=1064e-9, lam=np.linspace(0.4,1.6,2200), aoi=0., pol='tm'):
+def specREFL(matFileName, dispFileName, lambda_0=1064e-9,
+                 lam=np.linspace(0.4,1.6,2200), aoi=0., pol='tm'):
     '''
-    Computes the spectral (power) reflectivity for coating output from the optimization code.
+    Computes the spectral (power) reflectivity for coating output 
+    from the optimization code.
 
     Parameters:
     -----------
@@ -107,13 +116,17 @@ def specREFL(matFileName, dispFileName, lambda_0=1064e-9, lam=np.linspace(0.4,1.
     dispFileName: str
         Path to a .mat file containing the dispersion data for the coating.
     lambda_0: float
-        Design (central) wavelength for the coating optimization, in meters. Defaults to 1064nm.
+        Design (central) wavelength for the coating optimization, in meters. 
+        Defaults to 1064nm.
     lam: array_like
-        Array of wavelengths at whihc to evaluate the reflectivity. Defaults to [400nm 1600nm].
+        Array of wavelengths at whihc to evaluate the reflectivity. 
+        Defaults to [400nm 1600nm].
     aoi: float
-        Angle of incidence at which to evaluate reflectivity. Defaults to 0 (normal incidence)
+        Angle of incidence at which to evaluate reflectivity. 
+        Defaults to 0 (normal incidence)
     pol: str
-        Polarization to evaluate reflectivity. Defaults to 'tm' (p-polarization).
+        Polarization to evaluate reflectivity. 
+        Defaults to 'tm' (p-polarization).
 
     Returns:
     --------
@@ -255,7 +268,7 @@ def importParams(paramFile):
     Returns:
     --------
     pars: dict
-        A dictionary from which we can access various params to set up the optimizer
+        A dict from which we can access various params to set up the optimizer
     '''
     with open(paramFile,'r') as f:
         params = yaml.load(f)
