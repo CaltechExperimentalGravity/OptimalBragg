@@ -38,7 +38,6 @@ def multidiel1(n, L, lamb, theta=0, pol='te'):
         Amplitude reflectivity for the input dielectric stack.
     Z1:
         Complex impedance at the interface 
-
     Example usage:
     --------------
     r_p, _ = multidiel1(n, L, [1.0, 0.5], 45.3, 'te')
@@ -51,16 +50,16 @@ def multidiel1(n, L, lamb, theta=0, pol='te'):
     -----------
     [1]: http://eceweb1.rutgers.edu/~orfanidi/ewa/
     '''
-    M = len(n)-2                # number of slabs
-    if M==0:
+    M = len(n) - 2                # number of slabs
+    if M == 0:
         L = np.array([])
-    theta = theta * np.pi / 180.
+    theta = theta * np.pi / 180
     costh = np.conj(np.sqrt(np.conj(1 - (n[0] * np.sin(theta) / n)**2)))
     if (pol=='te' or pol=='TE'):
         nT = n * costh
     else:
-        nT = n / costh;
-    if M>0:
+        nT = n / costh
+    if M > 0:
         L = L * costh[1:M+1]
     r = -np.diff(nT) / (np.diff(nT) + 2*nT[0:M+1])
     Gamma1 = r[M] * np.ones(len(np.array([lamb])))

@@ -15,14 +15,16 @@ ifo = gwinc.load_ifo('aSiModel.m')
 voy = gwinc.load_ifo('Voyager')
 
 # how many coating Layers?
-Npairs = 8
-Nlayers = 2*Npairs
+Npairs = 9
+Nlayers = 2*Npairs + 1
 Ls = 0.25 * np.ones((Nlayers, 1))
 Ls = Ls[:,0]
+if __debug__:
+    print(np.shape(Ls))
 gam = brownianProxy(ifo)
 
-getMirrorCost(L=Ls, paramFile='params.yml',
-                  ifo=ifo, gam=gam, verbose=False)
+#getMirrorCost(L=Ls, paramFile='params.yml',
+#                  ifo=ifo, gam=gam, verbose=False)
 
 
 # do Global Optimization
@@ -30,10 +32,12 @@ N_particles = 15
 
 #x0 = np.random.uniform(0.05, 0.5, (N_particles, len(Ls)))
 bow = ((0.1, 0.5),)
-bounds = bow*len(Ls-1)
+bounds = bow*(len(Ls)-1)
 minThickCap = 20e-9 # min thickness of cap layer
 minThick = minThickCap/ifo.Laser.Wavelength * 1.5
 bounds = ((minThick, 0.4),) + bounds # make the first layer thin
+if __debug__:
+    print(np.shape(bounds))
 
 # minimize by Differential Evolution Optimizer
 res = diffevo(func=getMirrorCost, bounds=bounds, updating='deferred',

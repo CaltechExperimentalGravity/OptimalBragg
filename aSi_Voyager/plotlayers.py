@@ -11,6 +11,7 @@ sys.path.append('../generic/')
 from coatingUtils import *
 
 import numpy as np
+from timeit import default_timer
 #import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -46,12 +47,13 @@ plt.rcParams.update({'text.usetex': False,
 
 
 
-# REMOVE hard-coded wavelength variables !!!
+# load Data file from run of mkMirror.py
 fname = max(glob.iglob('Data/*Layers*.mat'), key=os.path.getctime)
 fname = fname[5:] # rm 'data' from the name
 #fname = 'ETM_Layers_190517_1828.mat'
 if __debug__:
     print('Loading ' + fname + '...')
+   
 
 z       = scio.loadmat('Data/' + fname, squeeze_me=True)
 n       = z['n']
@@ -60,7 +62,13 @@ T       = z['T']
 
 if __debug__:
     print('Loading ' + 'gwinc.ifo' + '...')
+    tic = default_timer()
+     
 ifo     = gwinc.load_ifo(z["ifo_name"])
+if __debug__:
+    dt = default_timer() - tic
+    print('Took ' + str(round(dt,3)) + ' sec to load IFO w/ matlab.')
+
 lambda0 = ifo.Laser.Wavelength # meters
 
 #  plot of the spectral reflectivity
@@ -90,11 +98,11 @@ ax.set_ylim((T,1))
 ax.text(lambda0*1.1e6, 1e-1, 'T @ {} um'.format(
     1e6*lambda0), size='x-small')
 ax.text(lambda0*1.1e6, 0.7e-1, '= {} ppm'.format(
-    round(1e6*T,3)), size='x-small')
+    round(1e6*T,1)), size='x-small')
 ax.legend()
 if __debug__:
     print('Transmission of this coating at {} nm is {} ppm'.format(
-        1e9*lambda0, round(1e6*T,3)))
+        1e9*lambda0, round(1e6*T,2)))
 
 plt.savefig('Figures/' + 'ETM_R' + '.pdf', bbox_inches='tight')
 
