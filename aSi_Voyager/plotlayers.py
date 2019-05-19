@@ -80,7 +80,7 @@ TT      = 1 - RR
 #convert from optical thickness to physical thickness
 L       = lambda0 * op2phys(z['L'], n[1:-1])
 # calculate field v. distance into coating
-Z,field = fieldDepth(L, n, pol='p', nPts=100)
+Z,field = fieldDepth(L, n, pol='p', nPts=300)
 layers  = np.cumsum(1e6 * L)
 layers  = np.append(0, layers)
 
@@ -88,13 +88,13 @@ if __debug__:
     print('Make plots...')
 fig, ax = plt.subplots(1,1)
 ax.semilogy(1e6*lams*lambda0, TT,
-                lw=3, label='Transmissivity', c='xkcd:Teal')
+                lw=3, label='Transmissivity', c='xkcd:Red')
 ax.semilogy(1e6*lams*lambda0, RR,
-                lw=3, label='Reflectivity', c='xkcd:Red', alpha=0.5)
+                lw=3, label='Reflectivity', c='xkcd:electric blue', alpha=0.5)
 ax.vlines(lambda0*1e6, T, 1, linestyle='--')
 ax.set_xlabel('Wavelength [$\mu \\mathrm{m}$]')
 ax.set_ylabel('T or R')
-ax.set_ylim((T,1))
+ax.set_ylim((1e-6, 1))
 ax.text(lambda0*1.1e6, 1e-1, 'T @ {} um'.format(
     1e6*lambda0), size='x-small')
 ax.text(lambda0*1.1e6, 0.7e-1, '= {} ppm'.format(
@@ -117,8 +117,8 @@ ax[0].vlines(np.cumsum(L)[1:-1:2]*1e6, 1e-5, 0.55,
             color='xkcd:bright teal', linewidth=0.6,
                  linestyle='--', alpha=0.75, rasterized=False)
 ax[0].vlines(np.cumsum(L)[::2]*1e6, 1e-5, 0.55,
-            color='xkcd:deep purple',
-            linewidth=0.6, linestyle='--', alpha=0.75,rasterized=False)
+            color='xkcd:deep purple', linewidth=0.6,
+                 linestyle='--', alpha=0.75,rasterized=False)
 
 #Also visualize the layer thicknesses
 ax[1].bar(layers[:-1:2], 1e9*L[::2], width=1e6*L[::2],
@@ -131,7 +131,7 @@ ax[1].legend()
 ax[1].yaxis.set_major_formatter(FormatStrFormatter("%3d"))
 ax[0].set_ylabel('Normalized $|E(z)|^2$')
 ax[1].set_ylabel('Physical layer thickness [nm]')
-ax[1].set_xlabel('Distance from air interface, $z [\mu \mathrm{m}]$')
+ax[1].set_xlabel('Distance from air interface, $[\mu \mathrm{m}]$')
 
 fig.subplots_adjust(hspace=0.01,left=0.09,right=0.95,top=0.92)
 plt.suptitle('a-Si:SiO$_2$ coating electric field')
@@ -139,3 +139,26 @@ plt.suptitle('a-Si:SiO$_2$ coating electric field')
 
 plt.savefig('Figures/' + fname[:-4] + '.pdf', bbox_inches='tight')
 plt.savefig('Figures/' + 'ETM_Layers' + '.pdf', bbox_inches='tight')
+
+
+# plot the Thermal Noise
+ff = np.logspace(0, 4, 500)
+fig3, ax3 = plt.subplots(1,1)
+phi_Ta = ifo.Materials.Coating.Phihighn
+wBeam = ifo.Optics.ETM.BeamRadius
+StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.getCoatThermoOptic(ff,
+                                ifo, wBeam, L)
+SbrZ = gwinc.noise.coatingthermal.getCoatBrownian(ff,
+                                ifo, wBeam, L)
+ax3.loglog(ff, np.sqrt(StoZ), label='Thermo-Optic')
+ax3.loglog(ff, np.sqrt(SteZ), label='Thermo-Elastic')
+ax3.loglog(ff, np.sqrt(StrZ), label='Thermo-Refractive')
+ax3.loglog(ff, np.sqrt(SbrZ), label='Brownian')
+ax3.legend()
+#ax3.set_ylim([8e-22, 2e-20])
+
+ax3.grid(which='major', alpha=0.6)
+ax3.grid(which='minor', alpha=0.4)
+ax3.set_ylabel('Displacement Noise $[\\mathrm{m} / \\sqrt{\\mathrm{Hz}}]$')
+ax3.set_xlabel('Frequency [Hz]')
+plt.savefig('Figures/' + 'ETM_TN.pdf')
