@@ -37,6 +37,7 @@ bounds = ((minThick, 0.4),) + bounds # make the first layer thin
 
 # minimize by Differential Evolution Optimizer
 res = diffevo(func=getMirrorCost, bounds=bounds, updating='deferred',
+                  strategy = 'best1bin', mutation = (0.1, 1.5),
                   popsize=N_particles, workers=-1,
                          args=('params.yml', ifo, gam, False),
                          polish=True, disp=True)
