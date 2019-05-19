@@ -1,4 +1,4 @@
-# Example parameter file for doing cost function minimization for optimal coating design
+#  parameter file for doing cost function minimization for optimal coating design
 #
 # This specifies the terms to include in your cost func
 costs:
@@ -13,17 +13,17 @@ costs:
 # There has to be one target per term in the cost
 targets:
         - 5.e-6    # 5 ppm target transmission
-        - 1.       # chosen to match MATLAB optim
+        - 1.        # chosen to match MATLAB optim
         - 1.e+42   # chosen to match MATLAB optim
         - 1.e-2    # NOT Used currently
-        - 50       # chosen to match MATLAB optim
+        - 50.0       # chosen to match MATLAB optim
 
 # Specify the relative importance of terms in the cost func
 #         Trans    CoatBr    CoatTO     sensitivity   E-field
-weights:  [0.1,      1.3,      0.001,       0.01,        0.1]
+weights:  [0.1,      1.0,       0.001,       0.01,        0.1]
 
 # MISC
 # Some other parameters that are used by the code
 fTO: 100           # Hz, freq at which to evaluate TO noise
 pol: te            # polarization, use "te" or "tm"
-aoi: 0.            # degrees, angle of incidence
+aoi: 0             # degrees, angle of incidence
