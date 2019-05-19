@@ -166,7 +166,7 @@ def TOcost(target, L, fTarget, ifo):
     cost = target * StoZ  # Functional form of the cost may be easily changed
     return(cost)
 
-def getMirrorCost(L, paramFile, ifo, gam, verbose=False, plottrue=False):
+def getMirrorCost(L, paramFile, ifo, gam, verbose=False):
     '''
     Compute the cost function for a coating design specified by L, 
     based on the settings in paramFile.
@@ -202,15 +202,17 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, plottrue=False):
         return()
     # Build up the array of refractive indices
     doublet = np.tile(np.array([ifo.Materials.Coating.Indexlown,
-                            ifo.Materials.Coating.Indexhighn]), round(len(L)/2))
+                                ifo.Materials.Coating.Indexhighn]),
+                          int(np.floor(len(L)/2)))
+
     if len(doublet) != len(L):
         # Add another low index layer at the bottom of the stack
         doublet = np.append(doublet, doublet[0])
     # Add air and substrate
     n = np.append(1, doublet)
     n = np.append(n, ifo.Materials.Substrate.RefractiveIndex)
-    # This is set up in this way just for avoiding computing extra costs if so desired. 
-    # In general, the weight vector can be used to select only the desired costs by setting the others to 0
+    # This is set just for avoiding computing extra costs if so desired. 
+    # the weight vector can be used to select only the desired costs by setting the others to 0
     if 'Trans' in par['costs']:
         if 'sensL' in par['costs']:
             if 'surfE' in par['costs']:
@@ -244,27 +246,6 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, plottrue=False):
         costOut['scalarCost'] = scalarCost
         costOut['brownianProxy'] = cc2
         costOut['vectorCost'] = cost
-
-        if plottrue:
-            # Optionally also make a plot of the spectral reflectivity
-            lambda0 = ifo.Laser.Wavelength # meters
-            lams    = np.linspace(0.4, 1.6, 501)
-            rr, _   = multidiel1(n, L, np.linspace(0.4,1.6,501),
-                                 par['aoi'], par['pol'])
-            RR      = np.abs(rr)**2
-            TT      = 1 - np.abs(rr)**2
-
-            fig, ax = plt.subplots(1,1)
-            ax.semilogy(1e6*lams*ifo.Laser.Wavelength, TT,
-                            lw=3, label='Transmissivity', c='xkcd:Red')
-            ax.semilogy(1e6*lams*ifo.Laser.Wavelength, RR,
-                            lw=3, label='Reflectivity', c='xkcd:Blue', alpha=0.5)
-            ax.vlines(ifo.Laser.Wavelength*1e6, T/2, 1, linestyle='--')
-            ax.set_xlabel('Wavelength [$\mu \\mathrm{m}$]')
-            ax.set_ylabel('T or R')
-            ax.legend()
-            print('Transmission of this coating at {} um is {} ppm'.format(1e6*ifo.Laser.Wavelength, round(1e6*T[0],3)))
-            plt.savefig('Figures/' + 'ETM_R' + '.pdf', bbox_inches='tight')
         
         return(scalarCost, costOut)
     else:
