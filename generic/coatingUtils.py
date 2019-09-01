@@ -258,6 +258,6 @@ def importParams(paramFile):
         A dictionary from which we can access various params to set up the optimizer
     '''
     with open(paramFile,'r') as f:
-        params = yaml.load(f)
+        params = yaml.safe_load(f)
     return(params)
  
