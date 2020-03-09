@@ -111,7 +111,7 @@ def surfaceField(gamm,Ei=27.46):
     sField = Ei * np.abs(1+gamm)
     return sField
 
-def specREFL(matFileName, dispFileName, lambda_0=1064e-9,
+def specREFL(layers, dispFileName, lambda_0=1064e-9,
                  lam=np.linspace(0.4,1.6,2200), aoi=0., pol='tm'):
     '''
     Computes the spectral (power) reflectivity for coating output 
@@ -119,8 +119,9 @@ def specREFL(matFileName, dispFileName, lambda_0=1064e-9,
 
     Parameters:
     -----------
-    matFileName: str
+    layers: str or array_like
         Path to the MATLAB output file from the coating optimization code.
+        Alternatively, this can be a 1D array of optical thicknesses.
     dispFileName: str
         Path to a .mat file containing the dispersion data for the coating.
     lambda_0: float
@@ -145,20 +146,27 @@ def specREFL(matFileName, dispFileName, lambda_0=1064e-9,
     ll: array_like
         Array of wavelengths at which the reflectivity was evaluated.
     '''
-    data = scio.loadmat(matFileName, struct_as_record=False, squeeze_me=True)
+    if type(layers)==str:
+        data = scio.loadmat(layers, struct_as_record=False, squeeze_me=True)
+        aoi = float(np.copy(data['costOut'].aoi))
+        #n_IR = np.copy(data['costOut'].n_IR)
+        L = np.copy(data['costOut'].L)
+    elif type(layers)==np.ndarray:
+        L = np.copy(layers)
+    else:
+        print('{} is an unknown type of layer specifications. Please provide \
+                a path to a .mat file or a 1D array of optical thicknesses'.format(layers))
+        return
     dispersion=scio.loadmat(dispFileName, struct_as_record=False, squeeze_me=True)
-    aoi = float(np.copy(data['costOut'].aoi))
-    n_IR = np.copy(data['costOut'].n_IR)
-    L = np.copy(data['costOut'].L)
+    nSiO2 = PchipInterpolator(dispersion['SiO2'][:,0], dispersion['SiO2'][:,1],
+                        extrapolate=True)
+    nTa2O5 = PchipInterpolator(dispersion['Ta2O5'][:,0], dispersion['Ta2O5'][:,1],
+                    extrapolate=True)
     no_of_stacks = len(L)/2
     Rp = np.ones(len(lam))
     Rs = np.ones(len(lam))
     Tp = np.ones(len(lam))
     Ts = np.ones(len(lam))
-    nSiO2 = PchipInterpolator(dispersion['SiO2'][:,0], dispersion['SiO2'][:,1],
-                        extrapolate=True)
-    nTa2O5 = PchipInterpolator(dispersion['Ta2O5'][:,0], dispersion['Ta2O5'][:,1],
-                    extrapolate=True)
     n1_IR = nSiO2(1064)
     n2_IR = nTa2O5(1064)
 
@@ -166,7 +174,8 @@ def specREFL(matFileName, dispFileName, lambda_0=1064e-9,
         n1 = nSiO2(lam[ii]*1064.)
         n2 = nTa2O5(lam[ii]*1064.)
         nb = 1.
-        n_c = np.copy(n_IR)
+        #n_c = np.copy(n_IR)
+        n_c = np.ones(len(L)+2)
         n_c[1:-1:2] = n1
         n_c[2::2] = n2
         n_c[-1] = n1
