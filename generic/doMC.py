@@ -16,6 +16,7 @@ import h5py
 import sys
 from coatingUtils import *
 import gwinc 
+import tqdm
 
 #User config
 matFileName = sys.argv[1]
@@ -66,7 +67,7 @@ ifo = data['ifo']
 #ifo.Materials.Substrate.RefractiveIndex = 1.449641 #Corning datasheet
 
 
-for jj in range(nSamples):
+for jj in tqdm.tqdm(range(nSamples)):
     aoi = np.copy(aoi_out)
     n_IRs = np.copy(n_IR_out)
     n_greens = np.copy(n_green_out)
@@ -89,9 +90,9 @@ for jj in range(nSamples):
     surfField[jj]=surfaceField(Gamma5p)
     [Gamma5p, t2] = multidiel1(n_greens, Ls*n_greens[1:-1], 0.5)
     Rp_green[jj] = (np.abs(Gamma5p)**2)
-    aa,bb,cc,dd = gwinc.noise.coatingthermal.getCoatThermoOptic(ff, ifo, 6e-2,np.array([Ls*n_IRs[1:-1]]).T)
+    aa,bb,cc,dd = gwinc.noise.coatingthermal.getCoatThermoOptic(ff, ifo, 6e-2,np.array(Ls*n_IRs[1:-1]).T)
     TOnoise = np.vstack((np.sqrt(aa),TOnoise))
-    SbrZ = gwinc.noise.coatingthermal.getCoatBrownian(ff, ifo, 6e-2,np.array([Ls*n_IRs[1:-1]]).T)
+    SbrZ = gwinc.noise.coatingthermal.getCoatBrownian(ff, ifo, 6e-2,np.array(Ls*n_IRs[1:-1]).T)
     Brnoise = np.vstack((np.sqrt(SbrZ),Brnoise))
 
 idx = np.argmin(np.abs(ff-100))
