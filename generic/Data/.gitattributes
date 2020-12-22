@@ -1,0 +1,5 @@
+aLIGO_ETM_HR_20_layers_171101_2012.mat filter=lfs diff=lfs merge=lfs -text
+aLIGO_ETM_HR_20_layers_171101_2054.mat filter=lfs diff=lfs merge=lfs -text
+aLIGO_ETM_HR_20_layers_171101_2310.mat filter=lfs diff=lfs merge=lfs -text
+aLIGO_ETM_HR_20_layers_171101_1847.mat filter=lfs diff=lfs merge=lfs -text
+aLIGO_ETM_HR_20_layers_171101_1918.mat filter=lfs diff=lfs merge=lfs -text
