@@ -162,7 +162,10 @@ def TOcost(target, L, fTarget, ifo):
         Scalar cost for the TO noise.
     '''
     # Get the TO noise PSD
-    StoZ, _, _, _ = gwinc.noise.coatingthermal.getCoatThermoOptic(fTarget, ifo, ifo.Optics.ETM.BeamRadius, L)
+    # Build up a "mirror" structure as required by pygwinc
+    mir = ifo.Optics.ETM
+    mir.Coating.dOpt = L
+    StoZ, _, _, _ = gwinc.noise.coatingthermal.coating_thermooptic(fTarget, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
     cost = target * StoZ  # Functional form of the cost may be easily changed
     return(cost)
 
