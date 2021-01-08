@@ -3,7 +3,7 @@
 import sys
 from datetime import datetime
 
-sys.path.append('../../pygwinc/')
+#sys.path.append('../../pygwinc/')
 
 sys.path.append('../generic/')
 from optimUtils import *
@@ -11,8 +11,8 @@ from optimUtils import *
 from scipy.optimize import differential_evolution as diffevo
 from scipy.io import loadmat,savemat
 
-ifo = gwinc.load_ifo('aSiModel.m')
-voy = gwinc.load_ifo('Voyager')
+ifo = gwinc.Struct.from_file('aSiModel.m')
+voy = gwinc.load_budget('Voyager')
 
 # how many coating Layers?
 Npairs = 9
