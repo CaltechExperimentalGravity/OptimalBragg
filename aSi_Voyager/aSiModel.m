@@ -97,7 +97,11 @@ function ifo = aSiModel(varargin)
   ifo.Optics.ETM.CoatingThicknessLown = 0.27;
   ifo.Optics.ETM.CoatingThicknessCap = 0.5;
 
-
+  % Defining some additional fields for the structure for pygwinc compatibility
+  ifo.Optics.ETM.Coating = ifo.Materials.Coating;
+  ifo.Optics.ETM.Substrate = ifo.Materials.Substrate;
+  ifo.Optics.ETM.MassRadius = ifo.Materials.MassRadius;
+  ifo.Optics.ETM.MassThickness = ifo.Materials.MassThickness;
 
 end
 
