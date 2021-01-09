@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 
 import scipy.io as scio
 from matplotlib.ticker import FormatStrFormatter
+from gwinc import noise
 
 #plt.style.use('bmh')
 
@@ -64,7 +65,7 @@ if __debug__:
     print('Loading ' + 'gwinc.ifo' + '...')
     tic = default_timer()
      
-ifo     = gwinc.load_ifo(z["ifo_name"])
+ifo     = gwinc.Struct.from_file(z["ifo_name"])
 if __debug__:
     dt = default_timer() - tic
     print('Took ' + str(round(dt,3)) + ' sec to load IFO w/ matlab.')
@@ -145,11 +146,12 @@ plt.savefig('Figures/' + 'ETM_Layers' + '.pdf', bbox_inches='tight')
 ff = np.logspace(0, 4, 500)
 fig3, ax3 = plt.subplots(1,1)
 phi_Ta = ifo.Materials.Coating.Phihighn
-wBeam = ifo.Optics.ETM.BeamRadius
-StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.getCoatThermoOptic(ff,
-                                ifo, wBeam, L)
-SbrZ = gwinc.noise.coatingthermal.getCoatBrownian(ff,
-                                ifo, wBeam, L)
+# Build up a "mirror" structure as required by pygwinc
+mir = ifo.Optics.ETM
+mir.Coating.dOpt = L
+StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.coating_thermooptic(ff, 
+                                                mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
+SbrZ = gwinc.noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
 ax3.loglog(ff, np.sqrt(StoZ), label='Thermo-Optic')
 ax3.loglog(ff, np.sqrt(SteZ), label='Thermo-Elastic')
 ax3.loglog(ff, np.sqrt(StrZ), label='Thermo-Refractive')
