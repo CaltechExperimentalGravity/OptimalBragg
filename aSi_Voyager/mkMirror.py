@@ -71,7 +71,7 @@ z["n"] = costOut['n']
 
 fname = 'Layers'
 tnowstr = datetime.now().strftime('%y%m%d_%H%M')
-fname = z["opt_name"] + '_' + fname + '_' + tnowstr
+fname = z["opt_name"] + '_' + fname + '_' + tnowstr + '.mat'
 
 z['filename'] = fname
 # save layer data and also the whole ifo param file
