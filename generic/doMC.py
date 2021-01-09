@@ -90,9 +90,16 @@ for jj in tqdm.tqdm(range(nSamples)):
     surfField[jj]=surfaceField(Gamma5p)
     [Gamma5p, t2] = multidiel1(n_greens, Ls*n_greens[1:-1], 0.5)
     Rp_green[jj] = (np.abs(Gamma5p)**2)
-    aa,bb,cc,dd = gwinc.noise.coatingthermal.getCoatThermoOptic(ff, ifo, 6e-2,np.array(Ls*n_IRs[1:-1]).T)
+    # Build up a "mirror" object as required by pygwinc
+	mir = gwinc.Struct.from_matstruct(data['ifo'].Optics.ETM)
+	mir.Coating = gwinc.Struct.from_matstruct(data['ifo'].Materials.Coating)
+	mir.Substrate = gwinc.Struct.from_matstruct(data['ifo'].Materials.Substrate)
+	mir.MassRadius = data['ifo'].Materials.MassRadius
+	mir.MassThickness = data['ifo'].Materials.MassThickness
+	mir.Coating.dOpt = data['costOut'].L
+	aa, bb, cc, dd = gwinc.noise.coatingthermal.coating_thermooptic(ff, mir, data['ifo'].Laser.Wavelength, data['ifo'].Optics.ETM.BeamRadius)
+	SbrZ = gwinc.noise.coatingthermal.coating_brownian(ff, mir, data['ifo'].Laser.Wavelength, data['ifo'].Optics.ETM.BeamRadius)
     TOnoise = np.vstack((np.sqrt(aa),TOnoise))
-    SbrZ = gwinc.noise.coatingthermal.getCoatBrownian(ff, ifo, 6e-2,np.array(Ls*n_IRs[1:-1]).T)
     Brnoise = np.vstack((np.sqrt(SbrZ),Brnoise))
 
 idx = np.argmin(np.abs(ff-100))
