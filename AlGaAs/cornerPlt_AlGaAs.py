@@ -1,22 +1,12 @@
-'''
-Script to take output of MC analysis and make a corner plot
-Example usage:
-    python cornerPlt.py aLIGO_ETM_MC.hdf5
-
-Plot latest file in MCout/ dir:
-    python cornerPlt.py
-
-'''
-
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-#import sys
 import matplotlib as mpl
 import corner
 from scipy.io import loadmat
 import os
 import glob
+import argparse
 
 mpl.rcParams.update({'text.usetex': False,
                      'lines.linewidth': 2.5,
@@ -38,30 +28,34 @@ mpl.rcParams.update({'text.usetex': False,
                      'savefig.dpi': 80,
                      'pdf.compression': 9})
 
-import argparse
 
 newest = max(glob.iglob('MCout/*.[Hh]5'), key=os.path.getctime)
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description='Script to take output of MC analysis and make a corner plot')
 parser.add_argument("-f", "--filename", type=str, default=newest,
-                    help="file with MCMC data")
+                    help="HDF5 File with MCMC data (defaults to newest by datestring in MCout directory)")
 args = parser.parse_args()
 
-# use argparse instead
 hdfFileName = args.filename
 
-#Open the file, load the data
+# Open the file, load the data
 f = h5py.File(hdfFileName,'r')
-#f = loadmat(hdfFileName)
 samples = np.array(f['MCout'][:])
 samples[2,-1] = samples[2,-2]
 samples[3,-1] = samples[3,-2]
+
+# Eventually, these parameters will be loaded from the hdf5 file itself
+N = 1e5
+sigma_nLow = 0.005
+sigma_nHigh = 0.005
+parText = "$N_s = ${} \n"\
+	"$\sigma_nL$ = {} \n"\
+	"$\sigma_nH$ = {}".format(N, sigma_nLow, sigma_nHigh)
 
 # TODO: add text about deposition errors on the plot in the unused space
 # Make the plot
 fig,ax = plt.subplots(np.shape(samples)[1],
                       np.shape(samples)[1], figsize=(12,12))
-#fig.subplots_adjust(wspace=0.5,hspace=0.35)
 corner.corner(samples,
         labels=['$\\mathrm{T}_{1064} \\mathrm{[ppm]}$', 
             '$\\mathrm{S}_{\\mathrm{TO}} [\\times 10^{-21} \\mathrm{m}/\\sqrt{\\mathrm{Hz}}]$',
@@ -83,6 +77,8 @@ corner.corner(samples,
             title_kwargs = {'fontsize':'medium', 'fontweight':'bold'},
                   fig = fig)
 
-fubu = hdfFileName + '.pdf'
-print("File saved as " + fubu)
-plt.savefig(fubu)
+# Print the MC parameters onto the plot
+ax[0,3].text(0.005,0.27,parText,wrap=True,transform=ax[0,3].transAxes)
+pdfFile = 'Figures/'+ hdfFileName.strip('.h5').strip('MCout/') + '.pdf'
+print("File saved as " + pdfFile)
+fig.savefig(pdfFile)

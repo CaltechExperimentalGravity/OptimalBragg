@@ -1,11 +1,9 @@
 function y = getMirrorCost(x, params, flag)
-% OPTETM This function calculates something about the ETM coating
-% it gets used by the do_aSi.m program as the thing to
-% minimize. The input argument 'x' is the initial guess for the layer structure
-%
+% getMirrorCost This function calculates something about the ETM coating
 
 glob_param = params;
 minParamSens = 0;
+minAbsorp = 1; % For minimizing absorption
 
 % This makes x into a column vector
 x = x(:);
@@ -79,6 +77,11 @@ if minParamSens
     dTdn2 = dTdn2 ./ (1 - abs(Gamma1).^2);
 end
 
+if minAbsorp
+        [zz, EE] = calcEField_AlGaAs(lambda_0*op2phys(L,n(2:end-1)), n, 20, lambda_0, 0, 's', glob_param.nPts);
+        absorp = calcAbsorption_AlGaAs(EE, lambda_0*op2phys(L(1:20),n(2:21)), glob_param.nPts, glob_param.alpha_GaAs, glob_param.alpha_AlGaAs);
+end
+
 % reflection and transmission at main wavelength
 R1 = abs(Gamma1).^2;
 T1 = 1 - R1;
@@ -148,6 +151,11 @@ yy = [yy StoZ * 1e42];
 surf_field = abs(1 + Gamma1(1));
 yy = [yy 20*surf_field^2];
 
+% minimize absorption
+if minAbsorp
+    yy = [yy 20*absorp];
+end
+
 if flag==2
     yy
 elseif flag==3
@@ -156,7 +164,11 @@ elseif flag==3
 end
 
 % choose which terms in the cost function to use
-y = sum(yy([1 2 3 4]));
+if minAbsorp
+    y = sum(yy([1 2 3 5]));
+else
+    y = sum(yy([1 2 3 4]));
+end
 
 sss = y;
 
@@ -166,6 +178,7 @@ if flag == 1
     disp(['Transmission       = ' num2str(yy(2))])
     disp(['Thermo-Optic Noise = ' num2str(yy(3))])
     disp(['Surface E-Field    = ' num2str(yy(4))])
+    disp(['Absorption [ppm]    = ' num2str(yy(5)/20)])
     clear y
     y.n = n;
     y.L = L;

@@ -44,3 +44,16 @@ Tools to do this sort of analysis are available in `generic/pythonAddOns`. A des
 	* Surface E-field 
 	* Absorption (to be added)
 6. `cornerPlt.py` takes in the output file from `doMC.py` and generates a visualization of the MC simulation.
+
+# Paper draft
+A paper draft of this work lives at [this git repo](https://github.com/CaltechExperimentalGravity/OptimalCoatingDesign)
+
+
+# How to Install
+1. do the git clone
+2. you need matlab installed
+3. cd $MATLABROOT/extern/engines/python
+4. python setup.py install (should spit out a bunch of messages and install the matlab_engine for python)
+5. may give this error "OSError: Invalid MATLAB GWINC path: 'gwinc'"
+    * define the GWINCPATH in your .bashrc or other startup file so that this is defined as a shell variable and points to where your matlab gwinc is
+6. need to setup path in python to point to pygwinc
