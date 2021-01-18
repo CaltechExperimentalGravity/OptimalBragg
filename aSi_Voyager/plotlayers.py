@@ -145,10 +145,9 @@ plt.savefig('Figures/' + 'ETM_Layers' + '.pdf', bbox_inches='tight')
 # plot the Thermal Noise
 ff = np.logspace(0, 4, 500)
 fig3, ax3 = plt.subplots(1,1)
-phi_Ta = ifo.Materials.Coating.Phihighn
 # Build up a "mirror" structure as required by pygwinc
 mir = ifo.Optics.ETM
-mir.Coating.dOpt = L
+mir.Coating.dOpt = z['L'][:]
 StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.coating_thermooptic(ff, 
                                                 mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
 SbrZ = gwinc.noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
