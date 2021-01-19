@@ -6,7 +6,10 @@ will take the coating design in aLIGO_ETM_20layers.mat and make a plot of the
 E-field within the dielectric layer structure.
 '''
 import sys,glob,os
-sys.path.append('../../pygwinc/')
+
+# installed through conda rather than direct import
+#sys.path.append('../../pygwinc/')
+
 sys.path.append('../generic/')
 from coatingUtils import *
 
@@ -21,40 +24,45 @@ from gwinc import noise
 
 #plt.style.use('bmh')
 
+
 plt.rcParams.update({'text.usetex': False,
-                     'lines.linewidth': 2.5,
+                     'lines.linewidth': 4,
                      'font.family': 'serif',
                      'font.serif': 'Georgia',
-                     'font.size': 18,
+                     'font.size': 22,
+                     'xtick.direction': 'in',
+                     'ytick.direction': 'in',
                      'xtick.labelsize': 'medium',
                      'ytick.labelsize': 'medium',
-                     'axes.labelsize': 'medium',
-                     'axes.titlesize': 'small',
+                     'axes.labelsize': 'small',
+                     'axes.titlesize': 'medium',
+                     'axes.grid.axis': 'both',
+                     'axes.grid.which': 'both',
                      'axes.grid': True,
-                     'grid.alpha': 0.73,
+                     'grid.color': 'xkcd:beige',
+                     'grid.alpha': 0.53,
                      'lines.markersize': 12,
                      'legend.borderpad': 0.2,
                      'legend.fancybox': True,
-                     'legend.fontsize': 13,
-                     'legend.framealpha': 0.7,
-                     'legend.handletextpad': 0.1,
-                     'legend.labelspacing': 0.2,
+                     'legend.fontsize': 'small',
+                     'legend.framealpha': 0.8,
+                     'legend.handletextpad': 0.5,
+                     'legend.labelspacing': 0.33,
                      'legend.loc': 'best',
-                     'figure.figsize': (10,8),
-                     'savefig.dpi': 80,
+                     'figure.figsize': ((12, 8)),
+                     'savefig.dpi': 140,
+                     'savefig.bbox': 'tight',
                      'pdf.compression': 9})
-
-
 
 
 
 # load Data file from run of mkMirror.py
 fname = max(glob.iglob('Data/*Layers*.mat'), key=os.path.getctime)
 fname = fname[5:] # rm 'data' from the name
-#fname = 'ETM_Layers_190517_1828.mat'
+fname = 'ETM_Layers_190517_1828.mat'
 if __debug__:
     print('Loading ' + fname + '...')
-   
+
 
 z       = scio.loadmat('Data/' + fname, squeeze_me=True)
 n       = z['n']
@@ -64,7 +72,7 @@ T       = z['T']
 if __debug__:
     print('Loading ' + 'gwinc.ifo' + '...')
     tic = default_timer()
-     
+
 ifo     = gwinc.Struct.from_file(z["ifo_name"])
 if __debug__:
     dt = default_timer() - tic
@@ -96,9 +104,9 @@ ax.vlines(lambda0*1e6, T, 1, linestyle='--')
 ax.set_xlabel('Wavelength [$\mu \\mathrm{m}$]')
 ax.set_ylabel('T or R')
 ax.set_ylim((1e-6, 1))
-ax.text(lambda0*1.1e6, 1e-1, 'T @ {} um'.format(
+ax.text(lambda0*1.051e6, 1e-1, 'T @ {} um'.format(
     1e6*lambda0), size='x-small')
-ax.text(lambda0*1.1e6, 0.7e-1, '= {} ppm'.format(
+ax.text(lambda0*1.051e6, 0.5e-1, '= {} ppm'.format(
     round(1e6*T,1)), size='x-small')
 ax.legend()
 if __debug__:
@@ -152,10 +160,13 @@ mir.Coating.dOpt = L
 StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.coating_thermooptic(ff, 
                                                 mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
 SbrZ = gwinc.noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
-ax3.loglog(ff, np.sqrt(StoZ), label='Thermo-Optic')
-ax3.loglog(ff, np.sqrt(SteZ), label='Thermo-Elastic')
-ax3.loglog(ff, np.sqrt(StrZ), label='Thermo-Refractive')
-ax3.loglog(ff, np.sqrt(SbrZ), label='Brownian')
+
+Larm = 4000
+
+ax3.loglog(ff, Larm * np.sqrt(StoZ), label='Thermo-Optic')
+ax3.loglog(ff, Larm * np.sqrt(SteZ), label='Thermo-Elastic')
+ax3.loglog(ff, Larm * np.sqrt(StrZ), label='Thermo-Refractive')
+ax3.loglog(ff, Larm * np.sqrt(SbrZ), label='Brownian')
 ax3.legend()
 #ax3.set_ylim([8e-22, 2e-20])
 
