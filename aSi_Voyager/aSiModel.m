@@ -35,7 +35,9 @@ function ifo = aSiModel(varargin)
   % http://dx.doi.org/10.1103/PhysRevLett.96.055902
   c_over_T3 = 0.23;
   ifo.Materials.Coating.CVhighn    = c_over_T3 * 123^3 * 0.001;
-  ifo.Materials.Coating.Alphahighn = 1e-9;             % zero crossing at 123 K
+  ifo.Materials.Coating.Alphahighn = 1e-9;  % guess; offset form
+                                            % zero CTE
+
   ifo.Materials.Coating.Betahighn  = 1.4e-4;           % dn/dT (http://dx.doi.org/10.1063/1.1383056)
   ifo.Materials.Coating.ThermalDiffusivityhighn = 1.03; % W/m/K |http://dx.doi.org/10.1103/PhysRevLett.96.055902
   ifo.Materials.Coating.Phihighn   = 1e-5;             % just a guess (depends on prep)
@@ -71,12 +73,12 @@ function ifo = aSiModel(varargin)
 
 
 
-  ifo.Materials.MassRadius    = 0.450/2;             % m
-  ifo.Materials.MassThickness = 0.4;
+  ifo.Materials.MassRadius    = 0.430/2;             % m
+  ifo.Materials.MassThickness = 0.55;
 
   ifo.Materials.Substrate.Temp = 123;            % mirror temperature [K]
   %% Laser-------------------------------------------------------------------
-  ifo.Laser.Wavelength                   = 2000e-9;                                  % m;
+  ifo.Laser.Wavelength                   = 2128e-9;                                  % m;
   ifo.Laser.Power                        = 125;                                       % W;
 
   %% Optics------------------------------------------------------------------
@@ -87,8 +89,8 @@ function ifo = aSiModel(varargin)
 
 
   % factor of 2.5 added to simulate LNG modes - remove after new LNG code is added
-  ifo.Optics.ITM.BeamRadius = 0.055 * 2.5;                     % m; 1/e^2 power radius
-  ifo.Optics.ETM.BeamRadius = 0.062 * 2.5;                     % m; 1/e^2 power radius
+  ifo.Optics.ITM.BeamRadius = 0.059;                     % m; 1/e^2 power radius
+  ifo.Optics.ETM.BeamRadius = 0.084;                     % m; 1/e^2 power radius
 
   % coating layer optical thicknesses - mevans June 2008
   ifo.Optics.ITM.CoatingThicknessLown = 0.308;
