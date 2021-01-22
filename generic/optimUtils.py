@@ -234,13 +234,14 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False):
     # Make the cost
     cost = np.array([cc1[0], cc2, cc3, cc1[1], cc1[2]])
     scalarCost = np.dot(np.array(par['weights']), cost)
+    Nprec = 4
     if verbose:
-        print('Cost for Brownian noise      =  {}'.format(round(cost[1],3)))
-        print('Cost for Transmission        =  {}'.format(round(cost[0],3)))
-        print('Cost for Thermo-Optic noise  =  {}'.format(round(cost[2],3)))
-        print('Cost for sensitivity (dT/dL) =  {}'.format(round(cost[3],3)))
-        print('Cost for surface E field     =  {}'.format(round(cost[4],3)))
-        
+        print('Cost for Brownian noise      =  {}'.format(round(cost[1],Nprec)))
+        print('Cost for Transmission        =  {}'.format(round(cost[0],Nprec)))
+        print('Cost for Thermo-Optic noise  =  {}'.format(round(cost[2],Nprec)))
+        print('Cost for sensitivity (dT/dL) =  {}'.format(round(cost[3],Nprec)))
+        print('Cost for surface E field     =  {}'.format(round(cost[4],Nprec)))
+
         costOut = {}
         costOut['n'] = n
         costOut['L'] = L
@@ -249,7 +250,7 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False):
         costOut['scalarCost'] = scalarCost
         costOut['brownianProxy'] = cc2
         costOut['vectorCost'] = cost
-        
+
         return(scalarCost, costOut)
     else:
         return(scalarCost)
