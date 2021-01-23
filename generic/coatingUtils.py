@@ -37,7 +37,8 @@ def multidiel1(n, L, lamb, theta=0, pol='te'):
     Gamma1: complex
         Amplitude reflectivity for the input dielectric stack.
     Z1:
-        Complex impedance at the interface 
+        Complex impedance at the interface (only correct if incident medium
+        is vacuum).
     Example usage:
     --------------
     r_p, _ = multidiel1(n, L, [1.0, 0.5], 45.3, 'te')
