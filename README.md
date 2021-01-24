@@ -55,5 +55,5 @@ A paper draft of this work lives at [this git repo](https://github.com/CaltechEx
 3. cd $MATLABROOT/extern/engines/python
 4. python setup.py install (should spit out a bunch of messages and install the matlab_engine for python)
 5. may give this error "OSError: Invalid MATLAB GWINC path: 'gwinc'"
-    * define the GWINCPATH in your .bashrc or other startup file so that this is defined as a shell variable and points to where your matlab gwinc is
+    * define the GWINCPATH in your .bashrc or other startup file (e.g. when within a conda env use `conda env config vars set GWINCPATH=<your_path_to_matgwinc>`) so that this is defined as a shell variable and points to where your matlab gwinc is
 6. need to setup path in python to point to pygwinc
