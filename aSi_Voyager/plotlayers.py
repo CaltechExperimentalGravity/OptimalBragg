@@ -116,7 +116,7 @@ ax2[0].plot(Z*1e6,field, color='xkcd:electric purple',
                alpha=0.97, rasterized=False)
 absStr = f'$|\\vec E_{{\mathrm{{surface}}}}| = {1e6*field[0]:.0f}$ ppm of $\\vec |E_{{\mathrm{{inc}}}}|$'
 absStr += '\n'
-intAbs = calcAbsorption(field**2, L, 300, 1e-3, 1e-2)
+intAbs = calcAbsorption(field, L, 300, 1e-3, 1e-2)
 absStr += f'Integrated absorption in stack is {intAbs:.3f} ppm'
 print(f'Total integrated absorption for this stack is {intAbs:.3f} ppm, assuming absorption in SiO2 is {alpha_SiO2:.1E}/m and that in a-Si is {alpha_aSi:.1E}/m.')
 ax2[0].text(0.5,0.7,absStr,transform=ax2[0].transAxes, fontsize=14)
@@ -138,7 +138,7 @@ ax2[1].bar(layers[1:-1:2],  1e9*L[1::2], width=1e6*L[1::2],
               alpha=0.4, label='$a-Si$')
 ax2[1].legend()
 ax2[1].yaxis.set_major_formatter(FormatStrFormatter("%3d"))
-ax2[0].set_ylabel('Normalized $|E(z)|$')
+ax2[0].set_ylabel('Normalized $|E(z)|^2$')
 ax2[1].set_ylabel('Physical layer thickness [nm]')
 ax2[1].set_xlabel('Distance from air interface, $[\mu \mathrm{m}]$')
 
