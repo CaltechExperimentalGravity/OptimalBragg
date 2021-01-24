@@ -205,7 +205,7 @@ def fieldDepth(L, n, lam=1064e-9, theta=0, pol='s', nPts=30):
     z: array_like
         Array of penetration depths at which E-field is evaluated.
     Enorm: array_like
-        Electric field normalized to that at the interface of incidence.
+        Electric field SQUARED normalized to that at the interface of incidence.
 
     Following derivation set out in Arnon and Baumeister, 1980
     https://www.osapublishing.org/ao/abstract.cfm?uri=ao-19-11-1853
