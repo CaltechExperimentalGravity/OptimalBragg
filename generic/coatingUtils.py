@@ -193,19 +193,19 @@ def fieldDepth(L, n, lam=1064e-9, theta=0, pol='s', nPts=30):
     Function that calculates "Normalized" E-Field strength squared
     as a function of penetration depth in a dielectric coating.
 
-        Parameters:
-        ------------
-        L: array_like
-            Array of PHYSICAL thickness of coating layers.
-        n: array_like 
-            Array of refractive indices.
+    Parameters:
+    ------------
+    L: array_like
+        Array of PHYSICAL thickness of coating layers.
+    n: array_like 
+        Array of refractive indices.
 
-        Returns:
-        --------
-        z: array_like
-            Array of penetration depths at which E-field is evaluated.
-        Enorm: array_like
-            Electric field normalized to that at the interface of incidence.
+    Returns:
+    --------
+    z: array_like
+        Array of penetration depths at which E-field is evaluated.
+    Enorm: array_like
+        Electric field normalized to that at the interface of incidence.
 
     Following derivation set out in Arnon and Baumeister, 1980
     https://www.osapublishing.org/ao/abstract.cfm?uri=ao-19-11-1853
@@ -295,4 +295,38 @@ def importParams(paramFile):
     with open(paramFile,'r') as f:
         params = yaml.safe_load(f)
     return(params)
- 
+
+def calcAbsorption(Esq, L, nPts, alphaOdd, alphaEven):
+    '''
+    Function for calculating the Absorption given an electric field profile
+    Made to work together with fieldDepth.
+    Parameters:
+    -----------
+    Esq: array_like
+        NORMALIZED electric field squared as a function of distance in a coating
+    L: array_like         
+        PHYSICAL thickness of coating layers
+    nPts: int 
+        # of points inside each layer at which field is to be evaluated
+    alphaOdd: float
+        Absorption coefficient of all odd layers [m ^-1] (top layer is assumed layer #1)
+    alphaEven: float
+        Absorption coefficient of all even layers [m ^-1] (top layer is assumed layer #1)
+    Returns:
+    -------------
+    absorp: float 
+        Absorption of coating [ppm]
+    '''
+    if len(Esq) != int(len(L)*nPts):
+        raise ValueError(f'The input electric field vector length, {len(Esq)} is not consistent with the number of points requested per layer, {nPts}, and the number of layers, {len(L)}.')
+    dL = L/nPts
+    dz = []
+    #Define the grid for rectangular integration
+    for ii in range(len(L)):
+        temp = np.tile(dL[ii], nPts)# Pythonic rep of repmat(dL(ii),nPts,1)
+        dz = np.hstack((dz,temp)) # Pythonic implementation of vertcat
+    alph = np.ones(nPts*len(L))
+    alph[::2] = alphaOdd
+    alph[1::2] = alphaEven
+    absorp = 1e6 * np.sum(alph * dz * Esq)
+    return(absorp)
