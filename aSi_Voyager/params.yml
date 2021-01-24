@@ -16,8 +16,7 @@ targets:
         - 1.        # chosen to match MATLAB optim
         - 1.e+42   # chosen to match MATLAB optim
         - 1.e-2    # NOT Used currently
-        - 50.0       # chosen to match MATLAB optim
-
+        - 50       # NOT used currently
 # Specify the relative importance of terms in the cost func
 #         Trans    CoatBr    CoatTO     sensitivity   E-field
 weights:  [0.1,      1.0,       0.001,       0.01,        0.1]
