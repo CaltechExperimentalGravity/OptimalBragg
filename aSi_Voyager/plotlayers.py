@@ -55,6 +55,9 @@ plt.rcParams.update({'text.usetex': False,
                      'pdf.compression': 9})
 
 
+# Constants for calculating absorption
+alpha_SiO2 = 1e-3 # https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
+alpha_aSi = 100 # Figs 2/3, https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
 
 # load Data file from run of mkMirror.py
 fname = max(glob.iglob('Data/*Layers*.mat'), key=os.path.getctime)
@@ -87,8 +90,10 @@ TT      = 1 - RR
 
 #  convert from optical thickness to physical thickness
 L       = lambda0 * op2phys(z['L'], n[1:-1])
-#  calculate field v. distance into coating
-Z,field = fieldDepth(L, n, pol='p', nPts=300)
+
+# calculate field v. distance into coating
+Z,field = fieldDepth(L, n, pol='p', nPts=300, lam=ifo.Laser.Wavelength)
+
 layers  = np.cumsum(1e6 * L)
 layers  = np.append(0, layers)
 
@@ -114,38 +119,47 @@ if __debug__:
     print('Transmission of this coating at {} nm is {} ppm'.format(
         1e9*lambda0, round(1e6*T,2)))
 
+
 plt.savefig('Figures/' + 'ETM_R' + '.pdf')
 
 
 # Make the plotof the Layer structure
-fig , ax = plt.subplots(2,1, sharex=True)
-ax[0].plot(Z*1e6,field, color='xkcd:electric purple',
+fig2 , ax2 = plt.subplots(2,1, sharex=True)
+ax2[0].plot(Z*1e6,field, color='xkcd:electric purple',
                alpha=0.97, rasterized=False)
+absStr = f'$|\\vec E_{{\mathrm{{surface}}}}| = {1e6*field[0]:.0f}$ ppm of $\\vec |E_{{\mathrm{{inc}}}}|$'
+absStr += '\n'
+intAbs = calcAbsorption(field, L, 300, alpha_SiO2, alpha_aSi)
+absStr += f'Integrated absorption in stack is {intAbs:.3f} ppm'
+print(f'Total integrated absorption for this stack is {intAbs:.3f} ppm, assuming absorption in SiO2 is {alpha_SiO2:.1E}/m and that in a-Si is {alpha_aSi:.1E}/m.')
+ax2[0].text(0.5,0.7,absStr,transform=ax2[0].transAxes, fontsize=14)
 
 #Add some vlines
-ax[0].vlines(np.cumsum(L)[1:-1:2]*1e6, 1e-5, 0.55,
+ax2[0].vlines(np.cumsum(L)[1:-1:2]*1e6, 1e-5, 0.55,
             color='xkcd:bright teal', linewidth=0.6,
                  linestyle='--', alpha=0.75, rasterized=False)
-ax[0].vlines(np.cumsum(L)[::2]*1e6, 1e-5, 0.55,
+ax2[0].vlines(np.cumsum(L)[::2]*1e6, 1e-5, 0.55,
             color='xkcd:deep purple', linewidth=0.6,
                  linestyle='--', alpha=0.75,rasterized=False)
 
-# Also visualize the layer thicknesses
-ax[1].bar(layers[:-1:2], 1e9*L[::2], width=1e6*L[::2],
+
+#Also visualize the layer thicknesses
+ax2[1].bar(layers[:-1:2], 1e9*L[::2], width=1e6*L[::2],
+
         align='edge', color='xkcd:bright teal',
               alpha=0.4, label='$\mathrm{SiO}_2$')
-ax[1].bar(layers[1:-1:2],  1e9*L[1::2], width=1e6*L[1::2],
+ax2[1].bar(layers[1:-1:2],  1e9*L[1::2], width=1e6*L[1::2],
         align='edge', color='xkcd:deep purple',
-              alpha=0.74, label='$a-Si$')
-ax[1].legend()
-ax[1].yaxis.set_major_formatter(FormatStrFormatter("%3d"))
-ax[0].set_ylabel('Normalized $|E(z)|^2$')
-ax[1].set_ylabel('Physical layer thickness [nm]')
-ax[1].set_xlabel('Distance from air interface, $[\mu \mathrm{m}]$')
+              alpha=0.4, label='$a-Si$')
+ax2[1].legend()
+ax2[1].yaxis.set_major_formatter(FormatStrFormatter("%3d"))
+ax2[0].set_ylabel('Normalized $|E(z)|^2$')
+ax2[1].set_ylabel('Physical layer thickness [nm]')
+ax2[1].set_xlabel('Distance from air interface, $[\mu \mathrm{m}]$')
 
-fig.subplots_adjust(hspace=0.01,left=0.09,right=0.95,top=0.92)
-plt.suptitle('a-Si:SiO$_2$ coating electric field')
 
+fig2.subplots_adjust(hspace=0.01,left=0.09,right=0.95,top=0.92)
+fig2.suptitle('a-Si:SiO$_2$ coating electric field')
 
 plt.savefig('Figures/' + fname[:-4] + '.pdf')
 plt.savefig('Figures/' + 'ETM_Layers' + '.pdf')
@@ -184,8 +198,10 @@ ax3.text(80, 5e-21, 'Thickness = {} um'.format(round(1e6*sum(L),2)), size='x-sma
 #ax3.grid(which='minor', alpha=0.4)
 ax3.set_ylabel('Displacement Noise $[\\mathrm{m} / \\sqrt{\\mathrm{Hz}}]$')
 ax3.set_xlabel('Frequency [Hz]')
+
 plt.savefig('Figures/' + 'ETM_TN.pdf')
 
 if __debug__:
     dt = default_timer() - tic
     print('Took ' + str(round(dt, 1)) + ' sec to make the plots and save them.')
+

@@ -40,11 +40,15 @@ gam = brownianProxy(ifo)
 N_particles = 15
 
 #x0 = np.random.uniform(0.05, 0.5, (N_particles, len(Ls)))
+<<<<<<< HEAD
 bow = ((0.1, 0.48),)
+=======
+bow = ((0.1, 0.6),)
+>>>>>>> 08cdef9efd2682ad6caaeae042d43866c02b4b42
 bounds = bow*(len(Ls)-1)
 minThickCap = 20e-9 # min thickness of cap layer
 minThick = minThickCap/ifo.Laser.Wavelength * 1.5
-bounds = ((minThick, 0.4),) + bounds # make the first layer thin
+bounds = ((minThick, 0.6),) + bounds # make the first layer thin
 if __debug__:
     print(np.shape(bounds))
 
