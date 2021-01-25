@@ -56,8 +56,8 @@ plt.rcParams.update({'text.usetex': False,
 
 
 # Constants for calculating absorption
-alpha_SiO2 = 1e-3 # https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
-alpha_aSi = 100 # Figs 2/3, https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
+alpha_SiO2 = 1e-3 # (get a better # for 2 um and 123 K) https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
+alpha_aSi = 100e-6 / 1e-6 # Figs 2/3, https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
 
 # load Data file from run of mkMirror.py
 fname = max(glob.iglob('Data/*Layers*.mat'), key=os.path.getctime)
@@ -130,9 +130,9 @@ ax2[0].plot(Z*1e6,field, color='xkcd:electric purple',
 absStr = f'$|\\vec E_{{\mathrm{{surface}}}}| = {1e6*field[0]:.0f}$ ppm of $\\vec |E_{{\mathrm{{inc}}}}|$'
 absStr += '\n'
 intAbs = calcAbsorption(field, L, 300, alpha_SiO2, alpha_aSi)
-absStr += f'Integrated absorption in stack is {intAbs:.3f} ppm'
-print(f'Total integrated absorption for this stack is {intAbs:.3f} ppm, assuming absorption in SiO2 is {alpha_SiO2:.1E}/m and that in a-Si is {alpha_aSi:.1E}/m.')
-ax2[0].text(0.5,0.7,absStr,transform=ax2[0].transAxes, fontsize=14)
+absStr += f'Integrated absorption in stack is {intAbs:.1f} ppm'
+print(f'Total integrated absorption {intAbs:.3f} ppm, assuming abs in SiO2 is {alpha_SiO2:.1E}/m and a-Si is {alpha_aSi:.1E}/m.')
+ax2[0].text(0.5, 0.7, absStr, transform=ax2[0].transAxes, fontsize=14)
 
 #Add some vlines
 ax2[0].vlines(np.cumsum(L)[1:-1:2]*1e6, 1e-5, 0.55,

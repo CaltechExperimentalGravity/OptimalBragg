@@ -12,59 +12,66 @@ the center wavelength of the laser is 2128 nm (set in the aSiModel.m file)
 import sys
 from datetime import datetime
 from timeit import default_timer
+
+# install gwinc with anaconda: conda install -c conda-forge gwinc
 #sys.path.append('../../pygwinc/')
 
 sys.path.append('../generic/')
 from optimUtils import *
+from coatingUtils import importParams
 
-from scipy.optimize import differential_evolution as diffevo
+from scipy.optimize import differential_evolution as devo
 from scipy.io import loadmat,savemat
 
-ifo = gwinc.Struct.from_file('aSiModel.m')
+
+paramfilename = 'params.yml'
+opt_params = importParams(paramfilename)
+
+ifo = gwinc.Struct.from_file(opt_params['gwincStructFile'])
 voy = gwinc.load_budget('Voyager')
 
+
 # how many coating Layers?
-Npairs = 8
+Npairs = opt_params['Npairs']
 Nlayers = 2*Npairs + 1
 Ls = 0.25 * np.ones((Nlayers, 1)) # initial guess
 Ls = Ls[:,0]
 if __debug__:
     print("Shape of Ls array = " + str(np.shape(Ls)))
+
+# this is an approximater for the Brownian noise which is fast to compute
 gam = brownianProxy(ifo)
 
-#getMirrorCost(L=Ls, paramFile='params.yml',
-#                  ifo=ifo, gam=gam, verbose=False)
-
-
 # do Global Optimization
-N_particles = 15
+N_particles = opt_params['Nparticles']
 
 #x0 = np.random.uniform(0.05, 0.5, (N_particles, len(Ls)))
-bow = ((0.1, 0.48),)
+bow = ((0.05, 0.49),)
 bounds = bow*(len(Ls)-1)
 minThickCap = 20e-9 # min thickness of cap layer
 minThick = minThickCap/ifo.Laser.Wavelength * 1.5
-bounds = ((minThick, 0.6),) + bounds # make the first layer thin
+bounds = ((minThick, 0.4),) + bounds # make the first layer thin
 if __debug__:
     print(np.shape(bounds))
+    tic = default_timer()
 
 
-tic = default_timer()
 # minimize by Differential Evolution Optimizer
-res = diffevo(func=getMirrorCost, bounds=bounds, updating='deferred',
+res = devo(func=getMirrorCost, bounds=bounds, updating='deferred',
                   strategy = 'best1bin', mutation = (0.1, 1.5),
                   popsize=N_particles, workers = -1,
-                         args=('params.yml', ifo, gam, False),
+                         args=(paramfilename, ifo, gam, False),
                          polish=True, disp=True)
 
-dt = default_timer() - tic
+
 if __debug__:
     print(" ")
+    dt = default_timer() - tic
     print('Took ' + str(round(dt,1)) + ' sec to optimize.')
     print(" ")
 
 # run once to get the costs for the final solution
-scalarCost, costOut = getMirrorCost(L=res.x, paramFile='params.yml',
+scalarCost, costOut = getMirrorCost(L=res.x, paramFile=paramfilename,
               ifo=ifo, gam=gam, verbose=True)
 
 
@@ -72,7 +79,7 @@ scalarCost, costOut = getMirrorCost(L=res.x, paramFile='params.yml',
 # make new dict for saving the data
 z = {}
 #z["result"]   = res
-z["ifo_name"] = 'aSiModel.m'
+z["ifo_name"] = opt_params['gwincStructFile']
 z["opt_name"] = 'ETM'
 
 #        costOut = {}
