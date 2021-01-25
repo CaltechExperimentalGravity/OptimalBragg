@@ -12,15 +12,15 @@ costs:
 # Use this to specify the target levels for each term in the cost func
 # There has to be one target per term in the cost
 targets:
-        - 5.e-6    # 5 ppm target transmission
-        - 1.        # chosen to match MATLAB optim
-        - 1.e+42   # chosen to match MATLAB optim
-        - 1.e-2    # NOT Used currently
-        - 50.0       # chosen to match MATLAB optim
+        - 5e-6    # 5 ppm target transmission
+        - 1        # chosen to match MATLAB optim
+        - 1e+42   # chosen to match MATLAB optim
+        - 1e-2    # NOT Used currently
+        - 0       # chosen to match MATLAB optim (this seems to not be used ?)
 
 # Specify the relative importance of terms in the cost func
 #         Trans    CoatBr    CoatTO     sensitivity   E-field
-weights:  [0.1,      1.0,       0.001,       0.01,        0.1]
+weights:  [0.1,      1,       0.001,       0.01,        1e5]
 
 # MISC
 # Some other parameters that are used by the code

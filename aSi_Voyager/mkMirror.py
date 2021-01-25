@@ -1,8 +1,17 @@
-#!/usr/bin/env python
+r"""
+run this code to optimize a layer structure design for a ETM HR coating
+
+this coating is for the LIGO Voyager ETM operating at 123 K
+
+the low index material is SiO2 and the high index material is a-Si
+
+the center wavelength of the laser is 2128 nm (set in the aSiModel.m file)
+
+"""
 
 import sys
 from datetime import datetime
-
+from timeit import default_timer
 #sys.path.append('../../pygwinc/')
 
 sys.path.append('../generic/')
@@ -15,12 +24,12 @@ ifo = gwinc.Struct.from_file('aSiModel.m')
 voy = gwinc.load_budget('Voyager')
 
 # how many coating Layers?
-Npairs = 9
+Npairs = 8
 Nlayers = 2*Npairs + 1
-Ls = 0.25 * np.ones((Nlayers, 1))
+Ls = 0.25 * np.ones((Nlayers, 1)) # initial guess
 Ls = Ls[:,0]
 if __debug__:
-    print(np.shape(Ls))
+    print("Shape of Ls array = " + str(np.shape(Ls)))
 gam = brownianProxy(ifo)
 
 #getMirrorCost(L=Ls, paramFile='params.yml',
@@ -31,7 +40,7 @@ gam = brownianProxy(ifo)
 N_particles = 15
 
 #x0 = np.random.uniform(0.05, 0.5, (N_particles, len(Ls)))
-bow = ((0.1, 0.5),)
+bow = ((0.1, 0.48),)
 bounds = bow*(len(Ls)-1)
 minThickCap = 20e-9 # min thickness of cap layer
 minThick = minThickCap/ifo.Laser.Wavelength * 1.5
@@ -39,12 +48,20 @@ bounds = ((minThick, 0.4),) + bounds # make the first layer thin
 if __debug__:
     print(np.shape(bounds))
 
+
+tic = default_timer()
 # minimize by Differential Evolution Optimizer
 res = diffevo(func=getMirrorCost, bounds=bounds, updating='deferred',
                   strategy = 'best1bin', mutation = (0.1, 1.5),
-                  popsize=N_particles, workers=-1,
+                  popsize=N_particles, workers = -1,
                          args=('params.yml', ifo, gam, False),
                          polish=True, disp=True)
+
+dt = default_timer() - tic
+if __debug__:
+    print(" ")
+    print('Took ' + str(round(dt,1)) + ' sec to optimize.')
+    print(" ")
 
 # run once to get the costs for the final solution
 scalarCost, costOut = getMirrorCost(L=res.x, paramFile='params.yml',
@@ -69,9 +86,9 @@ z['T'] = costOut['T']
 
 z["n"] = costOut['n']
 
-fname = 'Layers'
+fname   = 'Layers'
 tnowstr = datetime.now().strftime('%y%m%d_%H%M')
-fname = z["opt_name"] + '_' + fname + '_' + tnowstr + '.mat'
+fname   = z["opt_name"] + '_' + fname + '_' + tnowstr + '.mat'
 
 z['filename'] = fname
 # save layer data and also the whole ifo param file

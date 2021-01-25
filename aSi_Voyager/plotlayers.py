@@ -130,13 +130,13 @@ ax[0].vlines(np.cumsum(L)[::2]*1e6, 1e-5, 0.55,
             color='xkcd:deep purple', linewidth=0.6,
                  linestyle='--', alpha=0.75,rasterized=False)
 
-#Also visualize the layer thicknesses
+# Also visualize the layer thicknesses
 ax[1].bar(layers[:-1:2], 1e9*L[::2], width=1e6*L[::2],
         align='edge', color='xkcd:bright teal',
               alpha=0.4, label='$\mathrm{SiO}_2$')
 ax[1].bar(layers[1:-1:2],  1e9*L[1::2], width=1e6*L[1::2],
         align='edge', color='xkcd:deep purple',
-              alpha=0.4, label='$a-Si$')
+              alpha=0.74, label='$a-Si$')
 ax[1].legend()
 ax[1].yaxis.set_major_formatter(FormatStrFormatter("%3d"))
 ax[0].set_ylabel('Normalized $|E(z)|^2$')
@@ -173,7 +173,12 @@ ax3.loglog(ff, Larm * np.sqrt(SbrZ), label='Brownian', c='xkcd:Tomato')
 ax3.loglog(ff, Larm * np.sqrt(subBrown), label='Substrate Brownian', c='xkcd:Dusty Blue')
 ax3.loglog(ff, Larm * np.sqrt(subTE), label='Substrate Thermo-Elastic', c='xkcd:Chocolate', alpha=0.3)
 ax3.legend()
+ax3.set_xlim([10, 10e3])
 ax3.set_ylim([8e-24, 2e-20])
+
+ax3.text(80, 11e-21, '# of layers =  {}'.format(len(L)), size='x-small')
+ax3.text(80, 5e-21, 'Thickness = {} um'.format(round(1e6*sum(L),2)), size='x-small')
+
 
 #ax3.grid(which='major', alpha=0.6)
 #ax3.grid(which='minor', alpha=0.4)
@@ -183,4 +188,4 @@ plt.savefig('Figures/' + 'ETM_TN.pdf')
 
 if __debug__:
     dt = default_timer() - tic
-    print('Took ' + str(round(dt,3)) + ' sec to make the plots and save them.')
+    print('Took ' + str(round(dt, 1)) + ' sec to make the plots and save them.')
