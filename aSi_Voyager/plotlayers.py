@@ -123,7 +123,7 @@ if __debug__:
 plt.savefig('Figures/' + 'ETM_R' + '.pdf')
 
 
-# Make the plotof the Layer structure
+# Make the plot of the Layer structure
 fig2 , ax2 = plt.subplots(2,1, sharex=True)
 ax2[0].plot(Z*1e6,field, color='xkcd:electric purple',
                alpha=0.97, rasterized=False)
@@ -131,10 +131,10 @@ absStr = f'$|\\vec E_{{\mathrm{{surface}}}}| = {1e6*field[0]:.0f}$ ppm of $\\vec
 absStr += '\n'
 intAbs = calcAbsorption(field, L, 300, alpha_SiO2, alpha_aSi)
 absStr += f'Integrated absorption in stack is {intAbs:.1f} ppm'
-print(f'Total integrated absorption {intAbs:.3f} ppm, assuming abs in SiO2 is {alpha_SiO2:.1E}/m and a-Si is {alpha_aSi:.1E}/m.')
+print(f'Total integrated absorption {intAbs:.1f} ppm. alpha_SiO2 = {alpha_SiO2:.1f} ppm/um; alpha_a-Si = {alpha_aSi:.1f} ppm/um.')
 ax2[0].text(0.5, 0.7, absStr, transform=ax2[0].transAxes, fontsize=14)
 
-#Add some vlines
+# Add some vlines
 ax2[0].vlines(np.cumsum(L)[1:-1:2]*1e6, 1e-5, 0.55,
             color='xkcd:bright teal', linewidth=0.6,
                  linestyle='--', alpha=0.75, rasterized=False)
@@ -143,7 +143,7 @@ ax2[0].vlines(np.cumsum(L)[::2]*1e6, 1e-5, 0.55,
                  linestyle='--', alpha=0.75,rasterized=False)
 
 
-#Also visualize the layer thicknesses
+#  Also visualize the layer thicknesses
 ax2[1].bar(layers[:-1:2], 1e9*L[::2], width=1e6*L[::2],
 
         align='edge', color='xkcd:bright teal',
@@ -174,9 +174,12 @@ mir.Coating.dOpt = z['L'][:]
 StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.coating_thermooptic(ff, 
                                                 mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
 SbrZ = gwinc.noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
+# find index of closest value to 100 Hz
+ii = np.abs(ff - 100).argmin()
+SbrZ100 = SbrZ[ii]
 
-subBrown = gwinc.noise.substratethermal.substrate_brownian(ff, mir, ifo.Optics.ETM.BeamRadius)
-subTE    = gwinc.noise.substratethermal.substrate_thermoelastic(ff, mir, ifo.Optics.ETM.BeamRadius)
+subBrown    = gwinc.noise.substratethermal.substrate_brownian(ff, mir, ifo.Optics.ETM.BeamRadius)
+subTE       = gwinc.noise.substratethermal.substrate_thermoelastic(ff, mir, ifo.Optics.ETM.BeamRadius)
 
 Larm = 1 #4000
 
@@ -191,7 +194,8 @@ ax3.set_xlim([10, 10e3])
 ax3.set_ylim([8e-24, 2e-20])
 
 ax3.text(80, 11e-21, '# of layers =  {}'.format(len(L)), size='x-small')
-ax3.text(80, 5e-21, 'Thickness = {} um'.format(round(1e6*sum(L),2)), size='x-small')
+ax3.text(80, 7e-21, 'Thickness = {} um'.format(round(1e6*sum(L),2)), size='x-small')
+ax3.text(50, 5e-21, '$x_{{Brown}}$ @ 100 Hz = {noise} zm/rHz'.format(noise=round(Larm * np.sqrt(SbrZ100)*1e21,2)), size='x-small')
 
 
 #ax3.grid(which='major', alpha=0.6)

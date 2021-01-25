@@ -20,13 +20,13 @@ targets:
 
 # Specify the relative importance of terms in the cost func
 #         Trans    CoatBr    CoatTO     sensitivity   E-field
-weights:  [0.1,      1,      1e-4,       0.1,        1e2]
+weights:  [0.3,      1,      1e-4,       0.1,        1e2]
 
 # MISC
 # Some other parameters that are used by the code
 fTO: 100           # Hz, freq at which to evaluate TO noise
 pol: te            # polarization, use "te" or "tm"
 aoi: 0             # degrees, angle of incidence
-Npairs: 7         # how many layer pairs; N_layers = Npairs+1
-Nparticles: 20     # how many starting particles in the optimizer
+Npairs: 8         # how many layer pairs; N_layers = Npairs+1
+Nparticles: 100     # how many starting particles in the optimizer
 gwincStructFile: 'aSiModel.m'

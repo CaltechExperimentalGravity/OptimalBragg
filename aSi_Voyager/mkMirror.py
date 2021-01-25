@@ -46,7 +46,7 @@ gam = brownianProxy(ifo)
 N_particles = opt_params['Nparticles']
 
 #x0 = np.random.uniform(0.05, 0.5, (N_particles, len(Ls)))
-bow = ((0.05, 0.49),)
+bow = ((0.1, 0.49),)
 bounds = bow*(len(Ls)-1)
 minThickCap = 20e-9 # min thickness of cap layer
 minThick = minThickCap/ifo.Laser.Wavelength * 1.5
