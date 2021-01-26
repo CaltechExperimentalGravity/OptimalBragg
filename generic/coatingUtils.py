@@ -6,6 +6,7 @@ import scipy.io as scio
 from scipy.interpolate import interp1d, PchipInterpolator
 import yaml
 import gwinc
+import sys
 
 #Some function definitions
 def multidiel1(n, L, lamb, theta=0, pol='te'):
@@ -90,6 +91,7 @@ def op2phys(L, n):
     '''
     if len(L) != len(n):
         raise ValueError(f'L (dim {len(L)}) and n (dim {len(n)}) must have the same dimension.')
+        sys.exit()
     phys = L / n
     return phys
 
@@ -331,3 +333,39 @@ def calcAbsorption(Esq, L, nPts, alphaOdd, alphaEven):
     alph[1::2] = alphaEven
     absorp = 1e6 * np.sum(alph * dz * Esq)
     return(absorp)
+
+def sellmeier(B=[0.696166300, 0.407942600, 0.897479400], C=[4.67914826e-3, 1.35120631e-2, 97.9340025], lam=1064e-9):
+    '''
+    Function to calculate dispersion using Sellmeier coefficients
+
+    Parameters:
+    ------------
+    B: list or array_like
+        "B" coefficients in the Sellmeier equation.
+        Defaults to first 3 coefficients for Fused Silica.
+    C: list or array_like
+        "C" coefficients in the Sellmeier equation [um^2].
+        Defaults to first 3 coefficients for Fused Silica.
+    lam: float or array_like
+        Value or array of wavelengths [m]. Conversion to 
+        microns is done internally to the function.
+        Defaults to 1064nm.
+
+    Returns:
+    ----------
+    n: float or array_like
+        Refractive index (same shape as lam)
+
+    Ref:
+    ----
+    https://en.wikipedia.org/wiki/Sellmeier_equation#:~:text=The%20Sellmeier%20equation%20is%20an,of%20light%20in%20the%20medium.
+    '''
+    if len(B) != len(C):
+        raise ValueError(f'The Sellmeier coefficients A (len {len(B)}) and B (len {len(C)}) must have the same number of elements.')
+        sys.exit()
+    n = 1
+    ll = lam*1e6 # Sellmeier coefficients are quoted for wavelength in microns
+    for bb,cc in zip(B,C):
+        n += bb * ll**2 / (ll**2 - cc)
+    n = np.sqrt(n)
+    return(n)
