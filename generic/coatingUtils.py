@@ -88,7 +88,8 @@ def op2phys(L, n):
         Array of physical thicknesses for the dielectric stack 
         specified by L and n.
     '''
-    # add a warning here if L & n are not the same shape - don't rely on shitty python warnings
+    if len(L) != len(n):
+        raise ValueError(f'L (dim {len(L)}) and n (dim {len(n)}) must have the same dimension.')
     phys = L / n
     return phys
 
