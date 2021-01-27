@@ -55,10 +55,14 @@ if __debug__:
     print(np.shape(bounds))
     tic = default_timer()
 
+the_strats = ['best1bin', 'best1exp', 'rand1exp', 'randtobest1exp', 'currenttobest1exp',
+              'best2exp', 'rand2exp', 'randtobest1bin', 'currenttobest1bin', 'best2bin',
+              'rand2bin', 'rand1bin']
+mystrat = the_strats[np.random.randint(len(the_strats))]
 
 # minimize by Differential Evolution Optimizer
-res = devo(func=getMirrorCost, bounds=bounds, updating='deferred',
-                  strategy = 'best1bin', mutation = (0.1, 1.5),
+res = devo(func=getMirrorCost, bounds=bounds, updating = 'deferred',
+                  strategy = mystrat, mutation = (0.1, 1.5),
                   popsize=N_particles, workers = -1,
                          args=(paramfilename, ifo, gam, False),
                          polish=True, disp=True)
@@ -67,7 +71,7 @@ res = devo(func=getMirrorCost, bounds=bounds, updating='deferred',
 if __debug__:
     print(" ")
     dt = default_timer() - tic
-    print('Took ' + str(round(dt,1)) + ' sec to optimize.')
+    print('Took ' + str(round(dt,1)) + ' sec to optimize with Strategy = ' + mystrat)
     print(" ")
 
 # run once to get the costs for the final solution

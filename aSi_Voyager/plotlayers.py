@@ -131,7 +131,7 @@ absStr = f'$|\\vec E_{{\mathrm{{surface}}}}| = {1e6*field[0]:.0f}$ ppm of $\\vec
 absStr += '\n'
 intAbs = calcAbsorption(field, L, 300, alpha_SiO2, alpha_aSi)
 absStr += f'Integrated absorption in stack is {intAbs:.1f} ppm'
-print(f'Total integrated absorption {intAbs:.1f} ppm. alpha_SiO2 = {alpha_SiO2:.1f} ppm/um; alpha_a-Si = {alpha_aSi:.1f} ppm/um.')
+print(f'Total integrated absorption {intAbs:.1f} ppm. alpha_SiO2 = {alpha_SiO2:.1g} ppm/um; alpha_a-Si = {alpha_aSi:.1f} ppm/um.')
 ax2[0].text(0.5, 0.7, absStr, transform=ax2[0].transAxes, fontsize=14)
 
 # Add some vlines
@@ -195,7 +195,9 @@ ax3.set_ylim([8e-24, 2e-20])
 
 ax3.text(80, 11e-21, '# of layers =  {}'.format(len(L)), size='x-small')
 ax3.text(80, 7e-21, 'Thickness = {} um'.format(round(1e6*sum(L),2)), size='x-small')
-ax3.text(50, 5e-21, '$x_{{Brown}}$ @ 100 Hz = {noise} zm/rHz'.format(noise=round(Larm * np.sqrt(SbrZ100)*1e21,2)), size='x-small')
+ax3.text(50, 4.5e-21,
+         '$x_{{Brown}}$ @ 100 Hz = {noise} zm/$\sqrt{{\mathrm{{Hz}}}}$'.format(noise=round(Larm * np.sqrt(SbrZ100)*1e21,2)),
+         size='x-small')
 
 
 #ax3.grid(which='major', alpha=0.6)
