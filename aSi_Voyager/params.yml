@@ -20,7 +20,8 @@ targets:
 
 # Specify the relative importance of terms in the cost func
 #         Trans    CoatBr    CoatTO     sensitivity   E-field
-weights:  [0.3,      1,       1e-6,       0.03,         1]
+weights:  [0.3,      1,       1e-9,       0.03,         1]
+
 
 # MISC
 # Some other parameters that are used by the code
