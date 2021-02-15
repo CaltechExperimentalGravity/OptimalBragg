@@ -17,18 +17,18 @@ targets:
         - 1        # chosen to match MATLAB optim
         - 1e+42   # chosen to match MATLAB optim
         - 1e-2    # NOT Used currently
-        - 1       # chosen to match MATLAB optim (this seems to not be used ?)
+        - 0       # chosen to match MATLAB optim (this seems to not be used ?)
         - 50e-6    # 50 ppm target transmission 
 
 # Specify the relative importance of terms in the cost func
 #         Trans    CoatBr    CoatTO     sensitivity   E-field    TransAUX
-weights:  [1e2,      1e-6,      1e-9,       1e-4,        1e2,        1e2]
+weights:  [1,      1e-6,      1e-9,       1e-1,        1,        1]
 
 # MISC
 # Some other parameters that are used by the code
 fTO: 100           # Hz, freq at which to evaluate TO noise
 pol: te            # polarization, use "te" or "tm"
 aoi: 0             # degrees, angle of incidence
-Npairs: 4       # how many layer pairs; N_layers = Npairs+1
-Nparticles: 10     # how many starting particles in the optimizer
-gwincStructFile: 'Ta2O5Model.m'
+Npairs: 21       # how many layer pairs; N_layers = Npairs+1
+Nparticles: 5     # how many starting particles in the optimizer
+gwincStructFile: 'Ta2O5Model.yml'
