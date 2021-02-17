@@ -47,7 +47,7 @@ N_particles = opt_params['Nparticles']
 bow = ((0.05, 0.49),)
 bounds = bow*(len(Ls)-1)
 minThickCap = 20e-9 # min thickness of cap layer
-minThick = minThickCap/ifo.Laser.Wavelength *0.67 * 1.5
+minThick = minThickCap/ifo.Laser.Wavelength * 1.5
 bounds = ((minThick, 0.4),) + bounds # make the first layer thin
 if __debug__:
     print(np.shape(bounds))
@@ -57,7 +57,7 @@ if __debug__:
 # minimize by Differential Evolution Optimizer
 res = devo(func=getMirrorCost, bounds=bounds, updating='deferred',
                   strategy = 'best1bin', mutation = (0.1, 1.5),
-                  popsize=N_particles, workers = -1,
+                  popsize=N_particles, workers = -1, maxiter=10000,
                          args=(paramfilename, ifo, gam, False),
                          polish=True, disp=True)
 
