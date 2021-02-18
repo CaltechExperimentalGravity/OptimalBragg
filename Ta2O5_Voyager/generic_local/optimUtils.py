@@ -169,7 +169,7 @@ def TOcost(target, L, fTarget, ifo):
     cost = target * StoZ  # Functional form of the cost may be easily changed
     return(cost)
 
-def getMirrorCost(L, paramFile, ifo, gam, verbose=False):
+def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
     '''
     Compute the cost function for a coating design specified by L, 
     based on the settings in paramFile.
@@ -190,7 +190,9 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False):
     verbose: bool
         Determines level of detail returned by the function. 
         Defaults to False, which outputs only the value of the cost function.
-
+    fixed: int
+        Number of additional pairs, copies of the last variable one to be 
+        appended at the end, kept fixed.
     Returns:
     ----------
     scalarCost: float
@@ -203,6 +205,9 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False):
     if len(par['costs']) != len(par['weights']):
         logging.critical('Parameter file is not configured correctly. Please check it.')
         return()
+    # Add fixed layers at end? Default to 0
+    fixedLayers = np.tile(L[-2:].copy(), fixed)
+    L = np.append(L, fixedLayers)
     # Build up the array of refractive indices
     doublet = np.tile(np.array([ifo.Materials.Coating.Indexlown,
                                 ifo.Materials.Coating.Indexhighn]),
@@ -211,9 +216,11 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False):
     if len(doublet) != len(L):
         # Add another low index layer at the bottom of the stack
         doublet = np.append(doublet, doublet[0])
-    # Add air and substrate
+
+    # Add air, fixed extension, and substrate
     n = np.append(1, doublet)
     n = np.append(n, ifo.Materials.Substrate.RefractiveIndex)
+
     # This is set just for avoiding computing extra costs if so desired. 
     # the weight vector can be used to select only the desired costs by setting the others to 0
     if 'Trans' in par['costs']:

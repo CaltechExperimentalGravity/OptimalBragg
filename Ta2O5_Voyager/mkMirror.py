@@ -31,9 +31,9 @@ voy = gwinc.load_budget('Voyager')
 
 # how many coating Layers?
 Npairs = opt_params['Npairs']
+Nfixed = opt_params['Nfixed']
 Nlayers = 2*Npairs + 1
-Ls = 0.75 * np.ones((Nlayers, 1)) # initial guess
-Ls = Ls[:,0]
+Ls = 0.75 * np.ones(Nlayers - 2*Nfixed) # initial guess
 if __debug__:
     print("Shape of Ls array = " + str(np.shape(Ls)))
 
@@ -45,7 +45,7 @@ N_particles = opt_params['Nparticles']
 
 #x0 = np.random.uniform(0.05, 0.5, (N_particles, len(Ls)))
 bow = ((0.05, 0.49),)
-bounds = bow*(len(Ls)-1)
+bounds = bow*(len(Ls) - 1)
 minThickCap = 20e-9 # min thickness of cap layer
 minThick = minThickCap/ifo.Laser.Wavelength * 1.5
 bounds = ((minThick, 0.4),) + bounds # make the first layer thin
@@ -53,14 +53,15 @@ if __debug__:
     print(np.shape(bounds))
     tic = default_timer()
 
+getMirrorCost(L = Ls, paramFile=paramfilename, ifo=ifo, 
+  gam=gam, verbose=True, fixed=Nfixed)
 
 # minimize by Differential Evolution Optimizer
 res = devo(func=getMirrorCost, bounds=bounds, updating='deferred',
                   strategy = 'best1bin', mutation = (0.1, 1.5),
-                  popsize=N_particles, workers = -1, maxiter=10000,
-                         args=(paramfilename, ifo, gam, False),
+                  popsize=N_particles, workers = -1, maxiter=2000,
+                         args=(paramfilename, ifo, gam, False, Nfixed),
                          polish=True, disp=True)
-
 
 if __debug__:
     print(" ")
@@ -70,8 +71,13 @@ if __debug__:
 
 # run once to get the costs for the final solution
 scalarCost, costOut = getMirrorCost(L=res.x, paramFile=paramfilename,
-              ifo=ifo, gam=gam, verbose=True)
+              ifo=ifo, gam=gam, verbose=True, fixed=Nfixed)
 
+
+# Manually add fixed layers to solution just for saving and plotting
+Lres = res.x
+fixedLayers = np.tile(Lres[-2:].copy(), Nfixed)
+Lres = np.append(Lres, fixedLayers)
 
 
 # make new dict for saving the data
@@ -82,7 +88,7 @@ z["opt_name"] = 'ETM'
 
 #        costOut = {}
 #        costOut['n'] = n
-z['L'] = res.x
+z['L'] = Lres
 z['T'] = costOut['T']
 z['Taux'] = costOut['Taux']
 #        costOut['R'] = 1 - T
