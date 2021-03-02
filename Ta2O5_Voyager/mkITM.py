@@ -1,11 +1,11 @@
 r"""
-run this code to optimize a layer structure design for a ETM HR coating
+run this code to optimize a layer structure design for a ITM HR coating
 
-this coating is for the LIGO Voyager ETM operating at 123 K
+this coating is for the LIGO Voyager ITM operating at 123 K
 
 the low index material is SiO2 and the high index material is a-Si
 
-the center wavelength of the laser is 2128 nm (set in the aSiModel.m file)
+the center wavelength of the laser is 2128 nm
 
 """
 
@@ -23,7 +23,7 @@ from scipy.optimize import differential_evolution as devo
 from scipy.io import loadmat,savemat
 
 
-paramfilename = 'params.yml'
+paramfilename = 'ITM_params.yml'
 opt_params = importParams(paramfilename)
 
 ifo = gwinc.Struct.from_file(opt_params['gwincStructFile'])
@@ -33,7 +33,7 @@ voy = gwinc.load_budget('Voyager')
 Npairs = opt_params['Npairs']
 Nfixed = opt_params['Nfixed']
 Nlayers = 2*Npairs + 1
-Ls = 0.75 * np.ones(Nlayers - 2*Nfixed) # initial guess
+Ls = np.ones(Nlayers - 2*Nfixed) # initial guess
 if __debug__:
     print("Shape of Ls array = " + str(np.shape(Ls)))
 
@@ -44,7 +44,7 @@ gam = brownianProxy(ifo)
 N_particles = opt_params['Nparticles']
 
 #x0 = np.random.uniform(0.05, 0.5, (N_particles, len(Ls)))
-bow = ((0.05, 0.49),)
+bow = ((0.1, 0.4),)
 bounds = bow*(len(Ls) - 1)
 minThickCap = 20e-9 # min thickness of cap layer
 minThick = minThickCap/ifo.Laser.Wavelength * 1.5
@@ -53,13 +53,11 @@ if __debug__:
     print(np.shape(bounds))
     tic = default_timer()
 
-getMirrorCost(L = Ls, paramFile=paramfilename, ifo=ifo, 
-  gam=gam, verbose=True, fixed=Nfixed)
 
 # minimize by Differential Evolution Optimizer
 res = devo(func=getMirrorCost, bounds=bounds, updating='deferred',
-                  strategy = 'best1bin', mutation = (0.1, 1.5),
-                  popsize=N_particles, workers = -1, maxiter=2000,
+                  strategy = 'best1bin', mutation = (0.05, 1.85),
+                  popsize=N_particles, workers = -1, maxiter=10000,
                          args=(paramfilename, ifo, gam, False, Nfixed),
                          polish=True, disp=True)
 
@@ -84,7 +82,7 @@ Lres = np.append(Lres, fixedLayers)
 z = {}
 #z["result"]   = res
 z["ifo_name"] = opt_params['gwincStructFile']
-z["opt_name"] = 'ETM'
+z["opt_name"] = 'ITM'
 
 #        costOut = {}
 #        costOut['n'] = n
@@ -104,4 +102,4 @@ fname   = z["opt_name"] + '_' + fname + '_' + tnowstr + '.mat'
 
 z['filename'] = fname
 # save layer data and also the whole ifo param file
-savemat('Data/' + fname, z, do_compression=True)
+savemat('Data/ITM/' + fname, z, do_compression=True)

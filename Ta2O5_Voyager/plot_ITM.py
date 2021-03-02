@@ -59,8 +59,8 @@ plt.rcParams.update({'text.usetex': False,
 alpha_SiO2 = 1e-3 # (get a better # for 2 um and 123 K) https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
 alpha_aSi = 100e-6 / 1e-6 # Figs 2/3, https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
 
-# load Data file from run of mkMirror.py
-fname = max(glob.iglob('Data/*Layers*.mat'), key=os.path.getctime)
+# load Data file from run of mkITM.py
+fname = max(glob.iglob('Data/ITM/*Layers*.mat'), key=os.path.getctime)
 fname = fname[5:] # rm 'data' from the name
 #fname = 'ETM_Layers_190519_1459.mat'
 if __debug__:
@@ -127,7 +127,7 @@ if __debug__:
         1e9*lambda0, round(1e6*T,2)))
 
 
-plt.savefig('Figures/' + 'ETM_R' + '.pdf')
+plt.savefig('Figures/ITM/' + 'ITM_R' + '.pdf')
 
 
 # Make the plotof the Layer structure
@@ -169,7 +169,7 @@ fig2.subplots_adjust(hspace=0.01,left=0.09,right=0.95,top=0.92)
 fig2.suptitle('Ta2O5:SiO$_2$ coating electric field')
 
 plt.savefig('Figures/' + fname[:-4] + '.pdf')
-plt.savefig('Figures/' + 'ETM_Layers' + '.pdf')
+plt.savefig('Figures/ITM/' + 'ITM_Layers' + '.pdf')
 
 
 # ----  plot the Thermal Noise
@@ -206,7 +206,7 @@ ax3.text(80, 5e-21, 'Thickness = {} um'.format(round(1e6*sum(L),2)), size='x-sma
 ax3.set_ylabel('Displacement Noise $[\\mathrm{m} / \\sqrt{\\mathrm{Hz}}]$')
 ax3.set_xlabel('Frequency [Hz]')
 
-plt.savefig('Figures/' + 'ETM_TN.pdf')
+plt.savefig('Figures/ITM/' + 'ITM_TN.pdf')
 
 if __debug__:
     dt = default_timer() - tic

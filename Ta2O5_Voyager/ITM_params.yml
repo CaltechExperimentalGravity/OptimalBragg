@@ -1,0 +1,35 @@
+#  parameter file for doing cost function minimization for optimal coating design
+#
+# This specifies the terms to include in your cost func
+costs:
+        - Trans      # Optimize for a target PSL transmission
+        - coatBr     # Optimize for a target brownian noise level
+        - coatTO     # Optimize for a target thermo-optic noise level
+        - sensL      # Minimize sensitivity to manufacturing tolerances on optical thickness
+        - surfE      # Minimize the surface E field
+          #- absorp  # Minimize absorption (not yet...)
+        - TransAUX   # Optimize for a target AUX transmission
+
+# Use this to specify the target levels for each term in the cost func
+# There has to be one target per term in the cost
+targets:
+        - 2e-3    # target transmission
+        - 1        # chosen to match MATLAB optim
+        - 1e+42   # chosen to match MATLAB optim
+        - 1e-2    # NOT Used currently
+        - 0       # chosen to match MATLAB optim (this seems to not be used ?)
+        - 50e-6    # 50 ppm target transmission 
+
+# Specify the relative importance of terms in the cost func
+#         Trans    CoatBr    CoatTO     sensitivity   E-field    TransAUX
+weights:  [2e1,      1e-11,      1e-11,       5e0,       1e1,        2e1]
+
+# MISC
+# Some other parameters that are used by the code
+fTO: 100           # Hz, freq at which to evaluate TO noise
+pol: te            # polarization, use "te" or "tm"
+aoi: 0             # degrees, angle of incidence
+Npairs: 14         # how many layer pairs; N_layers =2* Npairs+1
+Nfixed: 0          # how many layer pairs are to be fixed (copied from last)
+Nparticles: 35     # how many starting particles in the optimizer
+gwincStructFile: 'Ta2O5_ITM.yml'
