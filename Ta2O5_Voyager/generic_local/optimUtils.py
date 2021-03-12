@@ -235,6 +235,10 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
             cc1, T = transmissionCost(par['targets'][0], n, L, lamb=1,
                         theta=par['aoi'], pol=par['pol'], sensL=False, surfE=False)
     if 'TransAUX' in par['costs']:
+        if 'sensL' in par['costs']:
+            cc4, Taux = transmissionCost(par['targets'][-1], n, L, lamb=2/3,
+                        theta=par['aoi'], pol=par['pol'], sensL=True, surfE=False)
+        else:
             cc4, Taux = transmissionCost(par['targets'][-1], n, L, lamb=2/3,
                         theta=par['aoi'], pol=par['pol'], sensL=False, surfE=False)
     if 'coatBr' in par['costs']:
@@ -242,7 +246,7 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
     if 'coatTO' in par['costs']:
         cc3 = TOcost(par['targets'][2], L, par['fTO'], ifo)
     # Make the cost
-    cost = np.array([cc1[0], cc2, cc3, cc1[1], cc1[2], cc4[0]])
+    cost = np.array([cc1[0], cc2, cc3, np.sqrt(cc1[1]**2 + cc4[1]**2), cc1[2], cc4[0]])
     scalarCost = np.dot(np.array(par['weights']), cost)
     Nprec = 4
     if verbose:
