@@ -29,7 +29,7 @@ weights:  [2e1,      1e-11,      1e-11,       5e0,       1e1,        2e1]
 fTO: 100           # Hz, freq at which to evaluate TO noise
 pol: te            # polarization, use "te" or "tm"
 aoi: 0             # degrees, angle of incidence
-Npairs: 14         # how many layer pairs; N_layers =2* Npairs+1
-Nfixed: 0          # how many layer pairs are to be fixed (copied from last)
-Nparticles: 35     # how many starting particles in the optimizer
+Npairs: 23         # how many layer pairs; N_layers =2* Npairs+1
+Nfixed: 4          # how many layer pairs are to be fixed (copied from last)
+Nparticles: 14     # how many starting particles in the optimizer
 gwincStructFile: 'Ta2O5_ITM.yml'

@@ -107,7 +107,7 @@ Materials:
 
 # Laser properties
 Laser:
-  Wavelength    : 2128e-9
+  Wavelength    : 2128.2e-9
   Power         : 125
 
 # Optics
