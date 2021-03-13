@@ -73,21 +73,21 @@ scalarCost, costOut = getMirrorCost(L=res.x, paramFile=paramfilename,
 
 # Build stats based on various figures for radar chart
 stats = {}
-for c,s,w in zip(opt_params['costs'], 
+for c, s, w in zip(opt_params['costs'], 
                  costOut['vectorCost'], 
                  opt_params['weights']):
-    stat = w / s
+    stat = 1 / s
     if s > 1e2 or s < 1e-5:
         stat = 1e-2
-    stats[c] = stat
+    stats[c] = np.abs(np.log(np.abs(stat)))
     # How small is the stdev of the stack thicknesses relative to its mean?
     stats['stdevL'] = np.mean(costOut['L']) / np.std(costOut['L'])
 
 print(stats)
 
-from postdoc_rater import polar_cost
-polar_cost(stats,
-  fname=fR'tests/Figs/ETM_{datetime.now().strftime('%y%m%d_%H%M')}.pdf',
+from starfish import polar_cost
+polar_cost(stats, scale=10,
+  fname=r'Figures/ETM/ETM_SF_'+ datetime.now().strftime('%y%m%d_%H%M')+'.pdf',
   figtitle=fR'Stack with {Nlayers} layers ({Nfixed} fixed bilayers) and {N_particles} particles')
 
 # Manually add fixed layers to solution just for saving and plotting
