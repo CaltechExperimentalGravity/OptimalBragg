@@ -11,7 +11,7 @@ import sys,glob,os
 #sys.path.append('../../pygwinc/')
 
 sys.path.append('../generic/')
-from coatingUtils import *
+from generic_local.coatingUtils import *
 
 import numpy as np
 from timeit import default_timer
@@ -23,10 +23,16 @@ from matplotlib.ticker import FormatStrFormatter
 from gwinc import noise
 
 #plt.style.use('bmh')
+paramfilename = 'ETM_params.yml'
+opt_params = importParams(paramfilename)
+Npairs = opt_params['Npairs']
+Nfixed = opt_params['Nfixed']
+Nlayers = 2*Npairs + 1
+N_particles = opt_params['Nparticles']
 
 
 plt.rcParams.update({'text.usetex': False,
-                     'lines.linewidth': 4,
+                     'lines.linewidth': 3,
                      'font.family': 'serif',
                      'font.serif': 'Georgia',
                      'font.size': 22,
@@ -62,11 +68,13 @@ alpha_aSi = 100e-6 / 1e-6 # Figs 2/3, https://journals.aps.org/prl/pdf/10.1103/P
 # load Data file from run of mkETM.py
 fname = max(glob.iglob('Data/ETM/*Layers*.mat'), key=os.path.getctime)
 fname = fname[5:] # rm 'data' from the name
+
 #fname = 'ETM_Layers_190519_1459.mat'
 if __debug__:
     print('Loading ' + fname + '...')
 
 z       = scio.loadmat('Data/' + fname, squeeze_me=True)
+costOut = z['vectorCost']
 n       = z['n']
 T       = z['T']
 Taux    = z['Taux']
@@ -85,10 +93,36 @@ lambda0 = ifo.Laser.Wavelength # meters
 lambda1 = ifo.Laser.Wavelength * 2/3
 
 #  plot of the spectral reflectivity
-lams    = np.linspace(0.4, 1.6, 300)
+lamb1550 = 1550/2128.2
+lamb632 = 632/2128.2
+rr1550, _ = multidiel1(n, z['L'], lamb1550)
+rr632, _ = multidiel1(n, z['L'], lamb632) 
+T1550 = 1 - np.abs(rr1550[0])**2
+T632 = 1 - np.abs(rr632[0])**2
+#  plot of the spectral reflectivity
+lams    = np.linspace(0.2, 1.8, 512)
 rr, _   = multidiel1(n, z['L'], lams)
 RR      = np.abs(rr)**2
 TT      = 1 - RR
+
+# Build stats based on various figures for star fish chart
+stats = {}
+for c, s, w in zip(opt_params['costs'], 
+                 costOut, 
+                 opt_params['weights']):
+    stat = 1 / s
+    if s > 1e2 or s < 1e-5:
+        stat = 1e-2
+    stats[c] = np.abs(np.log(np.abs(stat)))
+    # How small is the stdev of the stack thicknesses relative to its mean?
+    stats['stdevL'] = np.mean(z['L']) / np.std(z['L'])
+
+print(stats)
+from starfish import polar_cost
+polar_cost(stats, scale=10,
+  fname=r'Figures/ETM/ETM_SF_'+ fname[-16:-4]+'.png',
+  figtitle=fR'Stack with {Nlayers} layers ({Nfixed} fixed bilayers) and {N_particles} particles')
+
 
 #  convert from optical thickness to physical thickness
 L       = lambda0 * op2phys(z['L'], n[1:-1])
@@ -105,30 +139,40 @@ if __debug__:
 
 fig, ax = plt.subplots(1,1)
 ax.semilogy(1e6*lams*lambda0, TT,
-                lw=3, label='Transmissivity', c='xkcd:Red')
+                lw=1.5, label='Transmissivity', c='xkcd:Red')
 ax.semilogy(1e6*lams*lambda0, RR,
-                lw=3, label='Reflectivity', c='xkcd:electric blue', alpha=0.5)
+                lw=1.5, label='Reflectivity', c='xkcd:electric blue', alpha=0.5)
 ax.vlines(lambda0*1e6, T, 1, linestyle='--')
 ax.vlines(lambda1*1e6, Taux, 1, linestyle='--')
+ax.vlines(lamb632*lambda0*1e6, T632, 1, linestyle='-.')
+ax.vlines(lamb1550*lambda0*1e6, T1550, 1, linestyle='-.')
 ax.set_xlabel('Wavelength [$\mu \\mathrm{m}$]')
 ax.set_ylabel('T or R')
 ax.set_ylim((1e-6, 1))
-ax.text(lambda0*1.051e6, 1e-1, 'T @ {} um'.format(
-    1e6*lambda0), size='x-small')
-ax.text(lambda0*1.051e6, 0.5e-1, '= {} ppm'.format(
-    round(1e6*T,1)), size='x-small')
-ax.text(lambda1*1.051e6, 1e-1, f'T @ {lambda1*1e6:.3f} um', 
-    size='x-small')
-ax.text(lambda1*1.051e6, 0.5e-1, '= {} ppm'.format(
-    round(1e6*Taux,1)), size='x-small')
+ax.text(lambda0*1.051e6, 1e-2, f'T @ {1e6*lambda0:.4f} um', size='x-small')
+ax.text(lambda0*1.051e6, 0.5e-2, f'= {round(1e6*T,1):.2f} ppm', size='x-small')
+ax.text(lambda1*0.851e6, 1e-2, f'T @ {lambda1*1e6:.4f} um', size='x-small')
+ax.text(lambda1*0.851e6, 0.5e-2, f'= {round(1e6*Taux,1):.2f} ppm', size='x-small')
+# Oplevs stuff
+ax.text(lamb1550*lambda0*1.051e6, 1e-3, f'T @ {1e6*lambda0*lamb1550:.3f} um', size='x-small')
+ax.text(lamb1550*lambda0*1.051e6, 0.5e-3, f'= {1e6*T1550:.2f} ppm', size='x-small')
+ax.text(lamb632*lambda0*1e6, 1e-3, f'T @ {lamb632*lambda0*1e6:.3f} um', size='x-small')
+ax.text(lamb632*lambda0*1e6, 0.5e-3, f'= {1e6*T632:.2f} ppm', size='x-small')
+
+im = plt.imread('Figures/ETM/ETM_SF'+ fname[-16:-4]+'.png')
+
+newax = fig.add_axes([0.55, 0.1, 0.4, 0.4], anchor='NE')
+newax.imshow(im)
+newax.axis('off')
+
 ax.legend()
 if __debug__:
     print('Transmission of this coating at {} nm is {} ppm'.format(
         1e9*lambda0, round(1e6*T,2)))
 
 
+plt.savefig('Figures/ETM/' + 'ETM_R' + fname[-16:-4] + '.pdf')
 plt.savefig('Figures/ETM/' + 'ETM_R' + '.pdf')
-
 
 # Make the plotof the Layer structure
 fig2 , ax2 = plt.subplots(2,1, sharex=True)

@@ -33,7 +33,7 @@ voy = gwinc.load_budget('Voyager')
 Npairs = opt_params['Npairs']
 Nfixed = opt_params['Nfixed']
 Nlayers = 2*Npairs + 1
-Ls = np.ones(Nlayers - 2*Nfixed) # initial guess
+Ls = 0.75*np.ones(Nlayers - 2*Nfixed) # initial guess
 if __debug__:
     print("Shape of Ls array = " + str(np.shape(Ls)))
 
@@ -57,7 +57,7 @@ if __debug__:
 # minimize by Differential Evolution Optimizer
 res = devo(func=getMirrorCost, bounds=bounds, updating='deferred',
                   strategy = 'best1bin', mutation = (0.05, 1.85),
-                  popsize=N_particles, workers = -1, maxiter=10000,
+                  popsize=N_particles, workers = -1, maxiter=2000,
                          args=(paramfilename, ifo, gam, False, Nfixed),
                          polish=True, disp=True)
 
@@ -84,15 +84,12 @@ z = {}
 z["ifo_name"] = opt_params['gwincStructFile']
 z["opt_name"] = 'ITM'
 
-#        costOut = {}
-#        costOut['n'] = n
 z['L'] = Lres
 z['T'] = costOut['T']
 z['Taux'] = costOut['Taux']
-#        costOut['R'] = 1 - T
-#        costOut['scalarCost'] = scalarCost
-#        costOut['brownianProxy'] = cc2
-#        costOut['vectorCost'] = cost
+z['Toplv'] = costOut['Toplv']
+z['scalarcost'] = scalarCost
+z['vectorCost'] = costOut['vectorCost']
 
 z["n"] = costOut['n']
 

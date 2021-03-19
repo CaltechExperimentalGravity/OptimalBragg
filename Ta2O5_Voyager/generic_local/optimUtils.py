@@ -236,17 +236,24 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
                         theta=par['aoi'], pol=par['pol'], sensL=False, surfE=False)
     if 'TransAUX' in par['costs']:
         if 'sensL' in par['costs']:
-            cc4, Taux = transmissionCost(par['targets'][-1], n, L, lamb=2/3,
+            cc4, Taux = transmissionCost(par['targets'][-2], n, L, lamb=2/3,
                         theta=par['aoi'], pol=par['pol'], sensL=True, surfE=False)
         else:
-            cc4, Taux = transmissionCost(par['targets'][-1], n, L, lamb=2/3,
+            cc4, Taux = transmissionCost(par['targets'][-2], n, L, lamb=2/3,
+                        theta=par['aoi'], pol=par['pol'], sensL=False, surfE=False)
+    if 'TransOPLV' in par['costs']:
+        if 'sensL' in par['costs']:
+            cc5, Toplv = transmissionCost(par['targets'][-1], n, L, lamb=0.297,
+                        theta=par['aoi'], pol=par['pol'], sensL=True, surfE=False)
+        else:
+            cc5, Toplv = transmissionCost(par['targets'][-1], n, L, lamb=0.297,
                         theta=par['aoi'], pol=par['pol'], sensL=False, surfE=False)
     if 'coatBr' in par['costs']:
         cc2 = brownianCost(par['targets'][1], L, gam)
     if 'coatTO' in par['costs']:
         cc3 = TOcost(par['targets'][2], L, par['fTO'], ifo)
     # Make the cost
-    cost = np.array([cc1[0], cc2, cc3, np.sqrt(cc1[1]**2 + cc4[1]**2), cc1[2], cc4[0]])
+    cost = np.array([cc1[0], cc2, cc3, np.sqrt(cc1[1]**2 + cc4[1]**2), cc1[2], cc4[0], cc5[0]])
     scalarCost = np.dot(np.array(par['weights']), cost)
     Nprec = 4
     if verbose:
@@ -256,6 +263,7 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
         print('Cost for sensitivity (dT/dL) =  {}'.format(round(cost[3],Nprec)))
         print('Cost for surface E field     =  {}'.format(round(cost[4],Nprec)))
         print('Cost for AUX transmission    =  {}'.format(round(cost[5],Nprec)))
+        print('Cost for OPLEV transmission    =  {}'.format(round(cost[6],Nprec)))
 
         costOut = {}
         costOut['n'] = n
@@ -264,6 +272,8 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
         costOut['R'] = 1 - T
         costOut['Taux'] = Taux
         costOut['Raux'] = 1 - Taux
+        costOut['Toplv'] = Toplv
+        costOut['Roplv'] = 1 - Toplv
         costOut['scalarCost'] = scalarCost
         costOut['brownianProxy'] = cc2
         costOut['vectorCost'] = cost

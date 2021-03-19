@@ -42,7 +42,7 @@ def polar_cost(scalar_costs, scale=None, fname='radar_chart.pdf', figtitle=''):
     glob_score = r.sum()
     ax.set_title(figtitle)
     # np.show()
-    np.savefig(fname)
+    np.savefig(fname, transparent=True, dpi=200)
 
     return None
 
