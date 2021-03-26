@@ -8,7 +8,7 @@ E-field within the dielectric layer structure.
 import sys,glob,os
 
 # installed through conda rather than direct import
-#sys.path.append('../../pygwinc/')
+#sys.path.append('../../pygwinc')
 
 sys.path.append('../generic/')
 from generic_local.coatingUtils import *
@@ -85,10 +85,10 @@ Taux    = z['Taux']
 
 
 if __debug__:
-    print('Loading ' + 'gwinc.ifo' + ' ' + fname)
+    print('Loading ' + 'ifo' + ' ' + fname)
     tic = default_timer()
 
-ifo     = gwinc.Struct.from_file(z["ifo_name"])
+ifo     = Struct.from_file(z["ifo_name"])
 if __debug__:
     dt = default_timer() - tic
     print('Took ' + str(round(dt,3)) + ' sec to load IFO w/ matlab.')
@@ -220,15 +220,15 @@ plt.savefig('./Figures/ITM/' + 'ITM_Layers' + '.pdf')
 # ----  plot the Thermal Noise
 ff = np.logspace(0, 4, 500)
 fig3, ax3 = plt.subplots(1,1)
-# Build up a "mirror" structure as required by pygwinc
+# Build up a "mirror" structure as required by pymir = ifo.Optics.ETM
 mir = ifo.Optics.ETM
 mir.Coating.dOpt = z['L'][:]
-StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.coating_thermooptic(ff, 
+StoZ, SteZ, StrZ, _ = noise.coatingthermal.coating_thermooptic(ff, 
                                                 mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
-SbrZ = gwinc.noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
+SbrZ = noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
 
-subBrown = gwinc.noise.substratethermal.substrate_brownian(ff, mir, ifo.Optics.ETM.BeamRadius)
-subTE    = gwinc.noise.substratethermal.substrate_thermoelastic(ff, mir, ifo.Optics.ETM.BeamRadius)
+subBrown = noise.substratethermal.substrate_brownian(ff, mir, ifo.Optics.ETM.BeamRadius)
+subTE    = noise.substratethermal.substrate_thermoelastic(ff, mir, ifo.Optics.ETM.BeamRadius)
 
 Larm = 1 #4000
 
