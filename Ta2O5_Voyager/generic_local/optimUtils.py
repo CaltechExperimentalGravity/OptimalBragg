@@ -2,11 +2,12 @@
 
 from .coatingUtils import *
 import os
-#import logging
+# import logging
 import matplotlib.pyplot as plt
+import gwinc
 
 # Logging setup
-#logging.basicConfig(
+# logging.basicConfig(
 #    level=os.getenv('LOG_LEVEL', 'INFO'),
 #    format="%(levelname)s \n%(message)s")
 
@@ -30,6 +31,7 @@ plt.rcParams.update({'text.usetex': False,
                      'savefig.dpi': 80,
                      'pdf.compression': 9})
 
+
 def transmissionCost(target, n, L, lamb=1, theta=0, pol='te', sensL=False, surfE=True):
     '''
     Function that evaluates the transmission of the coating specified in
@@ -40,49 +42,67 @@ def transmissionCost(target, n, L, lamb=1, theta=0, pol='te', sensL=False, surfE
     target: float
         Target transmission
     n: array_like
-        Array of refractive indices, including the incident 
-        and transmitted media. Ordered from incident medium to 
+        Array of refractive indices, including the incident
+        and transmitted media. Ordered from incident medium to
         transmitted medium.
     L: array_like
-        Array of optical thicknesses comprising the dielectric stack, 
-        ordered from incident medium to transmitted medium. 
+        Array of optical thicknesses comprising the dielectric stack,
+        ordered from incident medium to transmitted medium.
         Should have 2 fewer elements than n.
     lamb: float or array_like
-        Wavelength(s) at which the reflectivity is to be evaluated, 
+        Wavelength(s) at which the reflectivity is to be evaluated,
         in units of some central (design) wavelength.
     theta: float
         Angle of incidence in degrees. Defaults to 0 degrees (normal incidence)
     pol: str, 'te' or 'tm'
-        Polarization at which reflectivity is to be evaluated. 
+        Polarization at which reflectivity is to be evaluated.
         Defaults to 'te' (s-polarization)
     sensL: bool
         Option to compute sensitivity cost
     surfE: bool
         Option to compute cost for surface E field.
-
     Returns:
     ---------
     cost: array_like
-        An array of scalar costs for the transmission, and if requested, 
-        the sensitivity and the surface E field
+        An array of scalar costs for the transmission, and if requested,
+        the sensitivity, and the surface E field
     T: float
         Transmission of the coating.
     '''
     r, _ = multidiel1(n, L, lamb, theta, pol)
     T = 1 - np.abs(r)**2
     # The functional form may be easily changed
-    costT = np.abs((target - T)/target)**2  
+    costT = np.abs((target - T)/target)**2
     cost = costT
     if sensL:
         rPerturb, _ = multidiel1(n, 1.01*L, lamb, theta, pol)
         TPerturb = 1 - np.abs(rPerturb)**2
         # Fractional change in the transmissivity, relative to 1%
-        costS = np.abs((T-TPerturb)/0.01/T)   
+        costS = np.abs((T - TPerturb) / (0.01 * T))
         cost = np.append(cost, costS)
     if surfE:
         costE = 50 * np.arcsinh(np.abs(1 + r)**2)
         cost = np.append(cost, costE)
     return(cost, T)
+
+
+def costvarL(target, L):
+    """Get cost of relative variation of thicknesses in the stack
+    
+    Args:
+        target (float): Target standard deviation
+        L: array_like
+        Array of optical thicknesses comprising the dielectric stack,
+        ordered from incident medium to transmitted medium.
+        Should have 2 fewer elements than n.
+    Returns:
+        cost: array_like
+            An array of scalar costs for the relative thickness variance
+    """
+    relative_stdev = np.mean(np.array(L)) / np.std(np.array(L))
+    cost = np.abs((target - relative_stdev) / target)**2
+    return cost
+
 
 def brownianProxy(ifo):
     '''
@@ -90,27 +110,28 @@ def brownianProxy(ifo):
     Parameters:
     -----------
     ifo: pygwinc struct
-        Return object of pygwinc load_ifo function, which has 
+        Return object of pygwinc load_ifo function, which has
         all the material properties
     Returns:
     --------
     gam: float
-        The pre-factor for use in the proxy function for Brownian noise 
+        The pre-factor for use in the proxy function for Brownian noise
         per E0900068 pg4.
     '''
     phi_high = ifo.Materials.Coating.Phihighn
-    n_high   = ifo.Materials.Coating.Indexhighn
-    Y_high   = ifo.Materials.Coating.Yhighn
-    phi_low  = ifo.Materials.Coating.Philown
-    n_low    = ifo.Materials.Coating.Indexlown
-    Y_low    = ifo.Materials.Coating.Ylown
-    Y_sub    = ifo.Materials.Substrate.MirrorY
+    n_high = ifo.Materials.Coating.Indexhighn
+    Y_high = ifo.Materials.Coating.Yhighn
+    phi_low = ifo.Materials.Coating.Philown
+    n_low = ifo.Materials.Coating.Indexlown
+    Y_low = ifo.Materials.Coating.Ylown
+    Y_sub = ifo.Materials.Substrate.MirrorY
     a = phi_high / phi_low
     b = n_low / n_high
     c = Y_high / Y_sub + Y_sub / Y_high
-    d = Y_low / Y_sub  + Y_sub / Y_low
+    d = Y_low / Y_sub + Y_sub / Y_low
     gam = a*b*c/d
     return(gam)
+
 
 def brownianCost(target, L, gam):
     '''
@@ -122,25 +143,26 @@ def brownianCost(target, L, gam):
     target: float
         Target value for this cost function.
     L: array_like
-        Array of optical thicknesses comprising the dielectric stack, 
+        Array of optical thicknesses comprising the dielectric stack,
         ordered from incident medium to transmitted medium.
     gam:float
-        The pre-factor for use in the proxy function for Brownian noise 
+        The pre-factor for use in the proxy function for Brownian noise
         per E0900068 pg4.
     Returns:
     ---------
     cost: float
         Scalar cost which is a proxy for the Brownian noise level
     '''
-    zLow  = np.sum(L[::2])    # Sum of thicknesses of low index layers
+    zLow = np.sum(L[::2])    # Sum of thicknesses of low index layers
     zHigh = np.sum(L[1::2])   # Sum of thicknesses of high index layers
-    SBrZ  = zLow + gam*zHigh  # Proxy brownian noise
-    cost  = target * SBrZ     # Functional form of the cost may be easily changed
+    SBrZ = zLow + gam*zHigh  # Proxy brownian noise
+    cost = target * SBrZ     # Functional form of the cost may be easily changed
     return(cost)
+
 
 def TOcost(target, L, fTarget, ifo):
     '''
-    Function to calculate a cost for the Thermo-Optic noise for 
+    Function to calculate a cost for the Thermo-Optic noise for
     a coating specified by L.
     pygwinc is used to do the TO noise evaluation.
 
@@ -149,12 +171,12 @@ def TOcost(target, L, fTarget, ifo):
     target: float
         Target value for this cost function
     L: array_like
-        Array of optical thicknesses comprising the dielectric stack, 
+        Array of optical thicknesses comprising the dielectric stack,
         ordered from incident medium to transmitted medium.
     fTarget: float
         Frequency at which to evaluate TO noise.
     ifo: pygwinc struct
-        Return object of pygwinc load_ifo function, which has 
+        Return object of pygwinc load_ifo function, which has
         all the material properties
     Returns:
     ---------
@@ -165,13 +187,15 @@ def TOcost(target, L, fTarget, ifo):
     # Build up a "mirror" structure as required by pygwinc
     mir = ifo.Optics.ETM
     mir.Coating.dOpt = L
-    StoZ, _, _, _ = gwinc.noise.coatingthermal.coating_thermooptic(fTarget, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
+    StoZ, _, _, _ = gwinc.noise.coatingthermal.coating_thermooptic(
+        fTarget, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
     cost = target * StoZ  # Functional form of the cost may be easily changed
     return(cost)
 
-def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
+
+def getMirrorCost(L, paramFile, ifo, gam, verbose=False, copies=0, fixed=0):
     '''
-    Compute the cost function for a coating design specified by L, 
+    Compute the cost function for a coating design specified by L,
     based on the settings in paramFile.
 
     Parameters:
@@ -179,19 +203,21 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
     paramFile: str
         Path to the parameter file.
     L: array_like
-        Array of optical thicknesses comprising the dielectric stack, 
+        Array of optical thicknesses comprising the dielectric stack,
         ordered from incident medium to transmitted medium.
     ifo: pygwinc struct
-        Return object of pygwinc load_ifo function, which has 
+        Return object of pygwinc load_ifo function, which has
         all the material properties
     gam:
-        pre-computed value of little gamma used as a proxy Brownian 
+        pre-computed value of little gamma used as a proxy Brownian
         noise cost
     verbose: bool
-        Determines level of detail returned by the function. 
+        Determines level of detail returned by the function.
         Defaults to False, which outputs only the value of the cost function.
+    copies: int
+        Number of copied variable pairs (i.e. for super-periodic structure)
     fixed: int
-        Number of additional pairs, copies of the last variable one to be 
+        Number of additional pairs, copies of the last variable one to be
         appended at the end, kept fixed.
     Returns:
     ----------
@@ -203,11 +229,18 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
     # Load the parameters
     par = importParams(paramFile)
     if len(par['costs']) != len(par['weights']):
-        logging.critical('Parameter file is not configured correctly. Please check it.')
+        logging.critical(
+            'Parameter file is not configured correctly. Please check it.')
         return()
+
+    # Add Ncopies of single variable stack
+    copiedLayers = np.tile(L[:-2].copy(), copies)
+    L = np.append(L, copiedLayers)
+
     # Add fixed layers at end? Default to 0
     fixedLayers = np.tile(L[-2:].copy(), fixed)
     L = np.append(L, fixedLayers)
+
     # Build up the array of refractive indices
     doublet = np.tile(np.array([ifo.Materials.Coating.Indexlown,
                                 ifo.Materials.Coating.Indexhighn]),
@@ -221,49 +254,60 @@ def getMirrorCost(L, paramFile, ifo, gam, verbose=False, fixed=0):
     n = np.append(1, doublet)
     n = np.append(n, ifo.Materials.Substrate.RefractiveIndex)
 
-    # This is set just for avoiding computing extra costs if so desired. 
+    # This is set just for avoiding computing extra costs if so desired.
     # the weight vector can be used to select only the desired costs by setting the others to 0
     if 'Trans' in par['costs']:
         if 'sensL' in par['costs']:
             if 'surfE' in par['costs']:
                 cc1, T = transmissionCost(par['targets'][0], n, L, lamb=1,
-                        theta=par['aoi'], pol=par['pol'], sensL=True, surfE=True)
+                  theta=par['aoi'], pol=par['pol'], sensL=True, surfE=True, )
             else:
                 cc1, T = transmissionCost(par['targets'][0], n, L, lamb=1,
-                        theta=par['aoi'], pol=par['pol'], sensL=True, surfE=False)
+                  theta=par['aoi'], pol=par['pol'], sensL=True, surfE=False)
         else:
             cc1, T = transmissionCost(par['targets'][0], n, L, lamb=1,
                         theta=par['aoi'], pol=par['pol'], sensL=False, surfE=False)
     if 'TransAUX' in par['costs']:
         if 'sensL' in par['costs']:
-            cc4, Taux = transmissionCost(par['targets'][-2], n, L, lamb=2/3,
+            cc4, Taux = transmissionCost(par['targets'][5], n, L, lamb=2/3,
                         theta=par['aoi'], pol=par['pol'], sensL=True, surfE=False)
         else:
-            cc4, Taux = transmissionCost(par['targets'][-2], n, L, lamb=2/3,
+            cc4, Taux = transmissionCost(par['targets'][5], n, L, lamb=2/3,
                         theta=par['aoi'], pol=par['pol'], sensL=False, surfE=False)
     if 'TransOPLV' in par['costs']:
         if 'sensL' in par['costs']:
-            cc5, Toplv = transmissionCost(par['targets'][-1], n, L, lamb=0.297,
+            cc5, Toplv = transmissionCost(par['targets'][6], n, L, lamb=0.297,
                         theta=par['aoi'], pol=par['pol'], sensL=True, surfE=False)
         else:
-            cc5, Toplv = transmissionCost(par['targets'][-1], n, L, lamb=0.297,
+            cc5, Toplv = transmissionCost(par['targets'][6], n, L, lamb=0.297,
                         theta=par['aoi'], pol=par['pol'], sensL=False, surfE=False)
+    if 'stdevL' in par['costs']:
+        cc6 = costvarL(par['targets'][7], L)
     if 'coatBr' in par['costs']:
         cc2 = brownianCost(par['targets'][1], L, gam)
     if 'coatTO' in par['costs']:
         cc3 = TOcost(par['targets'][2], L, par['fTO'], ifo)
     # Make the cost
-    cost = np.array([cc1[0], cc2, cc3, np.sqrt(cc1[1]**2 + cc4[1]**2), cc1[2], cc4[0], cc5[0]])
+    cost = np.array([cc1[0], cc2, cc3, np.sqrt(cc1[1]**2 + cc4[1]**2), cc1[2], cc4[0], cc5[0], cc6])
     scalarCost = np.dot(np.array(par['weights']), cost)
     Nprec = 4
     if verbose:
-        print('Cost for Brownian noise      =  {}'.format(round(cost[1],Nprec)))
-        print('Cost for Transmission        =  {}'.format(round(cost[0],Nprec)))
-        print('Cost for Thermo-Optic noise  =  {}'.format(round(cost[2],Nprec)))
-        print('Cost for sensitivity (dT/dL) =  {}'.format(round(cost[3],Nprec)))
-        print('Cost for surface E field     =  {}'.format(round(cost[4],Nprec)))
-        print('Cost for AUX transmission    =  {}'.format(round(cost[5],Nprec)))
-        print('Cost for OPLEV transmission    =  {}'.format(round(cost[6],Nprec)))
+        print('Cost for Brownian noise      =  {}'.format(
+            round(cost[1], Nprec)))
+        print('Cost for Transmission        =  {}'.format(
+            round(cost[0], Nprec)))
+        print(
+            'Cost for Thermo-Optic noise  =  {}'.format(round(cost[2], Nprec)))
+        print(
+            'Cost for sensitivity (dT/dL) =  {}'.format(round(cost[3], Nprec)))
+        print('Cost for surface E field     =  {}'.format(
+            round(cost[4], Nprec)))
+        print('Cost for AUX transmission    =  {}'.format(
+            round(cost[5], Nprec)))
+        print('Cost for OPLEV transmission  =  {}'.format(
+            round(cost[6], Nprec)))
+        print('Cost for relative L stdev    =  {}'.format(
+            round(cost[7], Nprec)))
 
         costOut = {}
         costOut['n'] = n

@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 import scipy.io as scio
 from matplotlib.ticker import FormatStrFormatter
-from gwinc import noise
+from gwinc import noise, Struct
 
 #plt.style.use('bmh')
 paramfilename = 'ETM_params.yml'
@@ -29,7 +29,6 @@ Npairs = opt_params['Npairs']
 Nfixed = opt_params['Nfixed']
 Nlayers = 2*Npairs + 1
 N_particles = opt_params['Nparticles']
-
 
 plt.rcParams.update({'text.usetex': False,
                      'lines.linewidth': 3,
@@ -65,15 +64,20 @@ plt.rcParams.update({'text.usetex': False,
 alpha_SiO2 = 1e-3 # (get a better # for 2 um and 123 K) https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
 alpha_aSi = 100e-6 / 1e-6 # Figs 2/3, https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
 
-# load Data file from run of mkETM.py
-fname = max(glob.iglob('Data/ETM/*Layers*.mat'), key=os.path.getctime)
-fname = fname[5:] # rm 'data' from the name
+# load Data file from run of mkITM.py
+if len(sys.argv) == 1:
+    fname = max(glob.iglob('Data/ETM/*Layers*.mat'), key=os.path.getctime)
+    fname = fname[5:] # rm 'data' from the name
+    z = scio.loadmat('Data/' + fname, squeeze_me=True)
+else:
+    fname = str(sys.argv[1])
+    # fname = fname[fname.find('ETM/')::]
+    z = scio.loadmat(fname, squeeze_me=True)
 
 #fname = 'ETM_Layers_190519_1459.mat'
 if __debug__:
     print('Loading ' + fname + '...')
 
-z       = scio.loadmat('Data/' + fname, squeeze_me=True)
 costOut = z['vectorCost']
 n       = z['n']
 T       = z['T']
@@ -84,22 +88,21 @@ if __debug__:
     print('Loading ' + 'gwinc.ifo' + ' ' + fname)
     tic = default_timer()
 
-ifo     = gwinc.Struct.from_file(z["ifo_name"])
+ifo     = Struct.from_file(z["ifo_name"])
 if __debug__:
     dt = default_timer() - tic
     print('Took ' + str(round(dt,3)) + ' sec to load IFO w/ matlab.')
 
 lambda0 = ifo.Laser.Wavelength # meters
 lambda1 = ifo.Laser.Wavelength * 2/3
-
-#  plot of the spectral reflectivity
 lamb1550 = 1550/2128.2
 lamb632 = 632/2128.2
+
+#  plot of the spectral reflectivity
 rr1550, _ = multidiel1(n, z['L'], lamb1550)
 rr632, _ = multidiel1(n, z['L'], lamb632) 
 T1550 = 1 - np.abs(rr1550[0])**2
 T632 = 1 - np.abs(rr632[0])**2
-#  plot of the spectral reflectivity
 lams    = np.linspace(0.2, 1.8, 512)
 rr, _   = multidiel1(n, z['L'], lams)
 RR      = np.abs(rr)**2
@@ -114,13 +117,11 @@ for c, s, w in zip(opt_params['costs'],
     if s > 1e2 or s < 1e-5:
         stat = 1e-2
     stats[c] = np.abs(np.log(np.abs(stat)))
-    # How small is the stdev of the stack thicknesses relative to its mean?
-    stats['stdevL'] = np.mean(z['L']) / np.std(z['L'])
 
 print(stats)
 from starfish import polar_cost
 polar_cost(stats, scale=10,
-  fname=r'Figures/ETM/ETM_SF_'+ fname[-16:-4]+'.png',
+  fname=r'Figures/ETM/ETM_SF'+ fname[-16:-4]+'.png',
   figtitle=fR'Stack with {Nlayers} layers ({Nfixed} fixed bilayers) and {N_particles} particles')
 
 
@@ -159,7 +160,7 @@ ax.text(lamb1550*lambda0*1.051e6, 0.5e-3, f'= {1e6*T1550:.2f} ppm', size='x-smal
 ax.text(lamb632*lambda0*1e6, 1e-3, f'T @ {lamb632*lambda0*1e6:.3f} um', size='x-small')
 ax.text(lamb632*lambda0*1e6, 0.5e-3, f'= {1e6*T632:.2f} ppm', size='x-small')
 
-im = plt.imread('Figures/ETM/ETM_SF'+ fname[-16:-4]+'.png')
+im = plt.imread('./Figures/ETM/ETM_SF'+ fname[-16:-4]+'.png')
 
 newax = fig.add_axes([0.55, 0.1, 0.4, 0.4], anchor='NE')
 newax.imshow(im)
@@ -171,8 +172,8 @@ if __debug__:
         1e9*lambda0, round(1e6*T,2)))
 
 
-plt.savefig('Figures/ETM/' + 'ETM_R' + fname[-16:-4] + '.pdf')
-plt.savefig('Figures/ETM/' + 'ETM_R' + '.pdf')
+plt.savefig('./Figures/ETM/' + 'ETM_R' + fname[-16:-4] + '.pdf')
+plt.savefig('./Figures/ETM/' + 'ETM_R' + '.pdf')
 
 # Make the plotof the Layer structure
 fig2 , ax2 = plt.subplots(2,1, sharex=True)
@@ -212,8 +213,8 @@ ax2[1].set_xlabel('Distance from air interface, $[\mu \mathrm{m}]$')
 fig2.subplots_adjust(hspace=0.01,left=0.09,right=0.95,top=0.92)
 fig2.suptitle('Ta2O5:SiO$_2$ coating electric field')
 
-plt.savefig('Figures/' + fname[:-4] + '.pdf')
-plt.savefig('Figures/ETM/' + 'ETM_Layers' + '.pdf')
+plt.savefig('./Figures/ETM/ETM_Layers' + fname[-16:-4] + '.pdf')
+plt.savefig('./Figures/ETM/' + 'ETM_Layers' + '.pdf')
 
 
 # ----  plot the Thermal Noise
@@ -222,12 +223,12 @@ fig3, ax3 = plt.subplots(1,1)
 # Build up a "mirror" structure as required by pygwinc
 mir = ifo.Optics.ETM
 mir.Coating.dOpt = z['L'][:]
-StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.coating_thermooptic(ff, 
+StoZ, SteZ, StrZ, _ = noise.coatingthermal.coating_thermooptic(ff, 
                                                 mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
-SbrZ = gwinc.noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
+SbrZ = noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
 
-subBrown = gwinc.noise.substratethermal.substrate_brownian(ff, mir, ifo.Optics.ETM.BeamRadius)
-subTE    = gwinc.noise.substratethermal.substrate_thermoelastic(ff, mir, ifo.Optics.ETM.BeamRadius)
+subBrown = noise.substratethermal.substrate_brownian(ff, mir, ifo.Optics.ETM.BeamRadius)
+subTE    = noise.substratethermal.substrate_thermoelastic(ff, mir, ifo.Optics.ETM.BeamRadius)
 
 Larm = 1 #4000
 

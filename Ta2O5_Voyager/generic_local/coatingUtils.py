@@ -5,7 +5,6 @@ import numpy as np
 import scipy.io as scio
 from scipy.interpolate import interp1d, PchipInterpolator
 import yaml
-import gwinc
 import sys
 
 #Some function definitions
@@ -52,17 +51,28 @@ def multidiel1(n, L, lamb, theta=0, pol='te'):
     -----------
     [1]: http://eceweb1.rutgers.edu/~orfanidi/ewa/
     '''
-    M = len(n) - 2                # number of slabs
-    if M == 0:
-        L = np.array([])
+    # Number of slabs
+    M = len(n) - 2
+
+    # AoI in radians
     theta = theta * np.pi / 180
+    
+    # Cosine of theta; projection for oblique incidence
     costh = np.conj(np.sqrt(np.conj(1 - (n[0] * np.sin(theta) / n)**2)))
+    
+    # Polarization projection
     if (pol=='te' or pol=='TE'):
         nT = n * costh
     else:
         nT = n / costh
-    if M > 0:
+
+    # Thicknesses
+    if M == 0:
+        L = np.array([])
+    else:
         L = L * costh[1:M+1]
+
+    # Reflectivity
     r = -np.diff(nT) / (np.diff(nT) + 2*nT[0:M+1])
     Gamma1 = r[M] * np.ones(len(np.array([lamb])))
     for i in range(M-1,-1,-1):

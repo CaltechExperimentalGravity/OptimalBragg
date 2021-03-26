@@ -10,28 +10,38 @@ costs:
           #- absorp  # Minimize absorption (not yet...)
         - TransAUX   # Optimize for a target AUX transmission
         - TransOPLV  # Optimize for low HeNe oplev transmission
+        - stdevL       # Minimize the stack thickness variance
 
 # Use this to specify the target levels for each term in the cost func
 # There has to be one target per term in the cost
 targets:
-        - 4.8e-6    # 5 ppm target transmission
-        - 1        # chosen to match MATLAB optim
+        - 4e-6    # 5 ppm target transmission
+        - 1       # chosen to match MATLAB optim
         - 1e+42   # chosen to match MATLAB optim
         - 1e-2    # NOT Used currently
-        - 0       # chosen to match MATLAB optim (this seems to not be used ?)
-        - 48e-6    # 50 ppm target transmission 
-        - 500000e-6
+        - 0    # chosen to match MATLAB optim (this seems to not be used ?)
+        - 40e-6   # 50 ppm target transmission 
+        - 0.05    # 50000 ppm target transmission
+        - 0.1     # 40% stdev in the coating thicknesses
 
 # Specify the relative importance of terms in the cost func
-#         Trans    CoatBr    CoatTO     sensitivity   E-field    TransAUX   TransOPLV
-weights:  [2e1,      1e0,      1e0,       3e0,       1e1,        2e1,       1e0]
+weights:  [ 2e1,  # Trans
+            1e-4, # CoatBr 
+            1e-4, # CoatTO 
+            3e0,  # Sensitivity 
+            2e1,  # E-field
+            2e1,  # Trans AUX
+            1e-1,  # Trans OPLEV
+            1e1,  # L-stdev relative to mean
+            ]  
 
 # MISC
 # Some other parameters that are used by the code
 fTO: 100           # Hz, freq at which to evaluate TO noise
 pol: te            # polarization, use "te" or "tm"
 aoi: 0             # degrees, angle of incidence
-Npairs: 26         # how many layer pairs; N_layers =2* Npairs+1
-Nfixed: 5          # how many layer pairs are to be fixed (copied from last)
-Nparticles: 10     # how many starting particles in the optimizer
+Npairs: 26          # how many bilayers in a single variable stack 
+Ncopies: 0         # how many copies of the single variable stack
+Nfixed: 0          # how many fixed bilayers appended at the end
+Nparticles: 13       # how many starting particles in the optimizer
 gwincStructFile: 'Ta2O5_ETM.yml'
