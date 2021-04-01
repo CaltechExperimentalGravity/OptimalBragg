@@ -1,47 +1,60 @@
 #  parameter file for doing cost function minimization for optimal coating design
-#
-# This specifies the terms to include in your cost func
+
+# This specifies the terms to include in your cost function. To exclude 
+# certain costs from the optimization run, simply set weight to 0.0
 costs:
-        - Trans      # Optimize for a target PSL transmission
-        - coatBr     # Optimize for a target brownian noise level
-        - coatTO     # Optimize for a target thermo-optic noise level
-        - sensL      # Minimize sensitivity to manufacturing tolerances on optical thickness
-        - surfE      # Minimize the surface E field
-          #- absorp  # Minimize absorption (not yet...)
-        - TransAUX   # Optimize for a target AUX transmission
-        - TransOPLV  # Optimize for low HeNe oplev transmission
-        - stdevL       # Minimize the stack thickness variance
+    # PSL transmission
+    TransPSL:
+        target: 5e-6
+        weight: 2e1
+    # Brownian noise level
+    Brownian:
+        target: 1
+        weight: 1e-4
+    # Thermo-optic noise level
+    Thermooptic:
+        target: 1e42 
+        weight: 1e-4
+    # Optical thickness sensitivity
+    Lsens:
+        target: 1e-2
+        weight: 3e0
+    # Surface E-field
+    Esurf:
+        target: 0
+        weight: 1e1
+    # Integrated absorption
+    Absorption: 
+        target: 1e-4
+        weight: 0.0
+    # AUX transmission
+    TransAUX:
+        target: 50e-6
+        weight: 2e1
+    # OPLEV transmission
+    TransOPLEV:
+        target: 0.05 
+        weight: 1e-2
+    # Optical thickness inhomogeneity
+    Lstdev:
+        target: 0.5
+        weight: 1e-1
 
-# Use this to specify the target levels for each term in the cost func
-# There has to be one target per term in the cost
-targets:
-        - 4e-6    # 5 ppm target transmission
-        - 1       # chosen to match MATLAB optim
-        - 1e+42   # chosen to match MATLAB optim
-        - 1e-2    # NOT Used currently
-        - 0    # chosen to match MATLAB optim (this seems to not be used ?)
-        - 40e-6   # 50 ppm target transmission 
-        - 0.05    # 50000 ppm target transmission
-        - 0.1     # 40% stdev in the coating thicknesses
-
-# Specify the relative importance of terms in the cost func
-weights:  [ 2e1,  # Trans
-            1e-4, # CoatBr 
-            1e-4, # CoatTO 
-            3e0,  # Sensitivity 
-            2e1,  # E-field
-            2e1,  # Trans AUX
-            1e-1,  # Trans OPLEV
-            1e1,  # L-stdev relative to mean
-            ]  
-
-# MISC
-# Some other parameters that are used by the code
-fTO: 100           # Hz, freq at which to evaluate TO noise
-pol: te            # polarization, use "te" or "tm"
-aoi: 0             # degrees, angle of incidence
-Npairs: 26          # how many bilayers in a single variable stack 
-Ncopies: 0         # how many copies of the single variable stack
-Nfixed: 0          # how many fixed bilayers appended at the end
-Nparticles: 13       # how many starting particles in the optimizer
-gwincStructFile: 'Ta2O5_ETM.yml'
+# Other parameters used by the code
+misc:
+    # Frequency (Hz) at which to evaluate TO noise
+    fTO: 100
+    # Polarization (use "te" or "tm")
+    pol: 'te'
+    # Angle of incidence (degrees)
+    aoi: 0
+    # Number of bilayers in variable stack
+    Npairs: 22
+    # Number of fixed bilayers at the end of the stack
+    Nfixed: 0
+    # Number of copies of the variable stack
+    Ncopies: 0
+    # Number of particles in the optimizer
+    Nparticles: 10
+    # gwinc file 
+    gwincStructFile: 'Ta2O5_ETM.yml'

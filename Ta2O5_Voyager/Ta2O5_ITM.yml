@@ -95,7 +95,7 @@ Materials:
     # Thermal conductivity (ioffe @ 120K), (W / m / K)
     MassKappa               : 700
     # Index of refraction (ioffe), 3.38 * (1 + 4e-5 * T), at 120 K
-    RefractiveIndex         : 3.5
+    RefractiveIndex         : 3.39
     # Temperature (K)
     Temp                    : 123
 
