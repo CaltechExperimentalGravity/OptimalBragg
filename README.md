@@ -1,5 +1,20 @@
 # Design of Mirror Coatings by global optimization of a cost function
 
+Code to optimize a HR mirror dielectric stack design.
+
+
+## How to Install
+1. do the git clone
+2. you need matlab installed
+3. cd $MATLABROOT/extern/engines/python
+4. python setup.py install (should spit out a bunch of messages and install the matlab_engine for python)
+5. may give this error "OSError: Invalid MATLAB GWINC path: 'gwinc'"
+    * define the GWINCPATH in your .bashrc or other startup file (e.g. when within a conda env use `conda env config vars set GWINCPATH=<your_path_to_matgwinc>`) so that this is defined as a shell variable and points to where your matlab gwinc is
+6. need to setup path in python to point to pygwinc
+
+
+
+## Optimal Objectives
 For the mirror coatings, we have many constraints to satisfy:
 
 1. Transmissivity of XX ppm at a wavelength of 1064 nm.
@@ -10,7 +25,7 @@ For the mirror coatings, we have many constraints to satisfy:
 1. Minimize E-field at HR surface
 1. Layers cannot be less than 1 nm thick or more than 1 micron.
 
-# Description of functions
+### Description of functions
 The `generic` directory contains the most up-to-date versions of the various scripts.
  * `multidiel1.m` --- used to calculate coating reflectivity.
  * `getMirrorCost.m` --- Generic cost function template which will be used by global optimizer, e.g. PSO.
@@ -26,7 +41,7 @@ The `generic` directory contains the most up-to-date versions of the various scr
 All other functions in `generic` are adaptations of the above list to specific design cases.
 
 
-# Monte-Carlo analysis of sensitivity of coating design to assumed model parameters
+## Monte-Carlo analysis of sensitivity of coating design to assumed model parameters
 Once a coating design has been generated, we'd like to see how sensitive it is to 
  * Manufacturing tolerances
  * Assumed values of model parameters, e.g. refractive indices, dispersion, angle of incidence etc
@@ -45,15 +60,8 @@ Tools to do this sort of analysis are available in `generic/pythonAddOns`. A des
 	* Absorption (to be added)
 6. `cornerPlt.py` takes in the output file from `doMC.py` and generates a visualization of the MC simulation.
 
-# Paper draft
+## Paper draft
 A paper draft of this work lives at [this git repo](https://github.com/CaltechExperimentalGravity/OptimalCoatingDesign)
 
 
-# How to Install
-1. do the git clone
-2. you need matlab installed
-3. cd $MATLABROOT/extern/engines/python
-4. python setup.py install (should spit out a bunch of messages and install the matlab_engine for python)
-5. may give this error "OSError: Invalid MATLAB GWINC path: 'gwinc'"
-    * define the GWINCPATH in your .bashrc or other startup file (e.g. when within a conda env use `conda env config vars set GWINCPATH=<your_path_to_matgwinc>`) so that this is defined as a shell variable and points to where your matlab gwinc is
-6. need to setup path in python to point to pygwinc
+
