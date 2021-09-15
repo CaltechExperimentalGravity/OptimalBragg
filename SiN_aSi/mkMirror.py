@@ -19,17 +19,18 @@ from timeit import default_timer
 sys.path.append('../generic/')
 from optimUtils import *
 from coatingUtils import importParams
+from gwinc import Struct
 
 from scipy.optimize import differential_evolution as devo
 from scipy.io import loadmat,savemat
 
-
+coating_param_file = 'aSiModel.yaml'
 paramfilename = 'params.yml'
 opt_params = importParams(paramfilename)
 
-ifo = gwinc.Struct.from_file(opt_params['gwincStructFile'])
+#ifo = gwinc.Struct.from_file(opt_params['gwincStructFile'])
 voy = gwinc.load_budget('Voyager')
-
+ifo = Struct.from_file(coating_param_file)
 
 # how many coating Layers?
 Npairs = opt_params['Npairs']
@@ -59,12 +60,12 @@ the_strats = ['best1bin', 'best1exp', 'rand1exp', 'randtobest1exp', 'currenttobe
               'best2exp', 'rand2exp', 'randtobest1bin', 'currenttobest1bin', 'best2bin',
               'rand2bin', 'rand1bin']
 mystrat = the_strats[np.random.randint(len(the_strats))]
-mystrat = the_strats[0]
+mystrat = the_strats[0]  # use best1bin
 
 # minimize by Differential Evolution Optimizer
 res = devo(func=getMirrorCost, bounds=bounds, updating = 'deferred',
                   strategy = mystrat, mutation = (0.1, 1.5),
-                  popsize=N_particles, workers = -1,
+                  popsize=N_particles, workers = 1,
                          args=(paramfilename, ifo, brown_noise, False),
                          polish=True, disp=True)
 
