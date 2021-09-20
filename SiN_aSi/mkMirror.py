@@ -9,9 +9,13 @@ the center wavelength of the laser is 2128 nm (set in the aSiModel.m file)
 
 """
 
+# import some Python libraries
 import sys
 from datetime import datetime
 from timeit import default_timer
+
+from scipy.optimize import differential_evolution as devo
+from scipy.io import loadmat,savemat
 
 # install gwinc with anaconda: conda install -c conda-forge gwinc
 #sys.path.append('../../pygwinc/')
@@ -21,11 +25,10 @@ from optimUtils import *
 from coatingUtils import importParams
 from gwinc import Struct
 
-from scipy.optimize import differential_evolution as devo
-from scipy.io import loadmat,savemat
 
-coating_param_file = 'aSiModel.yaml'
-paramfilename = 'params.yml'
+
+coating_param_file = 'aSiModel.yaml'       # physical parameters of the mirrors
+paramfilename = 'params.yml'               # optimization parameters
 opt_params = importParams(paramfilename)
 
 #ifo = gwinc.Struct.from_file(opt_params['gwincStructFile'])
@@ -33,10 +36,10 @@ voy = gwinc.load_budget('Voyager')
 ifo = Struct.from_file(coating_param_file)
 
 # how many coating Layers?
-Npairs = opt_params['Npairs']
+Npairs  = opt_params['Npairs']
 Nlayers = 2*Npairs + 1
-Ls = 0.25 * np.ones((Nlayers, 1)) # initial guess
-Ls = Ls[:,0]
+Ls      = 0.25 * np.ones((Nlayers, 1)) # initial guess
+Ls      = Ls[:,0]
 #if __debug__:
 #    print("Shape of Ls array = " + str(np.shape(Ls)))
 
@@ -76,11 +79,9 @@ if __debug__:
     print('Took ' + str(round(dt,1)) + ' sec to optimize with Strategy = ' + mystrat)
     print(" ")
 
+
 # run once to get the costs for the final solution
-if __debug__:
-    vorb = True
-else:
-    vorb = False
+vorb = True # False only returns 1 variable, so don't use that
 
 scalarCost, costOut = getMirrorCost(L=res.x, paramFile=paramfilename,
               ifo=ifo, gam=brown_noise, verbose=vorb)
