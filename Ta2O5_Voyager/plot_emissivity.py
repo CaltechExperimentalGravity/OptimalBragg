@@ -2,14 +2,16 @@
 
 import sys, glob, os
 import h5py
-from physunits import *
 from generic_local.coatingUtils import *
 
 import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
-plt.style.use("pacostyle")
+try:
+    plt.style.use("pacostyle")
+else:
+    plt.style.use("default")
 
 from matplotlib.ticker import FormatStrFormatter
 
@@ -129,19 +131,21 @@ if __name__ == "__main__":
     data = h5read(targets=["n", "L"])
     n_data = data["n"]
     L_data = data["L"]
-
+    print(fname)
     # Read interpolated dispersions of thin films
     fs_n, fs_k, ta_n, ta_k, si_n, si_k = interpolate_dispersions()
-    wavelengths = np.linspace(1 * um, 3 * um, 2 ** 12) / um
+    wavelengths = np.linspace(1 * um, 50 * um, 2 ** 12) / um
 
     # Evaluate the reflectivity of the stack at
     # each wavelength without extinction coefficients
-    emmisivity_0 = np.zeros_like(wavelengths)
+    emissivity_0 = np.zeros_like(wavelengths)
+    emissivity_1 = np.zeros_like(wavelengths)
+
     for j, wavelength in enumerate(wavelengths):
         # Evaluate dispersion
-        n_low = fs_n(wavelength)  # + 1j * fs_k(wavelength)
-        n_high = ta_n(wavelength)  # + 1j * ta_k(wavelength)
-        n_bulk = si_n(wavelength)  # + 1j * si_k(wavelength)
+        n_low = fs_n(wavelength) - 1j * fs_k(wavelength)
+        n_high = ta_n(wavelength) - 1j * ta_k(wavelength)
+        n_bulk = si_n(wavelength) - 1j * si_k(wavelength)
 
         # Construct stack index array using n_data array
         n_mask = n_data.copy().astype(complex)
@@ -150,6 +154,30 @@ if __name__ == "__main__":
         n_mask[0] = 1.0
         n_mask[-1] = n_bulk
 
-        # Compute reflectivity, transmissivity, and absorption?
-        rj, zj = multidiel1(n_mask, L_data, wavelength / 2.1282)
-        tj = 1 - np.abs(rj[0]) ** 2
+        L_corr = L_data * n_mask[1:-1] / n_data[1:-1]
+        dz = np.real(L_corr / n_mask[1:-1])
+        # print(dz * n_mask[1:-1].imag)
+        attenuation = np.exp(
+            2 * dz * n_mask[1:-1].imag * 2 * np.pi / wavelength / 2.1282
+        )
+        total_att = np.prod(attenuation)
+
+        # Compute reflectivity, and impedance in the presence of nonzero ext. coeff.
+        rj, zj = multidiel1(n_mask, L_corr, wavelength / 2.1282)
+        Tj = 1 - np.abs(rj) ** 2
+
+        # print(Tj, total_att)
+
+        # From the fraction that doesn't get reflected (i.e. transmitted)
+        # compute the absorption (i.e. emission) by the total attenuation
+        emissivity_1[j] = total_att * Tj
+
+    # plt.figure()
+    # plt.plot(wavelengths, emissivity_1)
+    # plt.ylim(-0.25, 1.15)
+    # plt.show()
+
+    plt.figure()
+    plt.plot(wavelengths, fs_k(wavelengths), label="SiO2")
+    plt.plot(wavelengths, ta_k(wavelengths), label="Ta2O5")
+    plt.show()
