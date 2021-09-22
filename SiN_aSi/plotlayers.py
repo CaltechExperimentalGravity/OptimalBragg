@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import scipy.io as scio
 from matplotlib.ticker import FormatStrFormatter
 from gwinc import noise
+from gwinc import Struct
 
 #plt.style.use('bmh')
 
@@ -75,7 +76,8 @@ if __debug__:
     print('Loading ' + 'gwinc.ifo' + ' ' + fname)
     tic = default_timer()
 
-ifo     = gwinc.Struct.from_file(z["ifo_name"])
+#ifo     = gwinc.Struct.from_file(z["ifo_name"])
+ifo = Struct.from_file('aSiModel.yaml')
 if __debug__:
     dt = default_timer() - tic
     print('Took ' + str(round(dt,3)) + ' sec to load IFO w/ matlab.')

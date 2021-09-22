@@ -69,6 +69,7 @@ mystrat = the_strats[0]  # use best1bin
 res = devo(func=getMirrorCost, bounds=bounds, updating = 'deferred',
                   strategy = mystrat, mutation = (0.1, 1.5),
                   popsize=N_particles, workers = 1,
+           tol = opt_params['tol'], atol = opt_params['atol'],
                          args=(paramfilename, ifo, brown_noise, False),
                          polish=True, disp=True)
 
