@@ -1,4 +1,4 @@
-r"""
+"""
 run this code to optimize a layer structure design for a ETM HR coating
 
 this coating is for the LIGO Voyager ETM operating at 123 K
@@ -68,7 +68,7 @@ mystrat = the_strats[0]  # use best1bin
 # minimize by Differential Evolution Optimizer
 res = devo(func=getMirrorCost, bounds=bounds, updating = 'deferred',
                   strategy = mystrat, mutation = (0.1, 1.5),
-                  popsize=N_particles, workers = 1,
+                  popsize=N_particles, workers = -1,
            tol = opt_params['tol'], atol = opt_params['atol'],
                          args=(paramfilename, ifo, brown_noise, False),
                          polish=True, disp=True)

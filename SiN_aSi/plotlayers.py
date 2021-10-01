@@ -64,6 +64,9 @@ alpha_aSi = 100e-6 / 1e-6 # Figs 2/3, https://journals.aps.org/prl/pdf/10.1103/P
 fname = max(glob.iglob('Data/*Layers*.mat'), key=os.path.getctime)
 fname = fname[5:] # rm 'data' from the name
 #fname = 'ETM_Layers_190519_1459.mat'
+
+timestamp_str = 'date = ' + fname[-15:-9] + ' time = ' +  fname[-8:-3]
+
 if __debug__:
     print('Loading ' + fname + '...')
 
@@ -78,9 +81,9 @@ if __debug__:
 
 #ifo     = gwinc.Struct.from_file(z["ifo_name"])
 ifo = Struct.from_file('aSiModel.yaml')
-if __debug__:
-    dt = default_timer() - tic
-    print('Took ' + str(round(dt,3)) + ' sec to load IFO w/ matlab.')
+#if __debug__:
+#    dt = default_timer() - tic
+#    print('Took ' + str(round(dt,3)) + ' sec to load IFO w/ matlab.')
 
 lambda0 = ifo.Laser.Wavelength # meters
 
@@ -105,19 +108,25 @@ if __debug__:
 
 # Spectral Tronsmission
 fig, ax = plt.subplots(1,1)
-ax.semilogy(1e6*lams*lambda0, TT,
+xx = 1e6*lams*lambda0
+ax.semilogy(xx, TT,
                 lw=3, label='Transmissivity', c='xkcd:Red')
-ax.semilogy(1e6*lams*lambda0, RR,
+ax.semilogy(xx, RR,
                 lw=3, label='Reflectivity', c='xkcd:electric blue', alpha=0.5)
 ax.vlines(lambda0*1e6, T, 1, linestyle='--')
 ax.set_xlabel('Wavelength [$\mu \\mathrm{m}$]')
 ax.set_ylabel('T or R')
 ax.set_ylim((1e-6, 1))
-ax.text(lambda0*1.051e6, 1e-1, 'T @ {} um'.format(
-    1e6*lambda0), size='x-small')
-ax.text(lambda0*1.051e6, 0.5e-1, '= {} ppm'.format(
+ax.text(lambda0*1.25e6, 1e-3, 'T @ {:0.1f} nm'.format(
+    1e9*lambda0), size='x-small')
+ax.text(lambda0*1.25e6, 0.5e-3, '= {} ppm'.format(
     round(1e6*T,1)), size='x-small')
 ax.legend()
+ax.text(1, 0.7, timestamp_str,
+                 fontsize=8, color='xkcd:Burple', alpha=0.95,
+        rotation='-90', ha='left', va='center',
+        transform=ax.transAxes)
+
 if __debug__:
     print('Transmission of this coating at {} nm is {} ppm'.format(
         1e9*lambda0, round(1e6*T,2)))
@@ -159,6 +168,10 @@ ax2[1].yaxis.set_major_formatter(FormatStrFormatter("%3d"))
 ax2[0].set_ylabel('Normalized $|E(z)|^2$')
 ax2[1].set_ylabel('Physical layer thickness [nm]')
 ax2[1].set_xlabel('Distance from air interface $[\mu \mathrm{m}]$')
+ax2[0].text(1, 0.7, timestamp_str,
+                 fontsize=8, color='xkcd:Burple', alpha=0.95,
+        rotation='-90', ha='left', va='center',
+        transform=ax2[0].transAxes)
 
 
 fig2.subplots_adjust(hspace=0.01,left=0.09,right=0.95,top=0.92)
@@ -207,6 +220,12 @@ ax3.text(50, 4.5e-21,
 #ax3.grid(which='minor', alpha=0.4)
 ax3.set_ylabel('Displacement Noise $[\\mathrm{m} / \\sqrt{\\mathrm{Hz}}]$')
 ax3.set_xlabel('Frequency [Hz]')
+
+ax3.text(1, 0.7, timestamp_str,
+                 fontsize=8, color='xkcd:Burple', alpha=0.9,
+        rotation='-90', ha='left', va='center',
+        transform=ax3.transAxes)
+
 fig3.suptitle('a-Si:SiN coating')
 plt.savefig('Figures/' + 'ETM_TN.pdf')
 
