@@ -8,9 +8,13 @@ import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
+from physunits import *
+
+import tmm
+
 try:
     plt.style.use("pacostyle")
-else:
+except:
     plt.style.use("default")
 
 from matplotlib.ticker import FormatStrFormatter
@@ -46,9 +50,13 @@ def interpolate_dispersions():
     """
 
     # Read fused silica dispersion
-    fs_short_wave = read_dispersion_data("generic_local/SiO2_n_k_short.csv")
-    fs_long_wave = read_dispersion_data("generic_local/SiO2_n_k_long.csv")
-    fused_silica_n_k = np.concatenate((fs_short_wave, fs_long_wave))
+    # fs_short_wave = read_dispersion_data("generic_local/SiO2_n_k_short.csv")
+    # fs_long_wave = read_dispersion_data("generic_local/SiO2_n_k_long.csv")
+    # fused_silica_n_k = np.concatenate((fs_short_wave, fs_long_wave))
+
+    fused_silica_n_k = read_dispersion_data(
+        "generic_local/SiO2_Kitamura_ApplOpt.txt",
+    )
 
     # Read tantala dispersion
     tantala_n_k = read_dispersion_data("generic_local/Ta2O5_n_k.csv")
@@ -57,6 +65,9 @@ def interpolate_dispersions():
     si_short_wave = read_dispersion_data("generic_local/Silicon_n_k_short.csv")
     si_long_wave = read_dispersion_data("generic_local/Silicon_n_k_long.csv")
     silicon_n_k = np.concatenate((si_short_wave, si_long_wave))
+
+    # Read lead dispersion
+    tio2_n_k = read_dispersion_data("generic_local/titania_n_k.csv")
 
     # Use cubic spline through scipy interpolate
     fs_n_interpolator = interp1d(
@@ -104,6 +115,20 @@ def interpolate_dispersions():
         bounds_error=False,
     )
 
+    tio2_n_interpolator = interp1d(
+        tio2_n_k[:, 0],
+        tio2_n_k[:, 1],
+        kind="cubic",
+        fill_value=(tio2_n_k[0, 1], tio2_n_k[-1, 1]),
+        bounds_error=False,
+    )
+    tio2_k_interpolator = interp1d(
+        tio2_n_k[:, 0],
+        tio2_n_k[:, 2],
+        kind="cubic",
+        fill_value=(tio2_n_k[0, 2], tio2_n_k[-1, 2]),
+        bounds_error=False,
+    )
     return (
         fs_n_interpolator,
         fs_k_interpolator,
@@ -111,6 +136,8 @@ def interpolate_dispersions():
         ta_k_interpolator,
         si_n_interpolator,
         si_k_interpolator,
+        tio2_n_interpolator,
+        tio2_k_interpolator,
     )
 
 
@@ -130,11 +157,23 @@ def emissivity(reflectivity, transmissivity):
 if __name__ == "__main__":
     data = h5read(targets=["n", "L"])
     n_data = data["n"]
-    L_data = data["L"]
-    print(fname)
+    # L_data = data["L"]
+
+    n_data = np.array([n_data[0], 3.0, 1.0, n_data[-1]])
+    L_data = np.array([np.inf, 10, 0.02, np.inf]) * n_data
+
     # Read interpolated dispersions of thin films
-    fs_n, fs_k, ta_n, ta_k, si_n, si_k = interpolate_dispersions()
-    wavelengths = np.linspace(1 * um, 50 * um, 2 ** 12) / um
+    (
+        fs_n,
+        fs_k,
+        ta_n,
+        ta_k,
+        si_n,
+        si_k,
+        tio2_n,
+        tio2_k,
+    ) = interpolate_dispersions()
+    wavelengths = np.linspace(1 * um, 100 * um, 2 ** 11) / um
 
     # Evaluate the reflectivity of the stack at
     # each wavelength without extinction coefficients
@@ -143,9 +182,10 @@ if __name__ == "__main__":
 
     for j, wavelength in enumerate(wavelengths):
         # Evaluate dispersion
-        n_low = fs_n(wavelength) - 1j * fs_k(wavelength)
-        n_high = ta_n(wavelength) - 1j * ta_k(wavelength)
-        n_bulk = si_n(wavelength) - 1j * si_k(wavelength)
+        n_low = fs_n(wavelength) + 1j * fs_k(wavelength)
+        n_high = ta_n(wavelength) + 1j * ta_k(wavelength)
+        # n_high = tio2_n(wavelength) + 1j * tio2_k(wavelength)
+        n_bulk = si_n(wavelength) + 1j * si_k(wavelength)
 
         # Construct stack index array using n_data array
         n_mask = n_data.copy().astype(complex)
@@ -154,30 +194,43 @@ if __name__ == "__main__":
         n_mask[0] = 1.0
         n_mask[-1] = n_bulk
 
-        L_corr = L_data * n_mask[1:-1] / n_data[1:-1]
-        dz = np.real(L_corr / n_mask[1:-1])
-        # print(dz * n_mask[1:-1].imag)
-        attenuation = np.exp(
-            2 * dz * n_mask[1:-1].imag * 2 * np.pi / wavelength / 2.1282
-        )
-        total_att = np.prod(attenuation)
+        L_corr = L_data * n_mask / n_data
+        dz = np.real(L_corr / n_mask)
+        dz[0] = np.inf
+        dz[-1] = np.inf
+        result = tmm.unpolarized_RT(n_mask, dz, 0, wavelength)
+        emissivity_1[j] = 1 - result["R"] - result["T"]
 
-        # Compute reflectivity, and impedance in the presence of nonzero ext. coeff.
-        rj, zj = multidiel1(n_mask, L_corr, wavelength / 2.1282)
-        Tj = 1 - np.abs(rj) ** 2
+        # print(dz * n_mask[1:-1].imag)
+        # attenuation = np.exp(
+        #     2 * dz * n_mask[1:-1].imag * 2 * np.pi / wavelength / 2.1282
+        # )
+        # total_att = np.prod(attenuation)
+
+        # # Compute reflectivity, and impedance in the presence of nonzero ext. coeff.
+        # rj, zj = multidiel1(n_mask, L_corr, wavelength / 2.1282)
+        # Tj = 1 - np.abs(rj) ** 2
 
         # print(Tj, total_att)
 
         # From the fraction that doesn't get reflected (i.e. transmitted)
         # compute the absorption (i.e. emission) by the total attenuation
-        emissivity_1[j] = total_att * Tj
+        # emissivity_1[j] = total_att * Tj
 
-    # plt.figure()
-    # plt.plot(wavelengths, emissivity_1)
-    # plt.ylim(-0.25, 1.15)
+    plt.figure(1)
+    plt.plot(wavelengths, emissivity_1)
+    plt.ylim(-0.01, 1.01)
+    plt.xlabel(fR"Wavelength (um)")
+    plt.ylabel(fR"Emissivity")
+    plt.title(fR"Normal incidence")
+    plt.savefig("/home/pacosalces/Escritorio/stack_2.pdf", bbox_inches="tight")
+
+    # plt.figure(2)
+    # plt.plot(wavelengths, fs_k(wavelengths), label="SiO2")
+    # plt.plot(wavelengths, ta_k(wavelengths), label="Ta2O5")
+    # plt.plot(wavelengths, tio2_k(wavelengths), label="TiO2")
+    # plt.xlabel(fR"Wavelength (um)")
+    # plt.ylabel(fR"Extinction coefficient")
+    # plt.legend()
+    # plt.savefig("interpolated_n_k.pdf", bbox_inches="tight")
     # plt.show()
-
-    plt.figure()
-    plt.plot(wavelengths, fs_k(wavelengths), label="SiO2")
-    plt.plot(wavelengths, ta_k(wavelengths), label="Ta2O5")
-    plt.show()
