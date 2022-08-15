@@ -3,9 +3,10 @@
 
 """ Makes a starfish chart """
 
-import numpy as plt
+
+import numpy as np
 from physunits.angle import *
-import matplotlib.pyplot as np
+import matplotlib.pyplot as plt
 
 def polar_cost(scalar_costs, scale=None, fname='radar_chart.pdf', figtitle=''):
     """ Polar projection artist for a list of scalars;
@@ -16,16 +17,16 @@ def polar_cost(scalar_costs, scale=None, fname='radar_chart.pdf', figtitle=''):
     """
     
     labels = list(scalar_costs.keys())
-    r = plt.array(list(scalar_costs.values()), dtype=plt.float)
-    theta = plt.linspace(0, 2*plt.pi, plt.size(r)+1)
-    normalized_list = plt.linspace(0, 1, plt.size(r))
+    r = np.array(list(scalar_costs.values()), dtype=np.float)
+    theta = np.linspace(0, 2*np.pi, np.size(r)+1)
+    normalized_list = np.linspace(0, 1, np.size(r))
 
     # Create figure object
-    fig = np.figure()
+    fig = plt.figure()
     ax = fig.add_subplot(111, projection='polar')
     for i, cost in enumerate(r):
-        color = np.cm.Spectral_r(normalized_list[i])
-        np.polar(theta[i], cost, marker='o', c=color, markersize=8,
+        color = plt.cm.Spectral_r(normalized_list[i])
+        plt.polar(theta[i], cost, marker='o', c=color, markersize=8,
             markeredgewidth=0.8, markeredgecolor='k',)
         ax.grid(True, ls='--')
     ax.set_thetagrids(theta[:-1]/deg, labels, c='k')
@@ -33,16 +34,16 @@ def polar_cost(scalar_costs, scale=None, fname='radar_chart.pdf', figtitle=''):
     
     if scale is None:
         scale = r.max()
-    ax.set_ylim(0., scale)
+    ax.set_ylim(0, scale)
     
     gridlines = ax.yaxis.get_gridlines()
     for gl in gridlines:
-        gl.get_path()._interpolation_steps = plt.size(r)
+        gl.get_path()._interpolation_steps = np.size(r)
 
     glob_score = r.sum()
     ax.set_title(figtitle)
     # np.show()
-    np.savefig(fname, transparent=True, dpi=200)
+    plt.savefig(fname, transparent=True, dpi=200)
 
     return None
 

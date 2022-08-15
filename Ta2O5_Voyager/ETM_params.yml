@@ -3,7 +3,7 @@
 # This specifies the terms to include in your cost function. To exclude 
 # certain costs from the optimization run, simply set weight to 0.0
 costs:
-    # PSL transmission
+    # PSL wavelength transmission
     TransPSL:
         target: 5e-6
         weight: 2e1
@@ -22,7 +22,7 @@ costs:
     # Surface E-field
     Esurf:
         target: 0
-        weight: 1e1
+        weight: 1
     # Integrated absorption
     Absorption: 
         target: 1e-4
@@ -55,6 +55,8 @@ misc:
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer
-    Nparticles: 10
+    Nparticles: 20
+    # how ot initialize the population
+    init_method: 'latinhypercube'
     # gwinc file 
     gwincStructFile: 'Ta2O5_ETM.yml'
