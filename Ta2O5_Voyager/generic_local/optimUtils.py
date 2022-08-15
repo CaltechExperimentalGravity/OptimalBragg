@@ -3,7 +3,7 @@
 import numpy as np
 from .coatingUtils import *
 import os
-import gwinc
+import gwinc.noise
 
 def transmissionCost(target, n, L, lamb=1, theta=0, pol='te'):
     ''' 
