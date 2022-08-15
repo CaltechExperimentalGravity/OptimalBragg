@@ -21,8 +21,18 @@ import matplotlib.pyplot as plt
 from starfish import polar_cost
 from matplotlib.ticker import FormatStrFormatter
 
+
+# setup paths for data and figs; make dirs if do not exist yet
+spath = 'Data/ETM/'
+os.makedirs(spath, exist_ok = True)
+
+fpath = 'Figures/ETM/'
+os.makedirs(fpath, exist_ok = True)
+
+savePlots = True
+
 if len(sys.argv) == 1:
-    fname = max(glob.iglob('Data/ETM/*Layers*.hdf5'), key=os.path.getctime)
+    fname = max(glob.iglob(spath + '*Layers*.hdf5'), key=os.path.getctime)
     # fname = fname[5:] # rm 'data' from the name
 else:
     # For example fname = 'ETM_Layers_190519_1459.hdf5'
@@ -38,7 +48,7 @@ def h5read(targets):
                 data[target] = 0.
     return data
 
-def plot_layers(save=False):
+def plot_layers(save = savePlots):
     # Load ifo
     opt_params = importParams('ETM_params.yml')
     ifo = Struct.from_file(opt_params['misc']['gwincStructFile'])
@@ -95,13 +105,11 @@ def plot_layers(save=False):
     fig2.subplots_adjust(hspace=0.01,left=0.09,right=0.95,top=0.92)
     fig2.suptitle('Ta2O5:SiO$_2$ coating electric field')
 
-    if save:
-        plt.savefig('./Figures/ETM/ETM_Layers' + fname[-16:-4] + '.pdf')
-        plt.savefig('./Figures/ETM/' + 'ETM_Layers' + '.pdf')
-    else:
-        plt.show()
+    plt.savefig(fpath + '/ETM_Layers_' + fname[-16:-5] + '.pdf')
+    plt.savefig(fpath + 'ETM_Layers' + '.pdf')
 
-def plot_trans(save=False):
+
+def plot_trans(save = savePlots):
     # Load ifo
     opt_params = importParams('ETM_params.yml')
     ifo = Struct.from_file(opt_params['misc']['gwincStructFile'])
@@ -137,15 +145,19 @@ def plot_trans(save=False):
                 stat = 1e-2
             stats[cost] = np.abs(np.log(np.abs(stat)))
 
-    Nfixed = opt_params['misc']['Nfixed']
-    Nlayers = 2*opt_params['misc']['Npairs'] + 1
+    Nfixed      = opt_params['misc']['Nfixed']
+    Nlayers     = 2*opt_params['misc']['Npairs'] + 1
     N_particles = opt_params['misc']['Nparticles']
-    
+
+    sfplot_head = fpath + 'ETM_SF'
+    sfplot_tail = '.png'
+    sfplot_name = sfplot_head + fname[-16:-5] + sfplot_tail
     polar_cost(stats, 
-               scale=10,
-               fname=r'Figures/ETM/ETM_SF'+ fname[-16:-4]+'.png',
-               figtitle=fR'Stack with {Nlayers} layers ({Nfixed} fixed bilayers) and {N_particles} particles',
+               scale = 10,
+               fname = sfplot_name,
+               figtitle = fR'Stack with {Nlayers} layers ({Nfixed} fixed bilayers) and {N_particles} particles',
                 )
+    os.system('cp ' + sfplot_name + ' ' + sfplot_head + sfplot_tail)  
 
     # Convert from optical thickness to physical thickness
     L  = lambdaPSL * op2phys(data['L'], data['n'][1:-1])
@@ -165,24 +177,22 @@ def plot_trans(save=False):
     ax.set_ylim((5e-8, 1.0))
 
     # Add starfish inset
-    im = plt.imread('./Figures/ETM/ETM_SF'+ fname[-16:-4]+'.png')
-    newax = fig.add_axes([0.55, 0.1, 0.4, 0.4], anchor='NE')
+    im = plt.imread(fpath + 'ETM_SF' + fname[-16:-5] + '.png')
+    newax = fig.add_axes([0.55, 0.1, 0.4, 0.4], anchor = 'NE')
     newax.imshow(im)
     newax.axis('off')
 
-    ax.legend(loc='lower left')
-    if save:
-        plt.savefig('./Figures/ETM/' + 'ETM_R' + fname[-16:-4] + '.pdf')
-        plt.savefig('./Figures/ETM/' + 'ETM_R' + '.pdf')
-    else:
-        plt.show()
+    ax.legend(loc = 'best')
+    plt.savefig(fpath + 'ETM_R' + fname[-16:-5] + '.pdf')
+    plt.savefig(fpath + 'ETM_R' + '.pdf')
 
-def plot_noise(save=False):
+
+def plot_noise(save = savePlots):
     # Load ifo
     opt_params = importParams('ETM_params.yml')
     ifo = Struct.from_file(opt_params['misc']['gwincStructFile'])
     lambdaPSL = ifo.Laser.Wavelength
-    
+
     data = h5read(targets=['L', 'n'])
     L  = lambdaPSL * op2phys(data['L'], data['n'][1:-1])
 
@@ -220,12 +230,12 @@ def plot_noise(save=False):
     #ax3.grid(which='minor', alpha=0.4)
     ax3.set_ylabel(R'Displacement Noise $[\mathrm{m} / \sqrt{\mathrm{Hz}}]$')
     ax3.set_xlabel(R'Frequency [Hz]')
-    if save:
-        plt.savefig('Figures/ETM/' + 'ETM_TN.pdf')
-    else:
-        plt.show()
 
-def main(layers=True, trans=True, noise=True):
+    plt.savefig(fpath + 'ETM_TN.pdf')
+
+    
+
+def main(layers = True, trans = True, noise = True):
     # Setup matplotlib params
     plt.rcParams.update({'text.usetex': False,
                      'lines.linewidth': 3,
@@ -263,4 +273,4 @@ def main(layers=True, trans=True, noise=True):
 if __name__ == '__main__':    
     if __debug__:
         print('Make plots...')
-    main(layers=True, trans=True, noise=False)
+    main(layers = True, trans = True, noise = False)

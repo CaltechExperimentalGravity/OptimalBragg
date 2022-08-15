@@ -5,7 +5,7 @@ the low index material is SiO2 and the high index material is Ta2O5(tantala)
 the center wavelength of the laser is 2128.2 nm, and the AUX wavelength
 is 1418.8 nm
 """
-
+import os
 from datetime import datetime
 from timeit import default_timer
 
@@ -20,6 +20,9 @@ import gwinc
 
 from generic_local.optimUtils import *
 from generic_local.coatingUtils import importParams
+
+#print(help(gwinc))
+
 
 def main(save=False):
     # Optimization targets, weights, and parameters
@@ -54,18 +57,19 @@ def main(save=False):
         return False
 
     # Do global optimization
-    res = devo(func=getMirrorCost, 
-            bounds=bounds, 
-            updating='deferred',
-            strategy='best1bin', 
-            mutation=(0.05, 1.5),
-            popsize=opt_params['misc']['Nparticles'], 
-            workers=-1, 
-            maxiter=2000,
-            args=(opt_params['costs'], ifo, gam, False, opt_params['misc']),
-            polish=True, 
-            callback=diffevo_monitor,
-            disp=True)
+    res = devo(func            = getMirrorCost, 
+            bounds             = bounds, 
+            updating           = 'deferred',
+            strategy           = 'best1bin', 
+            mutation           = (0.05, 1.5),
+            popsize            = opt_params['misc']['Nparticles'],
+            init               = opt_params['misc']['init_method'], 
+            workers            = -1, 
+            maxiter            = 2000,
+            args = (opt_params['costs'], ifo, gam, False, opt_params['misc']),
+            polish             = True, 
+            callback           = diffevo_monitor,
+            disp               = True)
     
     if __debug__:
         print(" ")
@@ -74,26 +78,31 @@ def main(save=False):
         print(" ")
 
     # Construct the optimum stack for saving / plotting
-    Lres = res.x
+    Lres         = res.x
     copiedLayers = np.tile(Lres[1:2*opt_params['misc']['Npairs']+1].copy(), 
                             opt_params['misc']['Ncopies'])
-    Lres = np.append(Lres, copiedLayers)
+    Lres         = np.append(Lres, copiedLayers)
 
-    fixedLayers = np.tile(Lres[-2:].copy(), opt_params['misc']['Nfixed'])
-    Lres = np.append(Lres, fixedLayers)
+    fixedLayers  = np.tile(Lres[-2:].copy(), opt_params['misc']['Nfixed'])
+    Lres         = np.append(Lres, fixedLayers)
 
     # Run once to get the final costs (but don't use Ncopies, or Nfixed!)
-    final_misc = opt_params['misc']
+    final_misc   = opt_params['misc']
     final_misc.update({'Ncopies':0, 'Nfixed':0})
-    scalar_cost, output = getMirrorCost(Lres, 
-                                        costs=opt_params['costs'],
-                                        ifo=ifo, 
-                                        gam=gam, 
-                                        verbose=True,
-                                        misc=final_misc)
+    scalar_cost, output = getMirrorCost(Lres,
+                                        costs   = opt_params['costs'],
+                                        ifo     = ifo,
+                                        gam     = gam,
+                                        verbose = True,
+                                        misc    = final_misc)
     if save:
         tnowstr = datetime.now().strftime('%y%m%d_%H%M%S')
-        fname = 'Data/ETM/ETM_Layers_' + tnowstr + '.hdf5'
+
+        # make the dir if it doesn't exist yet
+        spath = 'Data/ETM/'
+        os.makedirs(spath, exist_ok = True)
+
+        fname = spath + 'ETM_Layers_' + tnowstr + '.hdf5'
 
         with h5py.File(fname, 'w') as f:
             main_group = 'diffevo_output'
