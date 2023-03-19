@@ -63,7 +63,7 @@ def plot_layers(save = savePlots):
     #   https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
     #       -- figures (2-3)
     alpha_low = 1e-3
-    alpha_high = 50e-6 / 1e-6
+    alpha_high = 10e-6 / 0.5e-6  # personal comm from Manel Ruiz to RXA 3/2023
 
     Name_high = ifo.Materials.Coating.Name_high
     Name_low  = ifo.Materials.Coating.Name_low
@@ -142,7 +142,7 @@ def plot_trans(save = savePlots):
     for cost, spec in opt_params['costs'].items():
         if spec['weight']:
             optcost = list(h5read(targets=['vectorCost/' + cost]).values())[0]
-            stat = 1 / optcost
+            stat = 1 / (1e-11 + optcost)  # 1e-11 is there to avoid div by zero
             if optcost > 1e3 or optcost < 1e-5:
                 stat = 1e-2
             stats[cost] = np.abs(np.log(np.abs(stat)))

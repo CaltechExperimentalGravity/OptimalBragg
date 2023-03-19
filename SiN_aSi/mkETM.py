@@ -1,9 +1,14 @@
 r"""
 run this code to optimize a layer structure design for a ETM HR coating
 this coating is for the LIGO Voyager ETM operating at 123 K;
-the low index material is SiO2 and the high index material is Ta2O5(tantala)
-the center wavelength of the laser is 2128.2 nm, and the AUX wavelength
-is 1418.8 nm
+the low index material is
+SiN
+and the high index material is
+a-Si
+the center wavelength of the laser is
+2050.15 nm,
+and the AUX wavelength is
+1550 nm
 """
 import os
 from datetime import datetime
@@ -66,7 +71,8 @@ def main(save=False):
             init               = opt_params['misc']['init_method'], 
             workers            = -1, 
             maxiter            = 2000,
-            atol               = 1e-4,
+            atol               = opt_params['misc']['atol'],
+            tol                = opt_params['misc']['tol'],
             args = (opt_params['costs'], ifo, gam, False, opt_params['misc']),
             polish             = True, 
             callback           = diffevo_monitor,
