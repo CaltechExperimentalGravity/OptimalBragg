@@ -23,10 +23,10 @@ costs:
     Esurf:
         target: 0
         weight: 1
-    # Integrated absorption
+    # Integrated absorption - doesn't seem to work?
     Absorption: 
         target: 1e-4
-        weight: 0.0
+        weight: 0
     # AUX transmission
     TransAUX:
         target: 50e-6
@@ -49,13 +49,17 @@ misc:
     # Angle of incidence (degrees)
     aoi: 0
     # Number of bilayers in variable stack
-    Npairs: 20
+    Npairs: 18
     # Number of fixed bilayers at the end of the stack
     Nfixed: 0
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer
-    Nparticles: 10
+    Nparticles: 6
+    # Absolute Tolerance
+    atol: 1e-3
+    # Relative Tolerance
+    tol: 1e-3
     # how ot initialize the population
     init_method: 'latinhypercube'
     # gwinc file 
