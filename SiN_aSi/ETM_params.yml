@@ -49,17 +49,17 @@ misc:
     # Angle of incidence (degrees)
     aoi: 0
     # Number of bilayers in variable stack
-    Npairs: 18
+    Npairs: 21
     # Number of fixed bilayers at the end of the stack
     Nfixed: 0
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer
-    Nparticles: 6
+    Nparticles: 40
     # Absolute Tolerance
-    atol: 1e-3
+    atol: 1e-2
     # Relative Tolerance
-    tol: 1e-3
+    tol: 1e-2
     # how ot initialize the population
     init_method: 'latinhypercube'
     # gwinc file 
