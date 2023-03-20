@@ -29,7 +29,7 @@ costs:
         weight: 0
     # AUX transmission
     TransAUX:
-        target: 50e-6
+        target: 500e-6
         weight: 2e1
     # OPLEV transmission
     TransOPLEV:
