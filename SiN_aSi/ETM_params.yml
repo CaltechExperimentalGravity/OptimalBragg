@@ -38,7 +38,7 @@ costs:
     # Optical thickness inhomogeneity
     Lstdev:
         target: 0.5
-        weight: 1e-1
+        weight: 0
 
 # Other parameters used by the code
 misc:

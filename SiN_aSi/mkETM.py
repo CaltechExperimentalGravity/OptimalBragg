@@ -17,7 +17,7 @@ from timeit import default_timer
 from scipy.optimize import differential_evolution as devo
 import h5py
 
-# To use pygwinc, first install; 
+# To use pygwinc, first install;
 # >> conda install -c conda-forge gwinc
 # import sys
 # sys.path.append('../../pygwinc/')
@@ -41,15 +41,16 @@ def main(save=False):
     gam = brownianProxy(ifo)
 
     # Initial guess
-    Ls = 0.75*np.ones(2 * opt_params['misc']['Npairs'] + 1)
+    Ls = np.ones(2 * opt_params['misc']['Npairs'] + 1)
+    Ls *= np.random.rand(len(Ls))
     if __debug__:
         print(f"Shape of Ls array ={Ls.shape}")
 
-    bounds = ((0.05, 0.48),)*(len(Ls) - 1)
+    bounds   = ((0.05, 0.48),) * (len(Ls) - 1)
     # Minimum thickness with 20 nm cap
     minThick = 10e-9 / ifo.Laser.Wavelength
     # Make the first layer thin
-    bounds = ((minThick, 0.48),) + bounds
+    bounds   = ((minThick, 0.48),) + bounds
 
     if __debug__:
         print(f'Bounds = {bounds[-1]}')
@@ -62,22 +63,22 @@ def main(save=False):
         return False
 
     # Do global optimization
-    res = devo(func            = getMirrorCost, 
-            bounds             = bounds, 
+    res = devo(func            = getMirrorCost,
+            bounds             = bounds,
             updating           = 'deferred',
-            strategy           = 'best1bin', 
+            strategy           = 'best1bin',
             mutation           = (0.05, 1.5),
             popsize            = opt_params['misc']['Nparticles'],
-            init               = opt_params['misc']['init_method'], 
-            workers            = -1, 
+            init               = opt_params['misc']['init_method'],
+            workers            = -1,
             maxiter            = 2000,
             atol               = opt_params['misc']['atol'],
             tol                = opt_params['misc']['tol'],
             args = (opt_params['costs'], ifo, gam, False, opt_params['misc']),
-            polish             = True, 
+            polish             = True,
             callback           = diffevo_monitor,
             disp               = True)
-    
+
     if __debug__:
         print(" ")
         dt = default_timer() - tic
