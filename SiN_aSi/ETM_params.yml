@@ -29,8 +29,8 @@ costs:
         weight: 0
     # AUX transmission
     TransAUX:
-        target: 50e-6
-        weight: 5e1
+        target: 150e-6
+        weight: 2e1
     # OPLEV transmission
     TransOPLEV:
         target: 0.05 
@@ -57,10 +57,11 @@ misc:
     # Number of particles in the optimizer
     Nparticles: 40
     # Absolute Tolerance
-    atol: 1e-2
+    atol: 3e-9
     # Relative Tolerance
-    tol: 1e-2
-    # how ot initialize the population
-    init_method: 'latinhypercube'
+    tol: 1e-1
+    # how to initialize the population
+    #init_method: 'latinhypercube'
+    init_method: 'halton'
     # gwinc file 
     gwincStructFile: 'ETM.yaml'
