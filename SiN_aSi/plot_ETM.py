@@ -184,7 +184,7 @@ def plot_trans(save = savePlots):
     newax.imshow(im)
     newax.axis('off')
 
-    ax.legend(loc = 'best')
+    ax.legend(loc = 'lower left')
     plt.savefig(fpath + 'ETM_R' + fname[-16:-5] + '.pdf')
     plt.savefig(fpath + 'ETM_R' + '.pdf')
 
