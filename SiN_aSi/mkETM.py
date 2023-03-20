@@ -47,7 +47,7 @@ def main(save=False):
 
     bounds = ((0.05, 0.48),)*(len(Ls) - 1)
     # Minimum thickness with 20 nm cap
-    minThick = 20e-9 / ifo.Laser.Wavelength * 1.5
+    minThick = 10e-9 / ifo.Laser.Wavelength
     # Make the first layer thin
     bounds = ((minThick, 0.48),) + bounds
 
