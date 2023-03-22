@@ -54,12 +54,12 @@ misc:
     Nfixed: 0
     # Number of copies of the variable stack
     Ncopies: 0
-    # Number of particles in the optimizer
-    Nparticles: 40
+    # Number of particles in the optimizer (10 x Npairs is a good guess)
+    Nparticles: 430
     # Absolute Tolerance
     atol: 3e-9
     # Relative Tolerance
-    tol: 1e-1
+    tol: 5e-1
     # how to initialize the population
     #init_method: 'latinhypercube'
     init_method: 'halton'

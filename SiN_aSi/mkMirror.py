@@ -1,21 +1,22 @@
-"""
+r"""
 run this code to optimize a layer structure design for a ETM HR coating
 
 this coating is for the LIGO Voyager ETM operating at 123 K
 
 the low index material is SiO2 and the high index material is a-Si
 
-the center wavelength of the laser is 2128 nm (set in the aSiModel.m file)
+the center wavelength of the laser is 2050 nm
+(set in the aSiModel.yaml file)
 
 """
 
 # import some Python libraries
-import sys
+import os,sys
 from datetime import datetime
 from timeit import default_timer
 
 from scipy.optimize import differential_evolution as devo
-from scipy.io import loadmat,savemat
+import h5py
 
 # install gwinc with anaconda: conda install -c conda-forge gwinc
 #sys.path.append('../../pygwinc/')
