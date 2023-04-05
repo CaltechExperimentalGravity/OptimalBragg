@@ -55,7 +55,7 @@ misc:
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer
-    Nparticles: 20
+    Nparticles: 10
     # how ot initialize the population
     init_method: 'latinhypercube'
     # gwinc file 

@@ -5,36 +5,36 @@
 costs:
     # PSL wavelength transmission
     TransPSL:
-        target: 5e-6
-        weight: 2e1
+        target: 10e-6
+        weight: 0.1
     # Brownian noise level
     Brownian:
         target: 1
-        weight: 1e-4
+        weight: 0.11
     # Thermo-optic noise level
     Thermooptic:
-        target: 1e42 
-        weight: 1e-4
+        target: 1e42
+        weight: 0.001
     # Optical thickness sensitivity
     Lsens:
-        target: 1e-2
-        weight: 3e0
+        target: 1e-6
+        weight: 10
     # Surface E-field
     Esurf:
-        target: 0
-        weight: 1
+        target: 1e-5
+        weight: 0.001
     # Integrated absorption - doesn't seem to work?
-    Absorption: 
+    Absorption:
         target: 1e-4
         weight: 0
     # AUX transmission
     TransAUX:
-        target: 150e-6
-        weight: 2e1
+        target: 1000e-6
+        weight: 100
     # OPLEV transmission
     TransOPLEV:
-        target: 0.05 
-        weight: 1e-2
+        target: 0.05
+        weight: 0
     # Optical thickness inhomogeneity
     Lstdev:
         target: 0.5
@@ -49,17 +49,17 @@ misc:
     # Angle of incidence (degrees)
     aoi: 0
     # Number of bilayers in variable stack
-    Npairs: 21
+    Npairs: 11
     # Number of fixed bilayers at the end of the stack
     Nfixed: 0
     # Number of copies of the variable stack
     Ncopies: 0
-    # Number of particles in the optimizer (10 x Npairs is a good guess)
-    Nparticles: 430
+    # Number of particles in the optimizer (20 x Npairs is a good guess)
+    Nparticles: 1000
     # Absolute Tolerance
     atol: 3e-9
     # Relative Tolerance
-    tol: 5e-1
+    tol: 1e-2
     # how to initialize the population
     #init_method: 'latinhypercube'
     init_method: 'halton'

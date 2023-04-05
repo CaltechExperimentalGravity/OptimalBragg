@@ -276,14 +276,14 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
         if specs['weight']:
             if cost == 'TransPSL':
                 vector_cost[cost], TPSL = transmissionCost(specs['target'],
-                                                    n, L, 1.0, 
+                                                    n, L, 1.0,
                                                     misc['aoi'], misc['pol'])
                 if verbose:
                     output['TPSL'] = TPSL
                     output['RPSL'] = 1 - TPSL
             if cost == 'TransAUX':
                 vector_cost[cost], TAUX = transmissionCost(specs['target'],
-                                                    n, L, 2/3, 
+                                                    n, L, 1550/2050,
                                                     misc['aoi'], misc['pol'])
                 if verbose:
                     output['TAUX'] = TAUX

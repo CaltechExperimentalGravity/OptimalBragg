@@ -155,7 +155,6 @@ def plot_trans(save=savePlots):
     L = lambdaPSL * op2phys(data["L"], data["n"][1:-1])
 
     # Other wavelength ratios to ifo.Laser.Wavelength
-    rellambdaAUX = 2 / 3
     rellambda1550 = 1550e-9 / lambdaPSL
     rellambdaHeNe = 632e-9 / lambdaPSL
 
@@ -209,22 +208,22 @@ def plot_trans(save=savePlots):
     ax.semilogy(
         1e6 * wavelengths * lambdaPSL,
         TT,
-        lw=1.5,
-        label="Transmissivity",
-        c="xkcd:Red",
+        lw = 1.5,
+        label = "Transmissivity",
+        c = "xkcd:Red",
     )
     ax.semilogy(
         1e6 * wavelengths * lambdaPSL,
         RR,
-        lw=1.5,
-        label="Reflectivity",
-        c="xkcd:electric blue",
-        alpha=0.7,
+        lw = 1.5,
+        label = "Reflectivity",
+        c = "xkcd:electric blue",
+        alpha = 0.7,
     )
     for wvl, trans, c in zip(
-        [1.0, rellambda1550, rellambdaAUX, rellambdaHeNe],
-        [TPSL, T1550, TAUX, TOPV],
-        ["brown", "crimson", "blue", "red"],
+        [1.0, rellambda1550],
+        [TPSL, T1550],
+        ["blue", "green"],
     ):
         if trans:
             ax.vlines(

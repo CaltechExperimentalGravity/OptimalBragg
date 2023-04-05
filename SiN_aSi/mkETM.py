@@ -13,7 +13,7 @@ and the AUX wavelength is
 import os
 from datetime import datetime
 from timeit import default_timer
-
+import argparse
 from scipy.optimize import differential_evolution as devo
 import h5py
 
