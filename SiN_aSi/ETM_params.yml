@@ -5,24 +5,24 @@
 costs:
     # PSL wavelength transmission
     TransPSL:
-        target: 10e-6
-        weight: 10
+        target: 30e-6
+        weight: 5
     # Brownian noise level
     Brownian:
-        target: 1
-        weight: 1
+        target: 0.1
+        weight: 2
     # Thermo-optic noise level
     Thermooptic:
         target: 1e43
-        weight: 0.01
+        weight: 2
     # Optical thickness sensitivity
     Lsens:
         target: 1e-7
-        weight: 100
+        weight: 0
     # Surface E-field
     Esurf:
         target: 1e-9
-        weight: 12
+        weight: 0
     # Integrated absorption - doesn't seem to work?
     Absorption:
         target: 1e-4
@@ -30,7 +30,7 @@ costs:
     # AUX transmission
     TransAUX:
         target: 1000e-6
-        weight: 3
+        weight: 0
     # OPLEV transmission
     TransOPLEV:
         target: 0.05
@@ -49,13 +49,13 @@ misc:
     # Angle of incidence (degrees)
     aoi: 0
     # Number of bilayers in variable stack
-    Npairs: 16
+    Npairs: 11
     # Number of fixed bilayers at the end of the stack
     Nfixed: 0
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer (20 x Npairs is a good guess)
-    Nparticles: 1000
+    Nparticles: 10
     # Absolute Tolerance
     atol: 3e-9
     # Relative Tolerance
@@ -64,4 +64,4 @@ misc:
     #init_method: 'latinhypercube'
     init_method: 'halton'
     # gwinc file 
-    gwincStructFile: 'ETM.yaml'
+    gwincStructFile: 'aSiSiN.yaml'

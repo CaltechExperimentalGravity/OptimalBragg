@@ -64,8 +64,9 @@ def plot_layers(save=savePlots):
     #   https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
     #   https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
     #       -- figures (2-3)
-    alpha_low = 1e-3
-    alpha_high = 10e-6 / 0.5e-6  # personal comm from Manel Ruiz to RXA 3/2023
+    alpha_low = 27 # Paco used extinction coeffs
+    alpha_high = 540.35 # Paco used extinction coeffs
+    #alpha_high = 10e-6 / 0.5e-6  # personal comm from Manel Ruiz to RXA 3/2023
 
     Name_high = ifo.Materials.Coating.Name_high
     Name_low = ifo.Materials.Coating.Name_low
@@ -164,14 +165,14 @@ def plot_trans(save=savePlots):
     TPSL = data["TPSL"][0]
     try:
         TAUX = data["TAUX"][0]
-    except KeyError:
+    except TypeError:
         TAUX = 0.0
     try:
         TOPV = data["TOPV"][0]
-    except KeyError:
+    except KeyError or TypeError:
         TOPV = 0.0
 
-    wavelengths = np.linspace(0.2, 1.8, 512)
+    wavelengths = np.linspace(0.75, 1.25, 512)
     rr, _ = multidiel1(data["n"], data["L"], wavelengths)
     RR = np.abs(rr) ** 2
     TT = 1 - RR
@@ -221,9 +222,9 @@ def plot_trans(save=savePlots):
         alpha = 0.7,
     )
     for wvl, trans, c in zip(
-        [1.0, rellambda1550],
-        [TPSL, T1550],
-        ["blue", "green"],
+        [1.0,],
+        [TPSL,],
+        ["blue",],
     ):
         if trans:
             ax.vlines(
@@ -277,12 +278,20 @@ def plot_noise(save=savePlots):
         ff, mir, ifo.Optics.ETM.BeamRadius
     )
 
-    Larm = 1  # 4000
 
+    CTNtot = np.sqrt(StoZ + SteZ + StrZ + SbrZ)
+    SUBtot = np.sqrt(subBrown + subTE)
+    Stot = np.sqrt(CTNtot**2 + SUBtot**2)
+
+
+    Larm = 1  # 4000, but why? 
     # Figure
     fig3, ax3 = plt.subplots(1, 1)
     ax3.loglog(
-        ff, Larm * np.sqrt(StoZ), label="Thermo-Optic", c="xkcd:Purplish Blue"
+        ff,
+        Larm * np.sqrt(np.abs(StoZ)),
+        label="Thermo-Optic",
+        c="xkcd:Purplish Blue",
     )
     ax3.loglog(
         ff, Larm * np.sqrt(SteZ), label="Thermo-Elastic", c="xkcd:Golden"
@@ -290,7 +299,12 @@ def plot_noise(save=savePlots):
     ax3.loglog(
         ff, Larm * np.sqrt(StrZ), label="Thermo-Refractive", c="xkcd:Puke"
     )
-    ax3.loglog(ff, Larm * np.sqrt(SbrZ), label="Brownian", c="xkcd:Tomato")
+    ax3.loglog(
+        ff,
+        Larm * np.sqrt(SbrZ),
+        label=f"Brownian={np.sqrt(SbrZ[np.argmin(np.abs(ff-100))])/1e-22:.2f}e-22 m/rtHz @ 100 Hz",
+        c="xkcd:Tomato",
+    )
     ax3.loglog(
         ff,
         Larm * np.sqrt(subBrown),
@@ -304,6 +318,14 @@ def plot_noise(save=savePlots):
         c="xkcd:Chocolate",
         alpha=0.3,
     )
+    ax3.loglog(
+        ff,
+        Larm * CTNtot,
+        c="k",
+        lw=3,
+        ls="--",
+        label=Rf"CTN total = {CTNtot[np.argmin(np.abs(ff-100.0))]/1e-22:.2f}e-22 m/rtHz @ 100 Hz",
+    )
     ax3.legend()
     ax3.set_xlim([10, 10e3])
     ax3.set_ylim([8e-24, 2e-20])
@@ -311,11 +333,9 @@ def plot_noise(save=savePlots):
     ax3.text(
         80,
         5e-21,
-        "Thickness = {} um".format(round(1e6 * sum(L), 2)),
+        "Thickness = {} um".format(round(sum(L / 1e-6), 2)),
         size="x-small",
     )
-    # ax3.grid(which='major', alpha=0.6)
-    # ax3.grid(which='minor', alpha=0.4)
     ax3.set_ylabel(R"Displacement Noise $[\mathrm{m} / \sqrt{\mathrm{Hz}}]$")
     ax3.set_xlabel(R"Frequency [Hz]")
 
