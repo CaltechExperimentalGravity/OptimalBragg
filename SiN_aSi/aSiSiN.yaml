@@ -11,25 +11,27 @@ Constants:
   yr: 31556926.080000002
 Laser:
   Power: 125.0
-  Wavelength: 2128.2e-9
+  Wavelength: 2050.15e-9
 Materials:
   Coating:
+    Name_high: 'a-Si'
+    Name_low: "SiN"
     Alphahighn: 1.0e-09
-    Alphalown: 3.3e-06
+    Alphalown: 2.6e-06
     Betahighn: 0.00014
-    Betalown: 8.5e-06
-    CVhighn: 427.99941000000007
-    CVlown: 186.0867
-    Indexhighn: 3.5
-    Indexlown: 1.8
-    Phihighn: 1.0e-05
-    Philown: 0.0001
-    Sigmahighn: 0.22
+    Betalown: 4e-05
+    CVhighn: 372
+    CVlown: 230
+    Indexhighn: 3.65
+    Indexlown: 2.17
+    Phihighn: 2.0e-05
+    Philown: 0.1e-04
+    Sigmahighn: 0.23
     Sigmalown: 0.25
     ThermalDiffusivityhighn: 1.03
-    ThermalDiffusivitylown: 2.0
-    Yhighn: 60000000000.0
-    Ylown: 140000000000.0
+    ThermalDiffusivitylown: 0.27
+    Yhighn: 147000000000
+    Ylown: 270000000000
   MassRadius: 0.215
   MassThickness: 0.55
   Substrate:
@@ -41,7 +43,7 @@ Materials:
     MechanicalLossExponent: 1.0
     MirrorSigma: 0.27
     MirrorY: 155800000000.0
-    RefractiveIndex: 3.5
+    RefractiveIndex: 3.39
     Temp: 123.0
     c2: 3.0e-13
 Optics:
@@ -49,24 +51,24 @@ Optics:
     ETM: 2192.0
     ITM: 1970.0
   ETM:
-    BeamRadius: 0.084
+    BeamRadius: 0.06 #0.084
     Coating:
       Alphahighn: 1.0e-09
-      Alphalown: 3.3e-06
+      Alphalown: 2.6e-06
       Betahighn: 0.00014
-      Betalown: 8.5e-06
-      CVhighn: 427.99941000000007
-      CVlown: 186.0867
-      Indexhighn: 3.5
-      Indexlown: 1.8
-      Phihighn: 1.0e-05
-      Philown: 0.0001
-      Sigmahighn: 0.22
+      Betalown: 4e-05
+      CVhighn: 372
+      CVlown: 230
+      Indexhighn: 3.65
+      Indexlown: 2.17
+      Phihighn: 2.0e-05
+      Philown: 0.1e-04
+      Sigmahighn: 0.23
       Sigmalown: 0.25
       ThermalDiffusivityhighn: 1.03
-      ThermalDiffusivitylown: 2.0
-      Yhighn: 60000000000.0
-      Ylown: 140000000000.0
+      ThermalDiffusivitylown: 0.27
+      Yhighn: 147000000000
+      Ylown: 270000000000
     CoatingThicknessCap: 0.5
     CoatingThicknessLown: 0.27
     MassRadius: 0.215
