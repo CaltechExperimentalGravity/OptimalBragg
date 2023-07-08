@@ -64,9 +64,9 @@ def plot_layers(save=savePlots):
     #   https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
     #   https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
     #       -- figures (2-3)
-    alpha_low = 27 # Paco used extinction coeffs
-    alpha_high = 540.35 # Paco used extinction coeffs
-    #alpha_high = 10e-6 / 0.5e-6  # personal comm from Manel Ruiz to RXA 3/2023
+    alpha_low = 27  # Paco used extinction coeffs
+    alpha_high = 540.35  # Paco used extinction coeffs
+    # alpha_high = 10e-6 / 0.5e-6  # personal comm from Manel Ruiz to RXA 3/2023
 
     Name_high = ifo.Materials.Coating.Name_high
     Name_low = ifo.Materials.Coating.Name_low
@@ -169,7 +169,7 @@ def plot_trans(save=savePlots):
         TAUX = 0.0
     try:
         TOPV = data["TOPV"][0]
-    except KeyError or TypeError:
+    except (KeyError, TypeError):
         TOPV = 0.0
 
     wavelengths = np.linspace(0.75, 1.25, 512)
@@ -209,22 +209,28 @@ def plot_trans(save=savePlots):
     ax.semilogy(
         1e6 * wavelengths * lambdaPSL,
         TT,
-        lw = 1.5,
-        label = "Transmissivity",
-        c = "xkcd:Red",
+        lw=1.5,
+        label="Transmissivity",
+        c="xkcd:Red",
     )
     ax.semilogy(
         1e6 * wavelengths * lambdaPSL,
         RR,
-        lw = 1.5,
-        label = "Reflectivity",
-        c = "xkcd:electric blue",
-        alpha = 0.7,
+        lw=1.5,
+        label="Reflectivity",
+        c="xkcd:electric blue",
+        alpha=0.7,
     )
     for wvl, trans, c in zip(
-        [1.0,],
-        [TPSL,],
-        ["blue",],
+        [
+            1.0,
+        ],
+        [
+            TPSL,
+        ],
+        [
+            "blue",
+        ],
     ):
         if trans:
             ax.vlines(
@@ -278,13 +284,11 @@ def plot_noise(save=savePlots):
         ff, mir, ifo.Optics.ETM.BeamRadius
     )
 
-
-    CTNtot = np.sqrt(StoZ + SteZ + StrZ + SbrZ)
+    CTNtot = np.sqrt(StoZ + SbrZ)
     SUBtot = np.sqrt(subBrown + subTE)
     Stot = np.sqrt(CTNtot**2 + SUBtot**2)
 
-
-    Larm = 1  # 4000, but why? 
+    Larm = 1  # 4000, but why?
     # Figure
     fig3, ax3 = plt.subplots(1, 1)
     ax3.loglog(
