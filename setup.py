@@ -11,7 +11,7 @@ setuptools.setup(
     description="Package for the design and optimization of dielectric coatings",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    # url="https://git.ligo.org/40m/Coatings/coatings",
+    url="https://git.ligo.org/francisco.carcoba/Coatings/",
     license="LICENSE",
     packages=setuptools.find_packages(),
     classifiers=[
@@ -23,13 +23,11 @@ setuptools.setup(
         "numpy",
         "scipy",
         "matplotlib",
-        "pandas",
         "h5py",
         "pyyaml",
         "physunits",
-        "gwinc",
         "corner",
         "emcee",
     ],
-    python_requires=">=3.9",
+    python_requires=">=3.10",
 )
