@@ -17,10 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from physunits import um, nm, ppm
 
-from materials import *
-from utils import qw_stack, Material
-from utils.layers import stack_R
-from utils.plot import plot_layers, plot_spectral
+from coatings.materials import *
+from coatings import qw_stack, Material
+from coatings.layers import stack_R
+from coatings.plot import plot_layers, plot_spectral
 
 lam_ref = 1064 * nm
 silica = Material(SiO2)
@@ -56,11 +56,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from physunits import um, nm, ppm, Hz
 
-from materials import *
-from utils import qw_stack, h5write, Material
-from utils.layers import stack_R, field_zmag, calc_abs
-from utils.plot import plot_layers, plot_spectral
-from utils.optimizer import diff_evo
+from coatings.materials import *
+from coatings import qw_stack, h5write, Material
+from coatings.layers import stack_R, field_zmag, calc_abs
+from coatings.plot import plot_layers, plot_spectral
+from coatings.optimizer import diff_evo
 
 lam_ref = 1550 * nm
 
