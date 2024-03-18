@@ -1,6 +1,7 @@
 # Design and global optimization of dielectric coatings
 
 ## Description
+Thin film coating design, optimization, and analysis tools based on [G. Venugopalan et. al.](https://doi.org/10.1364/OE.513807)
 
 ## Install
 From within your favorite python environment (e.g. conda) run:
