@@ -1,6 +1,5 @@
 import h5py
 import yaml
-import gwinc
 import numpy as np
 
 from .layers import *
@@ -108,40 +107,6 @@ def yamlread(fname):
     with open(fname, "r") as f:
         params = yaml.safe_load(f)
     return params
-
-
-def gwinc_init(gwinc_file, thin_films=None):
-    """Helper function that loads gwinc structure file
-    and if provided, updates coating material parameters.
-
-    Args:
-        gwinc_file (str): gwinc struct filepath
-        thin_films (dict): Material parameters, keys need to be
-                           one or both from ['low', 'high'],
-                           default is None.
-    """
-    if thin_films is not None:
-        # Match thin_films to what gwinc needs
-        for key in thin_films.keys():
-            if key not in ["low", "high"]:
-                raise NameError('Layer index can only be "low" or "high"')
-            tf_pars = thin_films[key]["Coating"]
-            tf_pars = {
-                par_name + f"{key}n": par_val
-                for par_name, par_val in tf_pars.items()
-            }
-
-            # Read base gwinc pars and update
-            gwinc_full = yamlread(gwinc_file)
-            try:
-                gwinc_full["Materials"]["Coating"].update(tf_pars)
-            except KeyError:
-                # Typically because struct doesn't match
-                gwinc_full["Materials"]["Coating"] = tf_pars
-            with open(gwinc_file, "w") as f:
-                yaml.dump(gwinc_full, f)
-
-    return gwinc.Struct.from_file(gwinc_file)
 
 
 def qw_stack(lam_ref, substrate, superstrate, thin_films, pattern, hwcap=""):
