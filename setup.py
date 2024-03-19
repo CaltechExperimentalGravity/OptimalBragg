@@ -28,7 +28,6 @@ setuptools.setup(
         "physunits",
         "corner",
         "emcee",
-        "gwinc",
     ],
     python_requires=">=3.10",
 )
