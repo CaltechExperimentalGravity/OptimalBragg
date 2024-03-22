@@ -105,21 +105,24 @@ def plot_spectral(wavelengths, stack, markers=[]):
         stack (dict): Stack dictionary containing at least n,L keys
         markers (list, optional): Wavelengths of interest
     """
-    lam_ref = stack["lam_ref"]
     ns, Ls = stack["ns"], stack["Ls"]
-
     design_Rs = np.zeros(len(markers) + 1)
-    markers.append(lam_ref)
+    markers.append(stack["lam_ref"])
     for ii, lam in enumerate(markers):
-        rrs, _ = multilayer_diel(ns, Ls, lam, lam_ref)
+        rrs, _ = multilayer_diel(ns, Ls, lam)
         design_Rs[ii] = np.abs(rrs) ** 2
     design_Ts = 1 - design_Rs
 
     # Spectral reflection and transmission
     RR = stack_R(wavelengths, stack)
     TT = 1 - RR
+    lam1, lam2 = qwbandedges(stack)
 
     fig, ax = plt.subplots(1, 1)
+    # HR bandwidth wavelengths, assuming qw stack:
+    # ax.axvline((lam1 / um), label="lam1", ls="--")
+    # ax.axvline((lam2 / um), label="lam2", ls="--")
+
     ax.semilogy(
         wavelengths / um,
         TT,

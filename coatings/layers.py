@@ -4,7 +4,7 @@ import scipy.io as scio
 from scipy.interpolate import interp1d, PchipInterpolator
 
 
-def multilayer_diel(ns, Ls, lamb, lamb_0, aoi=0, pol="te"):
+def multilayer_diel(ns, Ls, lamb, aoi=0, pol="te"):
     """Calculates amplitude reflectivity and complex
     impedance of a dielectric stack according to Eqs. (6.1.3)
     and (7.7.1) of http://eceweb1.rutgers.edu/~orfanidi/ewa/
@@ -17,10 +17,8 @@ def multilayer_diel(ns, Ls, lamb, lamb_0, aoi=0, pol="te"):
                  the dielectric stack, ordered from incident
                  to transmitted medium. Should have 2 fewer
                  elements than n.
-        lamb (float, arr): Wavelengths for which to evaluate
+        lamb (float, arr): Wavelength(s) for which to evaluate
                            the stack reflectivity.
-        lamb_0 (float): Center design wavelength for which to
-                        evaluate the stack reflectivity.
         aoi (float, optional): Angle of incidence in rad,
                                default=0.0 (normal inc)
         pol (str, optional): Polarization at which to evaluate
@@ -33,8 +31,8 @@ def multilayer_diel(ns, Ls, lamb, lamb_0, aoi=0, pol="te"):
                    incident medium with n=1.0, i.e. vacuum.
 
     """
-    # Use center design wavelength as reference unit
-    rel_lamb = lamb / lamb_0
+    # Wavenumbers
+    ki = 2 * np.pi / lamb
 
     # Cosine of theta; projection for oblique incidence
     proj_aoi = np.conj(1 - (ns[0] * np.sin(aoi) / ns) ** 2)
@@ -49,19 +47,19 @@ def multilayer_diel(ns, Ls, lamb, lamb_0, aoi=0, pol="te"):
         nT = ns / costh
 
     # Optical thicknesses
-    opt_L = (ns[1:-1] * Ls / lamb) * costh[1 : len(Ls) + 1]
+    opt_L = (ns[1:-1] * Ls) * costh[1 : len(Ls) + 1]
 
     # Per-layer amplitude reflectivity
     r = -np.diff(nT) / (np.diff(nT) + 2 * nT[0 : len(Ls) + 1])
 
     # Initialize to incident layer amplitude reflectivity
-    Gamma_0 = r[len(Ls)] * np.ones_like(rel_lamb)
+    Gamma_0 = r[len(Ls)] * np.ones_like(lamb)
 
     # Recursion relation
     for i in range(len(Ls) - 1, -1, -1):
-        delta = 2 * np.pi * opt_L[i] / rel_lamb
-        z = np.exp(-2 * 1j * delta)
-        Gamma_0 = (r[i] + Gamma_0 * z) / (1 + r[i] * Gamma_0 * z)
+        delta_i = ki * opt_L[i]
+        z_i = np.exp(2 * 1j * delta_i)
+        Gamma_0 = (r[i] + Gamma_0 * z_i) / (1 + r[i] * Gamma_0 * z_i)
 
     # Incident layer impedance
     Z_0 = (1 + Gamma_0) / (1 - Gamma_0)
@@ -94,8 +92,8 @@ def field_zmag(ns, Ls, lam, aoi=0, pol="s", n_pts=30):
 
     Args:
         ns (arr): Refractive index
-        Ls (arr): Physical thickness
-        lam (float): Wavelength
+        Ls (arr): Physical thickness [m]
+        lam (float): Reference wavelength [m]
         aoi (float, optional): Angle of incidence (rad),
                                default = 0
         pol (str, optional): Polarization, default = 's'.
@@ -216,32 +214,43 @@ def calc_abs(Esq, Ls, alphas):
 
 
 def stack_refl(wavelengths, stack):
-    lam_ref = stack["lam_ref"]
     ns, Ls = stack["ns"], stack["Ls"]
     try:
         iter(wavelengths)
         refl = np.zeros_like(wavelengths)
         for ii, wavelength in enumerate(wavelengths):
-            rr, _ = multilayer_diel(ns, Ls, wavelength, lam_ref)
+            rr, _ = multilayer_diel(ns, Ls, wavelength)
             refl[ii] = rr
     except TypeError:
-        rr, _ = multilayer_diel(ns, Ls, wavelengths, lam_ref)
+        rr, _ = multilayer_diel(ns, Ls, wavelengths)
         refl = rr
     finally:
         return refl
 
 
 def stack_R(wavelengths, stack):
-    lam_ref = stack["lam_ref"]
     ns, Ls = stack["ns"], stack["Ls"]
     try:
         iter(wavelengths)
         RR = np.zeros_like(wavelengths)
         for ii, wavelength in enumerate(wavelengths):
-            rr, _ = multilayer_diel(ns, Ls, wavelength, lam_ref)
+            rr, _ = multilayer_diel(ns, Ls, wavelength)
             RR[ii] = np.abs(rr) ** 2
     except TypeError:
-        rr, _ = multilayer_diel(ns, Ls, wavelengths, lam_ref)
+        rr, _ = multilayer_diel(ns, Ls, wavelengths)
         RR = np.abs(rr) ** 2
     finally:
         return RR
+
+
+def qwbandedges(stack):
+    """Based on Eq (6.3.18) in orfanidi"""
+    ns = stack["ns"][1:-1]
+    nH = max(ns)
+    nL = min(ns)
+    LH = stack["Ls"][np.argmax(ns)]
+    LL = stack["Ls"][np.argmin(ns)]
+    rho = (nH - nL) / (nH + nL)
+    lam1 = np.pi * (nH * LH + nL * LL) / (np.arccos(-rho))
+    lam2 = np.pi * (nH * LH + nL * LL) / (np.arccos(rho))
+    return lam1, lam2

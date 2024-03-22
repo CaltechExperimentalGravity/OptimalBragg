@@ -80,7 +80,6 @@ def vector_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
     Returns:
         vector_cost (dict): Weighted evaluated costs array
     """
-    lam_ref = stack["lam_ref"]
     ns = stack["ns"]
     vector_cost = {}
     vector_weights = {}
@@ -91,7 +90,7 @@ def vector_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
                     if specs["weight"][lam]:
                         vector_cost[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
-                        ][lam] * trans_cost(Ls, target, stack, lam)
+                        ][lam] * trans_cost(Ls, target, stack)
                         vector_weights[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
                         ][lam]
@@ -100,13 +99,13 @@ def vector_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
                     if specs["weight"][lam]:
                         vector_cost[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
-                        ][lam] * surfield_cost(Ls, target, stack, lam_ref)
+                        ][lam] * surfield_cost(Ls, target, stack)
                         vector_weights[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
                         ][lam]
             if cost == "Lsens":
                 vector_cost[cost] = specs["weight"] * sens_cost(
-                    Ls, specs["target"], stack, lam_ref
+                    Ls, specs["target"], stack
                 )
                 vector_weights[cost] = specs["weight"]
             if cost == "Sbr":
@@ -169,15 +168,14 @@ def vector_score(Ls, stack, costs, to_pars, br_pars):
     Returns:
         (float): Normalized overlap between the vectors
     """
-    lam_ref = stack["lam_ref"]
-    ns = stack["ns"]
+    ns, lam_ref = stack["ns"], stack["lam_ref"]
     rel_score = {}
     for cost, specs in costs.items():
         if specs["weight"]:
             if cost == "T":
                 for lam, target in specs["target"].items():
                     if specs["weight"][lam]:
-                        rr, _ = multilayer_diel(ns, Ls, lam, lam_ref)
+                        rr, _ = multilayer_diel(ns, Ls, lam)
                         actual = 1 - np.abs(rr) ** 2
                         abserr = np.abs(
                             (min(actual, target) - max(actual, target))
@@ -186,23 +184,21 @@ def vector_score(Ls, stack, costs, to_pars, br_pars):
             if cost == "Esurf":
                 for lam, target in specs["target"].items():
                     if specs["weight"][lam]:
-                        rr, _ = multilayer_diel(ns, Ls, lam, lam_ref)
+                        rr, _ = multilayer_diel(ns, Ls, lam)
                         actual = surfield(rr, normalized=True)
                         abserr = np.abs(
                             (min(actual, target) - max(actual, target))
                         )
                         rel_score[cost] = np.abs(max(actual, target)) / abserr
-                        # rel_score[cost] = 1 - np.abs((target - actual) / target)
             if cost == "Lsens":
-                rrplus, _ = multilayer_diel(ns, Ls + 1e-9, lam_ref, lam_ref)
-                rr0, _ = multilayer_diel(ns, Ls, lam_ref, lam_ref)
+                rrplus, _ = multilayer_diel(ns, 1.01 * Ls, lam_ref)
+                rr0, _ = multilayer_diel(ns, Ls, lam_ref)
                 Tplus = 1 - np.abs(rrplus) ** 2
                 T0 = 1 - np.abs(rr0) ** 2
-                actual = np.abs(Tplus - T0) / 1e-9
+                actual = 100 * np.abs(Tplus - T0)
                 target = specs["target"]
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr
-                # rel_score[cost] = 1 - np.abs((target - actual) / target)
             if cost == "Sbr":
                 actual = coating_brownian(
                     np.array([100 * Hz]),
@@ -214,26 +210,22 @@ def vector_score(Ls, stack, costs, to_pars, br_pars):
                 target = specs["target"]
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr
-                # rel_score[cost] = 1 - np.abs((target - actual) / target)
             if cost == "Sto":
                 actual, _, _ = coating_thermooptic(100 * Hz, stack, **to_pars)
                 target = specs["target"]
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr
-                # rel_score[cost] = 1 - np.abs((target - actual) / target)
             if cost == "abs":
                 _, Enorm = field_zmag(
-                    stack["ns"], Ls, n_pts=2**6, lam=stack["lam_ref"]
+                    stack["ns"], Ls, n_pts=2**6, lam=lam_ref
                 )
                 actual = calc_abs(Enorm, Ls, stack["alphas"])
                 target = specs["target"]
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr
-                # rel_score[cost] = 1 - np.abs((target - actual) / target)
             if cost == "Lstdev":
                 actual = np.std(Ls) / np.mean(Ls)
                 target = specs["target"]
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr
-                # rel_score[cost] = 1 - np.abs((target - actual) / target)
     return rel_score

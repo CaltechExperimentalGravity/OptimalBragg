@@ -22,7 +22,7 @@ def norm(norm_arg):
 
 
 @norm("l2")
-def trans_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
+def trans_cost(Ls, target, stack, **multilayer_diel_pars):
     """Evaluates a cost based on stack reflectivity/transmission
 
     Args:
@@ -41,16 +41,14 @@ def trans_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
     Deleted Parameters:
 
     """
-    ns = stack["ns"]
-    rr, _ = multilayer_diel(
-        ns, Ls, lamb, stack["lam_ref"], **multilayer_diel_pars
-    )
+    ns, lamb = stack["ns"], stack["lam_ref"]
+    rr, _ = multilayer_diel(ns, Ls, lamb, **multilayer_diel_pars)
     T = 1 - np.abs(rr) ** 2
     return np.abs((target - T) / target)
 
 
 @norm("l1")
-def sens_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
+def sens_cost(Ls, target, stack, **multilayer_diel_pars):
     """Evaluates the sensitivity cost of a stack transmission
     at given wavelength relative to a 1% Ls perturbation
 
@@ -59,26 +57,21 @@ def sens_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
         ns (arr): Refractive index
         Ls (arr): Physical thickness
         lamb (float): Wavelength at which to evaluate sens
-        lamb_0 (float): Reference wavelength
         multilayer_diel_pars (dict, optional): Other parameters for evaluating
                                                the transmission.
     Returns:
         (float): Scalar cost for the evaluated sens
     """
-    ns = stack["ns"]
-    rr0, _ = multilayer_diel(
-        ns, Ls, lamb, stack["lam_ref"], **multilayer_diel_pars
-    )
+    ns, lamb = stack["ns"], stack["lam_ref"]
+    rr0, _ = multilayer_diel(ns, Ls, lamb, **multilayer_diel_pars)
     T0 = 1 - np.abs(rr0) ** 2
-    rr1, _ = multilayer_diel(
-        ns, 1.01 * Ls, lamb, stack["lam_ref"], **multilayer_diel_pars
-    )
+    rr1, _ = multilayer_diel(ns, 1.01 * Ls, lamb, **multilayer_diel_pars)
     T1 = 1 - np.abs(rr1) ** 2
     return np.abs(100 * (T0 - T1) / T0)
 
 
 @norm("arcsinh")
-def surfield_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
+def surfield_cost(Ls, target, stack, **multilayer_diel_pars):
     """Evaluates the normalized surface E field cost
 
     Args:
@@ -92,10 +85,8 @@ def surfield_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
        Returns:
            cost (float): Scalar cost for the normalized surf E-field
     """
-    ns = stack["ns"]
-    rr, _ = multilayer_diel(
-        ns, Ls, lamb, stack["lam_ref"], **multilayer_diel_pars
-    )
+    ns, lamb = stack["ns"], stack["lam_ref"]
+    rr, _ = multilayer_diel(ns, Ls, lamb, **multilayer_diel_pars)
     return np.abs(1 + rr) ** 2
 
 
