@@ -15,9 +15,7 @@ def plot_layers(stack):
     """Stack layers and normalized E
 
     Args:
-        ns (arr): Refractive index
-        Ls (arr): Physical thickness
-        ifo (gwinc.Struct): Gwinc structure
+        stack (dict): Stack attributes
     """
     lam_ref = stack["lam_ref"]
     ns, Ls, alphas = stack["ns"], stack["Ls"], stack["alphas"]
@@ -96,27 +94,28 @@ def plot_layers(stack):
     )
 
 
-def plot_spectral(wavelengths, stack, markers=[]):
+def plot_spectral(wavelengths, stack, markers=[], **multilayer_diel_pars):
     """Spectral transmission and reflection plots
 
     Args:
         wavelengths (arr): Wavelengths at which to evaluate
-                           spectral reflection/transmission
+                           spectral reflection/transmission [m]
         stack (dict): Stack dictionary containing at least n,L keys
-        markers (list, optional): Wavelengths of interest
+        markers (list, optional): Wavelengths of interest [m]
+        **multilayer_diel_pars: Kwargs for multilayer_diel_pars
+
     """
     ns, Ls = stack["ns"], stack["Ls"]
     design_Rs = np.zeros(len(markers) + 1)
     markers.append(stack["lam_ref"])
     for ii, lam in enumerate(markers):
-        rrs, _ = multilayer_diel(ns, Ls, lam)
-        design_Rs[ii] = np.abs(rrs) ** 2
+        design_Rs[ii] = refl(lam, stack, **multilayer_diel_pars)
     design_Ts = 1 - design_Rs
 
     # Spectral reflection and transmission
-    RR = stack_R(wavelengths, stack)
-    TT = 1 - RR
-    lam1, lam2 = qwbandedges(stack)
+    RR = refl(wavelengths, stack, **multilayer_diel_pars)
+    TT = trans(wavelengths, stack, **multilayer_diel_pars)
+    # lam1, lam2 = qwbandedges(stack)
 
     fig, ax = plt.subplots(1, 1)
     # HR bandwidth wavelengths, assuming qw stack:
@@ -140,14 +139,14 @@ def plot_spectral(wavelengths, stack, markers=[]):
     )
 
     colors = plt.cm.Spectral_r(np.linspace(0.1, 2, len(markers)))
-    for lam, trans, c in zip(markers, design_Ts, colors):
+    for lam, Tlam, c in zip(markers, design_Ts, colors):
         ax.vlines(
             lam / um,
-            trans,
+            Tlam,
             1.0,
             linestyle="--",
             color=c,
-            label=f"T={trans/ppm:.2f} ppm @ {lam/um:.3f} um",
+            label=f"T={Tlam/ppm:.2f} ppm @ {lam/um:.3f} um",
         )
     ax.set_xlabel(R"Wavelength [$\mu \mathrm{m}$]")
     ax.set_ylabel(R"T or R")
@@ -155,16 +154,18 @@ def plot_spectral(wavelengths, stack, markers=[]):
     ax.legend(loc="lower left")
 
 
-def plot_noises(ff, noises, labels, plot_total=False):
+def plot_noises(ff, noiselabels, plot_total=False):
     """Coating and substrate thermal noises
 
     Args:
         ff (array): Fourier frequency
+        noiselabels (dict): Precomputed PSDs
+        plot_total (bool, optional): Description
         noises (list) = Psd arrays
     """
     total = np.zeros_like(ff)
     fig, ax = plt.subplots(1, 1)
-    for label, noise in zip(labels, noises):
+    for label, noise in noiselabels.items():
         str_eval = Rf"={np.sqrt(noise[np.argmin(np.abs(ff-100*Hz))])/1e-22:.2f}e-22 m/rtHz @ 100 Hz"
         ax.loglog(ff, np.sqrt(noise), label=label + str_eval)
         total += noise
@@ -181,6 +182,11 @@ def plot_noises(ff, noises, labels, plot_total=False):
 
 
 def plot_corner(mc_samples):
+    """Corner plot following MCMC analysis
+
+    Args:
+        mc_samples (dict): Precomputed MC samples (see analysis)
+    """
     fig, ax = plt.subplots(
         np.shape(mc_samples)[0], np.shape(mc_samples)[0], figsize=(18, 18)
     )

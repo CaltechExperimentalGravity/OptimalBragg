@@ -6,8 +6,8 @@ from scipy.interpolate import interp1d, PchipInterpolator
 
 def multilayer_diel(ns, Ls, lamb, aoi=0, pol="te"):
     """Calculates amplitude reflectivity and complex
-    impedance of a dielectric stack according to Eqs. (6.1.3)
-    and (7.7.1) of http://eceweb1.rutgers.edu/~orfanidi/ewa/
+    impedance of a dielectric stack according to Chapter 8
+    of http://eceweb1.rutgers.edu/~orfanidi/ewa/
 
     Args:
         ns (arr): Array of refractive indices, including the
@@ -23,7 +23,7 @@ def multilayer_diel(ns, Ls, lamb, aoi=0, pol="te"):
                                default=0.0 (normal inc)
         pol (str, optional): Polarization at which to evaluate
                              reflectivity, defaults to 'te' or
-                             s-pol.
+                             's' polarization.
 
     Returns:
         Gamma_0 (arr): Amplitude reflectivity (complex)
@@ -31,39 +31,38 @@ def multilayer_diel(ns, Ls, lamb, aoi=0, pol="te"):
                    incident medium with n=1.0, i.e. vacuum.
 
     """
-    # Wavenumbers
+    # Wavenumber(s)
     ki = 2 * np.pi / lamb
 
-    # Cosine of theta; projection for oblique incidence
+    # Oblique incidence projection (Eq. 8.2.2)
     proj_aoi = np.conj(1 - (ns[0] * np.sin(aoi) / ns) ** 2)
 
     # Final conj needed when n_inc > n(i) and aoi > aoi_crit
     costh = np.conj(np.sqrt(proj_aoi))
 
-    # Polarization projection in transmission
+    # Transverse index projection (Eq. 8.1.4)
     if pol in ["te", "s", "TE", "S"]:
         nT = ns * costh
     else:
         nT = ns / costh
 
-    # Optical thicknesses
+    # Oblique, lossy optical thicknesses
     opt_L = (ns[1:-1] * Ls) * costh[1 : len(Ls) + 1]
 
-    # Per-layer amplitude reflectivity
+    # Per-layer amplitude reflectivity (Eq. 8.1.3)
     r = -np.diff(nT) / (np.diff(nT) + 2 * nT[0 : len(Ls) + 1])
 
-    # Initialize to incident layer amplitude reflectivity
+    # Initialize complex amplitude reflectivities with incident layer
     Gamma_0 = r[len(Ls)] * np.ones_like(lamb)
 
-    # Recursion relation
+    # Recursion relation (Eq. 8.1.7)
     for i in range(len(Ls) - 1, -1, -1):
         delta_i = ki * opt_L[i]
-        z_i = np.exp(2 * 1j * delta_i)
+        z_i = np.exp(2j * delta_i)
         Gamma_0 = (r[i] + Gamma_0 * z_i) / (1 + r[i] * Gamma_0 * z_i)
 
-    # Incident layer impedance
+    # Incident layer complex impedance
     Z_0 = (1 + Gamma_0) / (1 - Gamma_0)
-
     return Gamma_0, Z_0
 
 
@@ -71,13 +70,13 @@ def surfield(rr, Ei=27.46, normalized=False):
     """Surface electric field for a dielectric coating
 
     Args:
-        rr (complex): Amplitude reflectivity at the interface
+        rr (complex): Amplitude reflectivity at the input interface
         Ei (float): Incident electric field amplitude in V/m.
                     default = 27.46 V/m corresponding to 1 W/m^2.
         normalized (bool, optional): Return in units of Ei
 
     Returns:
-        (float): Surface E-field amplitude
+        (float, arr): Surface E-field amplitude
     """
     if normalized:
         return np.abs(1 + rr)
@@ -185,66 +184,91 @@ def field_zmag(ns, Ls, lam, aoi=0, pol="s", n_pts=30):
 def calc_abs(Esq, Ls, alphas):
     """
     Function for calculating the Absorption given an electric field profile
-    Parameters:
-    -----------
-    Esq: array_like
-        NORMALIZED electric field squared as a function of distance in a coating
-    Ls: array_like
-        PHYSICAL thickness of coating layers
-    alphas: arr
-        Absorption coefficients of all layers in 1/m
+
+    Args:
+        Esq (arr): Magnitude squared E-field inside layers
+        Ls (arr): Physical thicknesses [m]
+        alphas (arr): Absorption coefficients [m]
+
     Returns:
-    -------------
-    absorp: float
-        Absorption of coating (W/W)
+        (float): Integrated stack absorption [W/W]
     """
 
     # Remember, absorption coefficient = 4 * pi * k / lambda,
     # where k is the extinction coefficient (aka Im(n))
-    # Should the transfer matrix method include this?
+    # We should let the transfer matrix method handle this for speedup
 
     absorp = 0
     for alpha_i, Li in zip(alphas, Ls):
         # Unclear if trapz is faster, probably not... but also not slower.
         # absorp += np.sum(Esq * alpha_i * np.ones_like(Esq) * Li / len(Esq))
-        absorp += np.trapz(
+        absorp += 2 * np.trapz(
             Esq * alpha_i * np.ones_like(Esq), dx=Li / (len(Esq))
         )
     return absorp
 
 
-def stack_refl(wavelengths, stack):
+def amp_refl(wavelengths, stack, **multilayer_diel_pars):
+    """Compute spectral amplitude reflectivity (r) of a given stack
+
+    Args:
+        wavelengths (arr): Wavelenght(s) [m]
+        stack (dict): Container of stack attributes
+        **multilayer_diel_pars: Kwargs for multilayer_diel
+
+    Returns:
+        (arr): Spectral amplitude reflectivities
+    """
     ns, Ls = stack["ns"], stack["Ls"]
     try:
         iter(wavelengths)
-        refl = np.zeros_like(wavelengths)
-        for ii, wavelength in enumerate(wavelengths):
-            rr, _ = multilayer_diel(ns, Ls, wavelength)
-            refl[ii] = rr
+        rrj = np.zeros_like(wavelengths).astype(complex)
+        for j, wavelength in enumerate(wavelengths):
+            rr, _ = multilayer_diel(ns, Ls, wavelength, **multilayer_diel_pars)
+            rrj[j] = rr
     except TypeError:
-        rr, _ = multilayer_diel(ns, Ls, wavelengths)
-        refl = rr
+        rrj, _ = multilayer_diel(ns, Ls, wavelengths, **multilayer_diel_pars)
     finally:
-        return refl
+        return rrj
 
 
-def stack_R(wavelengths, stack):
-    ns, Ls = stack["ns"], stack["Ls"]
-    try:
-        iter(wavelengths)
-        RR = np.zeros_like(wavelengths)
-        for ii, wavelength in enumerate(wavelengths):
-            rr, _ = multilayer_diel(ns, Ls, wavelength)
-            RR[ii] = np.abs(rr) ** 2
-    except TypeError:
-        rr, _ = multilayer_diel(ns, Ls, wavelengths)
-        RR = np.abs(rr) ** 2
-    finally:
-        return RR
+def refl(wavelengths, stack, **multilayer_diel_pars):
+    """Compute spectral reflection (R) of a given stack
+
+    Args:
+        wavelengths (arr): Wavelength(s) [m]
+        stack (dict): Container of stack attributes
+        **multilayer_diel_pars: Kwargs for multilayer_diel
+
+    Returns:
+        (arr): Spectral reflection
+    """
+    return np.abs(amp_refl(wavelengths, stack, **multilayer_diel_pars)) ** 2
+
+
+def trans(wavelengths, stack, **multilayer_diel_pars):
+    """Compute spectral transmission (T) of a given stack
+
+    Args:
+        wavelengths (arr): Wavelength(s) [m]
+        stack (dict): Container of stack attributes
+        **multilayer_diel_pars: Kwargs for multilayer_diel
+
+    Returns:
+        (arr): Spectral transmission
+    """
+    return 1 - refl(wavelengths, stack, **multilayer_diel_pars)
 
 
 def qwbandedges(stack):
-    """Based on Eq (6.3.18) in orfanidi"""
+    """Based on Eq (6.3.18) in orfanidi
+
+    Args:
+        stack (dict): Container of stack attributes
+
+    Returns:
+        (float, float): Wavelengths at which HR band edges occur [m]
+    """
     ns = stack["ns"][1:-1]
     nH = max(ns)
     nL = min(ns)

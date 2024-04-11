@@ -5,8 +5,8 @@ import h5py
 import tqdm
 
 from physunits.other import ppm
-from .layers import stack_refl, stack_R, surfield, field_zmag, calc_abs
-from .noise import stack_noise
+from .layers import *
+from .noise import coating_noise
 
 
 def lnprob(x, mu, icov):
@@ -49,14 +49,14 @@ def mc_sens(stack, n_points=5000, n_walkers=20, n_dim=3, **noise_pars):
         stack["Ls"] = np.copy(Ls_out) * perturb[1]
         stack["alphas"] = np.copy(als_out) * perturb[2]
 
-        rr = stack_refl(stack["lam_ref"], stack)
-        T_refs[jj] = 1 - stack_R(stack["lam_ref"], stack)
+        rr = amp_refl(stack["lam_ref"], stack)
+        T_refs[jj] = trans(stack["lam_ref"], stack)
         Esurfs[jj] = surfield(rr)
         _, Enorm = field_zmag(
             stack["ns"], stack["Ls"], n_pts=2**6, lam=stack["lam_ref"]
         )
         absorpts[jj] = calc_abs(Enorm, stack["Ls"], stack["alphas"])
-        Sbr, _, _, Sto = stack_noise(
+        Sbr, _, _, Sto = coating_noise(
             freq=np.array([100, 100]), stack=stack, **noise_pars
         )
         to_noises[jj] = np.sqrt(Sto[0])

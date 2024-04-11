@@ -41,12 +41,14 @@ SiO2 = {
         "rho": 2203,  # See [1]
         "CP": 744.98,  # CV/rho
         "Alpha": 0.51e-6,  # See [0]
+        "MechanicalLossExponent": 1,  # c2 * f^exponent
+        "c2": 3e-13,
         "ThermalDiffusivity": 2.0,  # See [0]
         "Kappa": 0.5,  # 1/thermaldiffusivity
         "Beta": 8e-6,  # See [0]
         "Phi": 0.5e-4,  # See [0]
-        "Index": 1.45,  # See [0]
-        "Absorption": 0.8107,  #  See[3], or 162.14 See [2]
+        "Index": 1.45,  # - 0.8j,  # See [0]
+        "Absorption": 0,  #  See[3], or 162.14 See [2]
         "Temp": 300,
     },
     "References": {
@@ -81,12 +83,13 @@ Ta2O5 = {
         "ThermalDiffusivity": 1.67,  # See [0]
         "Beta": 2.3e-6,  # See [0]
         "Phi": 3.8e-4,  # See [0]
-        "Index": 2.06,  # See [0]
+        "Index": 2.06,  # - 0.0017775j  # See [0], [2]
         "Absorption": 20e-6 / 500e-9,  # See [1]
     },
     "References": {
         0: "https://arxiv.org/pdf/0912.0107.pdf",
         1: "https://opg.optica.org/abstract.cfm?uri=OIC-2019-FA.6",
+        2: "https://doi.org/10.1063/1.4819325",
     },
 }
 

@@ -13,17 +13,39 @@ def diff_evo(
     costs,
     to_pars=None,
     br_pars=None,
+    multilayer_diel_pars=None,
     Lmin=20 * nm,
     Lmax=450 * nm,
     verbose=False,
 ):
+    """Wrapped differential evolution optimizer for coatings
+
+    Args:
+        stack (dict): Stack attributes (initial coating)
+        costs (dict): Target costs and their weights
+        to_pars (dict, optional): Kwargs for TO noise calculation
+        br_pars (dict, optional): Kwargs for Br noise calculation
+        multilayer_diel_pars (dict, optional): Kwargs for multilayer_diel
+        Lmin (float, optional): Minimum layer physical thickness [m]
+        Lmax (float, optional): Maximum layer physical thickness [m]
+        verbose (bool, optional): Optimizer verbosity
+    """
     # Unpack stack attributes
-    lam_ref = stack["lam_ref"]
     ns, Ls, alphas = stack["ns"], stack["Ls"], stack["alphas"]
-    # Do global optimization
+    # Global optimization
     vector_mon, conv_mon = [], []
 
     def diffevo_monitor(xk, convergence):
+        """Callback func to track cost: see scipy.differential_evolution
+        for more information.
+
+        Args:
+            xk (float): Intermediate scalar cost evaluation
+            convergence (float): Convergence value
+
+        Returns:
+            Bool: Optimizer will halt otherwise
+        """
         vector_mon.append(xk)
         conv_mon.append(1 / convergence)
         return False
@@ -32,7 +54,7 @@ def diff_evo(
         func=scalar_cost,
         bounds=Bounds(Lmin * np.ones_like(Ls), Lmax * np.ones_like(Ls)),
         mutation=(0.05, 1.5),
-        args=(stack, costs, to_pars, br_pars, verbose),
+        args=(stack, costs, to_pars, br_pars, multilayer_diel_pars, verbose),
         callback=diffevo_monitor,
         updating="deferred",
         strategy="best1bin",
@@ -49,9 +71,11 @@ def diff_evo(
     # Optimized stack
     Lres = opt_res.x
     final_vector_cost, vector_weights = vector_cost(
-        Ls, stack, costs, to_pars, br_pars, True
+        Ls, stack, costs, to_pars, br_pars, multilayer_diel_pars, True
     )
-    final_vector_score = vector_score(Lres, stack, costs, to_pars, br_pars)
+    final_vector_score = vector_score(
+        Lres, stack, costs, to_pars, br_pars, multilayer_diel_pars
+    )
     final_scalar_score = np.mean(np.array(list(final_vector_score.values())))
     results = {
         "Ls": Lres,
@@ -64,22 +88,32 @@ def diff_evo(
     return results
 
 
-def vector_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
+def vector_cost(
+    Ls,
+    stack,
+    costs,
+    Sto_pars=None,
+    Sbr_pars=None,
+    multilayer_diel_pars=None,
+    verbose=False,
+):
     """Vector cost function for a coating stack.
 
     Args:
+        Ls (array): Physical thicknesses [m]
         stack (dict): Stack attributes
         costs (dict): Vector cost in the form:
                       {'cost_name':{'target':t, 'weight':w}}
-        Sbr_proxy (None, optional): Precomputed value of little gamma used
-            as a proxy Brownian noise cost
-        Sto_pars (None, optional): Thermo optic cost func pars
-        verbose (bool, optional): Determines level of print detail
-                                  defaults = False, which outputs
-                                  only the value of the cost function.
-    Returns:
-        vector_cost (dict): Weighted evaluated costs array
+        Sto_pars (None, optional): Kwargs for TO noise calculation
+        Sbr_pars (None, optional): Kwargs for Br noise calculation
+        multilayer_diel_pars (None, optional): Kwargs for multilayer_diel
+        verbose (bool, optional): Verbosity of vector cost
+
+    Returned:
+        vector_cost, vector weights (dict, dict): Vector cost and weigths
     """
+    if multilayer_diel_pars is None:
+        multilayer_diel_pars = {}
     ns = stack["ns"]
     vector_cost = {}
     vector_weights = {}
@@ -90,7 +124,9 @@ def vector_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
                     if specs["weight"][lam]:
                         vector_cost[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
-                        ][lam] * trans_cost(Ls, target, stack)
+                        ][lam] * trans_cost(
+                            Ls, target, stack, lam, **multilayer_diel_pars
+                        )
                         vector_weights[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
                         ][lam]
@@ -99,15 +135,23 @@ def vector_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
                     if specs["weight"][lam]:
                         vector_cost[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
-                        ][lam] * surfield_cost(Ls, target, stack)
+                        ][lam] * surfield_cost(
+                            Ls, target, stack, lam, **multilayer_diel_pars
+                        )
                         vector_weights[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
                         ][lam]
             if cost == "Lsens":
-                vector_cost[cost] = specs["weight"] * sens_cost(
-                    Ls, specs["target"], stack
-                )
-                vector_weights[cost] = specs["weight"]
+                for lam, target in specs["target"].items():
+                    if specs["weight"][lam]:
+                        vector_cost[cost + f"{int(lam/nm):d}"] = specs[
+                            "weight"
+                        ][lam] * sens_cost(
+                            Ls, target, stack, lam, **multilayer_diel_pars
+                        )
+                        vector_weights[cost + f"{int(lam/nm):d}"] = specs[
+                            "weight"
+                        ][lam]
             if cost == "Sbr":
                 vector_cost[cost] = specs["weight"] * brownian_cost(
                     Ls, specs["target"], stack, **Sbr_pars
@@ -134,7 +178,15 @@ def vector_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
     return vector_cost, vector_weights
 
 
-def scalar_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
+def scalar_cost(
+    Ls,
+    stack,
+    costs,
+    Sto_pars=None,
+    Sbr_pars=None,
+    multilayer_diel_pars=None,
+    verbose=False,
+):
     """Scalar cost function for a coating stack.
 
     Args:
@@ -142,15 +194,17 @@ def scalar_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
         stack (dict): Stack attributes
         costs (dict): Vector cost in the form:
                       {'cost_name':{'target':t, 'weight':w}}
-        Sto_pars (None, optional): Description
+        Sto_pars (dict, optional): Kwargs for TO noise calculation
+        Sbr_pars (dict, optional): Kwargs for Br noise calculation
+        multilayer_diel_pars (dict, optional): Kwargs for multilayer_diel
         verbose (bool, optional): Description
 
-    Returns:
-        (float): Normalized scalar cost
+    Returned:
+        (float): Weighted scalar cost
     """
     scalar_cost, weight_sum = 0.0, 0.0
     weighted_vector_cost, weight_vector = vector_cost(
-        Ls, stack, costs, Sto_pars, Sbr_pars, verbose
+        Ls, stack, costs, Sto_pars, Sbr_pars, multilayer_diel_pars, verbose
     )
     for cost, evaluation in weighted_vector_cost.items():
         weight_sum += weight_vector[cost]
@@ -158,25 +212,31 @@ def scalar_cost(Ls, stack, costs, Sto_pars=None, Sbr_pars=None, verbose=False):
     return scalar_cost / weight_sum
 
 
-def vector_score(Ls, stack, costs, to_pars, br_pars):
+def vector_score(Ls, stack, costs, to_pars, br_pars, multilayer_diel_pars):
     """Score stack relative to an optimization target
-
     Args:
-        optimized_vector (dict): Result vector cost of optimizer
-        target_vector (dict): Input optimization costs
+        Ls (array): Physical thicknesses [m]
+        stack (dict): Stack attributes
+        costs (dict): Vector cost in the form:
+                      {'cost_name':{'target':t, 'weight':w}}
+        Sto_pars (None, optional): Kwargs for TO noise calculation
+        Sbr_pars (None, optional): Kwargs for Br noise calculation
+        multilayer_diel_pars (None, optional): Kwargs for multilayer_diel
+        verbose (bool, optional): Verbosity of vector cost
 
-    Returns:
-        (float): Normalized overlap between the vectors
+    Returned:
+        rel_score (dict): Relative scores for vector cost
     """
-    ns, lam_ref = stack["ns"], stack["lam_ref"]
+    if multilayer_diel_pars is None:
+        multilayer_diel_pars = {}
+    stack["Ls"] = Ls
     rel_score = {}
     for cost, specs in costs.items():
         if specs["weight"]:
             if cost == "T":
                 for lam, target in specs["target"].items():
                     if specs["weight"][lam]:
-                        rr, _ = multilayer_diel(ns, Ls, lam)
-                        actual = 1 - np.abs(rr) ** 2
+                        actual = trans(lam, stack, **multilayer_diel_pars)
                         abserr = np.abs(
                             (min(actual, target) - max(actual, target))
                         )
@@ -184,24 +244,28 @@ def vector_score(Ls, stack, costs, to_pars, br_pars):
             if cost == "Esurf":
                 for lam, target in specs["target"].items():
                     if specs["weight"][lam]:
-                        rr, _ = multilayer_diel(ns, Ls, lam)
+                        rr = refl(lam, stack, **multilayer_diel_pars)
                         actual = surfield(rr, normalized=True)
                         abserr = np.abs(
                             (min(actual, target) - max(actual, target))
                         )
                         rel_score[cost] = np.abs(max(actual, target)) / abserr
             if cost == "Lsens":
-                rrplus, _ = multilayer_diel(ns, 1.01 * Ls, lam_ref)
-                rr0, _ = multilayer_diel(ns, Ls, lam_ref)
-                Tplus = 1 - np.abs(rrplus) ** 2
-                T0 = 1 - np.abs(rr0) ** 2
-                actual = 100 * np.abs(Tplus - T0)
-                target = specs["target"]
-                abserr = np.abs((min(actual, target) - max(actual, target)))
-                rel_score[cost] = np.abs(max(actual, target)) / abserr
+                for lam, target in specs["target"].items():
+                    if specs["weight"][lam]:
+                        Tref = trans(lam, stack, **multilayer_diel_pars)
+                        perturb_stack = stack.deepcopy()
+                        perturb_stack["Ls"] = 1.01 * Ls
+                        Tper = trans(lam, perturb_stack, **multilayer_diel_pars)
+                        actual = np.abs((Tper - Tref) / Tref)
+                        target = specs["target"]
+                        abserr = np.abs(
+                            (min(actual, target) - max(actual, target))
+                        )
+                        rel_score[cost] = np.abs(max(actual, target)) / abserr
             if cost == "Sbr":
                 actual = coating_brownian(
-                    np.array([100 * Hz]),
+                    np.array([br_pars.pop("freq")]),
                     stack,
                     br_pars["w_beam"],
                     br_pars["power"],
@@ -211,20 +275,22 @@ def vector_score(Ls, stack, costs, to_pars, br_pars):
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr
             if cost == "Sto":
-                actual, _, _ = coating_thermooptic(100 * Hz, stack, **to_pars)
+                actual, _, _ = coating_thermooptic(
+                    to_pars.pop("freq"), stack, **to_pars
+                )
                 target = specs["target"]
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr
             if cost == "abs":
                 _, Enorm = field_zmag(
-                    stack["ns"], Ls, n_pts=2**6, lam=lam_ref
+                    stack["ns"], Ls, n_pts=2**6, lam=stack["lam_ref"]
                 )
                 actual = calc_abs(Enorm, Ls, stack["alphas"])
                 target = specs["target"]
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr
             if cost == "Lstdev":
-                actual = np.std(Ls) / np.mean(Ls)
+                actual = np.var(Ls)
                 target = specs["target"]
                 abserr = np.abs((min(actual, target) - max(actual, target)))
                 rel_score[cost] = np.abs(max(actual, target)) / abserr

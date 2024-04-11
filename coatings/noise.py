@@ -20,7 +20,7 @@ def substrate_noise(freq, stack, w_beam, r_mirror=None, d_mirror=None):
     return sub_Sbr, sub_Str, sub_Ste
 
 
-def stack_noise(
+def coating_noise(
     freq, stack, w_beam, power=None, r_mirror=None, d_mirror=None, m_mirror=None
 ):
     coat_Sbr = coating_brownian(
@@ -522,13 +522,23 @@ def substrate_thermoelastic_FiniteCorr(stack, w_beam, r_mirror, d_mirror):
 
 
 def substrate_brownian(f, stack, w_beam, r_mirror=None, d_mirror=None):
-    """Substrate thermal displacement noise spectrum due to substrate mechanical loss
+    """Thermal displacement noise ASD due to substrate mechanical loss
 
     :f: frequency array in Hz
     :stack: stack dict
     :wBeam: beam radius (at 1 / e^2 power)
 
     :returns: displacement noise power spectrum at :f:, in meters
+
+    Args:
+        f (array): Fourier frequency in Hz
+        stack (dict): Description
+        w_beam (TYPE): Description
+        r_mirror (None, optional): Description
+        d_mirror (None, optional): Description
+
+    Returns:
+        TYPE: Description
 
     """
     wavelength = stack["lam_ref"]
@@ -538,7 +548,7 @@ def substrate_brownian(f, stack, w_beam, r_mirror=None, d_mirror=None):
     sigma = sub.Sigma
     c2 = sub.c2
     n = sub.MechanicalLossExponent
-    alphas = sub.Alphas
+    alphas = sub.Alpha
     kBT = k * sub.Temp
 
     if r_mirror is not None and d_mirror is not None:
@@ -987,10 +997,10 @@ def getCoatReflAndDer(nN, nsub, dOpt):
     # So rhoN[-1] is reflectivity for  no layers but interface from
     #                                              last layer to substrate
     # rhoN[0] is total complex reflectivity of the coating stack.
-    rhoN = np.zeros_like(Refl, np.complex128)
+    rhoN = np.zeros_like(Refl, dtype=np.complex128)
 
-    phiNmkm1 = np.flipud(Phi)  # phi_{N-k-1}
-    rNmkm1 = np.flipud(Refl[:-1])  # r_{N-k-1}
+    phiNmkm1 = np.flip(Phi, axis=0)  # phi_{N-k-1}
+    rNmkm1 = np.flip(Refl[:-1], axis=0)  # r_{N-k-1}
     exp2iphiNmkm1 = np.exp(2j * phiNmkm1)  # exp(2i phi_{N-k-1})
 
     # Recursion relation for complex reflectivity

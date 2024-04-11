@@ -110,6 +110,19 @@ def yamlread(fname):
 
 
 def qw_stack(lam_ref, substrate, superstrate, thin_films, pattern, hwcap=""):
+    """Initializer of stack attribute dict based on qw design at single wavelength.
+
+    Args:
+        lam_ref (float): Wavelength [m]
+        substrate (Material): Substrates attributes
+        superstrate (Material): Superstrate attributes (e.g. air)
+        thin_films (dict): Dict with layer attributes (Material objects)
+        pattern (str): Representation of layer structure
+        hwcap (str, optional): Halfwave cap at the superstrate interface
+
+    Returns:
+        dict: Stack attributes for QW design
+    """
     n_stack = [superstrate.Index]
     L_stack = []
     if hwcap:

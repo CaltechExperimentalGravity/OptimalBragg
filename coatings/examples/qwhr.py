@@ -4,7 +4,7 @@ from physunits import um, nm, ppm
 
 from coatings.materials import *
 from coatings import qw_stack, Material
-from coatings.layers import stack_R
+from coatings.layers import refl
 from coatings.plot import plot_layers, plot_spectral
 
 lam_ref = 1064 * nm
@@ -22,7 +22,7 @@ stack = qw_stack(
 )
 
 # Results
-T_ref = 1 - stack_R(lam_ref, stack)
+T_ref = 1 - refl(lam_ref, stack)
 print(Rf"T = {T_ref/ppm:.1f} ppm at {lam_ref/um:.2f} um.")
 
 # Show layer structure and spectral refl/trans
