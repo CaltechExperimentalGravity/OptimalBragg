@@ -173,7 +173,6 @@ def vector_cost(
                 )
                 vector_weights[cost] = specs["weight"]
     if verbose:
-        print(vector_cost)
         for cost in vector_cost.keys():
             print(cost + f" cost = {vector_cost[cost]:.4f}")
     return vector_cost, vector_weights
