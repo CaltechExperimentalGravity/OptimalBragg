@@ -255,11 +255,10 @@ def vector_score(Ls, stack, costs, to_pars, br_pars, multilayer_diel_pars):
                 for lam, target in specs["target"].items():
                     if specs["weight"][lam]:
                         Tref = trans(lam, stack, **multilayer_diel_pars)
-                        perturb_stack = stack.deepcopy()
+                        perturb_stack = stack.copy()
                         perturb_stack["Ls"] = 1.01 * Ls
                         Tper = trans(lam, perturb_stack, **multilayer_diel_pars)
                         actual = np.abs((Tper - Tref) / Tref)
-                        target = specs["target"]
                         abserr = np.abs(
                             (min(actual, target) - max(actual, target))
                         )
