@@ -84,7 +84,7 @@ def surfield_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
     """
     stack["Ls"] = Ls
     rr = refl(lamb, stack, **multilayer_diel_pars)
-    return (target - np.abs(1 + rr) ** 2) / target
+    return np.abs((target - np.abs(1 + rr) ** 2) / target)
 
 
 @norm("l1")
