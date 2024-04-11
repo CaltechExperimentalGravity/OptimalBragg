@@ -197,7 +197,7 @@ def calc_abs(Esq, Ls, alphas):
     # Remember, absorption coefficient = 4 * pi * k / lambda,
     # where k is the extinction coefficient (aka Im(n))
     # We should let the transfer matrix method handle this for speedup
-
+    # Note the factor of 2, accounting for the two field passes in the stack
     absorp = 0
     for alpha_i, Li in zip(alphas, Ls):
         # Unclear if trapz is faster, probably not... but also not slower.
