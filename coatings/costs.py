@@ -155,7 +155,7 @@ def thermooptic_cost(Ls, target, stack, **Sto_pars):
     """
     stack["Ls"] = Ls
     ff = Sto_pars.pop("freq")
-    Sto, _, _ = coating_thermooptic(np.array([ff]), stack, **Sto_pars)
+    Sto, _, _ = coating_thermooptic(ff, stack, **Sto_pars)
     return np.abs((target - Sto) / target)
 
 
