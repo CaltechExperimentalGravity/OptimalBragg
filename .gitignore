@@ -32,3 +32,6 @@ octave-workspace
 
 #pyc
 **/*.pyc
+
+#egg-info
+**/*.egg-info
