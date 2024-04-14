@@ -23,7 +23,7 @@ def norm(norm_arg):
 
 @norm("l2")
 def trans_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
-    """Evaluates a cost based on stack reflectivity/transmission
+    """Evaluates a cost based on stack transmission
 
     Args:
         Ls (arr): Physical thicknesses in m
@@ -44,6 +44,31 @@ def trans_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
     stack["Ls"] = Ls
     Tact = trans(lamb, stack, **multilayer_diel_pars)
     return np.abs((target - Tact) / target)
+
+
+@norm("l2")
+def refl_cost(Ls, target, stack, lamb, **multilayer_diel_pars):
+    """Evaluates a cost based on stack reflectivity
+
+    Args:
+        Ls (arr): Physical thicknesses in m
+        target (float): Target transmission [0 to 1]
+        stack (dict): Stack attributes
+        lamb (arr): Wavelength(s) at which to evaluate the
+                                reflectivity.
+        **multilayer_diel_pars: Kwargs for multilayer_diel
+
+    Returns:
+        (float): Scalar cost for the evaluated transmission
+
+    Deleted Parameters:
+        norm (str, optional): l1, l2, or hyp
+        multilayer_diel_pars (dict, optional): Kwargs for multilayer_diel
+
+    """
+    stack["Ls"] = Ls
+    Ract = refl(lamb, stack, **multilayer_diel_pars)
+    return np.abs((target - Ract) / target)
 
 
 @norm("l1")

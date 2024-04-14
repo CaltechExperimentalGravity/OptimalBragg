@@ -94,29 +94,34 @@ def plot_layers(stack):
     )
 
 
-def plot_spectral(wavelengths, stack, markers=[], **multilayer_diel_pars):
+def plot_spectral(
+    wavelengths, stack, dispersion=None, markers={}, **multilayer_diel_pars
+):
     """Spectral transmission and reflection plots
 
     Args:
         wavelengths (arr): Wavelengths at which to evaluate
                            spectral reflection/transmission [m]
         stack (dict): Stack dictionary containing at least n,L keys
+        dispersion (arr, optional): User defined dispersion to interpolate from
         markers (list, optional): Wavelengths of interest [m]
         **multilayer_diel_pars: Kwargs for multilayer_diel_pars
 
     """
     ns, Ls = stack["ns"], stack["Ls"]
-    design_Rs = np.zeros(len(markers) + 1)
-    markers.append(stack["lam_ref"])
-    for ii, lam in enumerate(markers):
-        design_Rs[ii] = refl(lam, stack, **multilayer_diel_pars)
-    design_Ts = 1 - design_Rs
+    design_Rs, design_Ts = [], []
+    markers["T"] = [stack["lam_ref"]]
+    for RorT, lambdas in markers.items():
+        for lam in lambdas:
+            if "R" == RorT:
+                design_Rs.append(refl(lam, stack, **multilayer_diel_pars))
+            else:
+                design_Ts.append(trans(lam, stack, **multilayer_diel_pars))
 
     # Spectral reflection and transmission
     RR = refl(wavelengths, stack, **multilayer_diel_pars)
     TT = trans(wavelengths, stack, **multilayer_diel_pars)
     # lam1, lam2 = qwbandedges(stack)
-
     fig, ax = plt.subplots(1, 1)
     # HR bandwidth wavelengths, assuming qw stack:
     # ax.axvline((lam1 / um), label="lam1", ls="--")
@@ -137,17 +142,33 @@ def plot_spectral(wavelengths, stack, markers=[], **multilayer_diel_pars):
         c="xkcd:electric blue",
         alpha=0.7,
     )
+    try:
+        Tcolors = plt.cm.Spectral_r(np.linspace(1, 2, len(markers["T"])))
+        for lam, Tlam, c in zip(markers["T"], design_Ts, Tcolors):
+            ax.vlines(
+                lam / um,
+                Tlam,
+                1.0,
+                linestyle="--",
+                color=c,
+                label=f"T={Tlam/ppm:.2f} ppm @ {lam/um:.3f} um",
+            )
+    except KeyError:
+        pass
+    try:
+        Rcolors = plt.cm.Spectral_r(np.linspace(-1, 0, len(markers["R"])))
+        for lam, Rlam, c in zip(markers["R"], design_Rs, Rcolors):
+            ax.vlines(
+                lam / um,
+                Rlam,
+                1.0,
+                linestyle="--",
+                color=c,
+                label=f"R={Rlam/ppm:.2f} ppm @ {lam/um:.3f} um",
+            )
+    except KeyError:
+        pass
 
-    colors = plt.cm.Spectral_r(np.linspace(0.1, 2, len(markers)))
-    for lam, Tlam, c in zip(markers, design_Ts, colors):
-        ax.vlines(
-            lam / um,
-            Tlam,
-            1.0,
-            linestyle="--",
-            color=c,
-            label=f"T={Tlam/ppm:.2f} ppm @ {lam/um:.3f} um",
-        )
     ax.set_xlabel(R"Wavelength [$\mu \mathrm{m}$]")
     ax.set_ylabel(R"T or R")
     ax.set_ylim((1 * ppm, 1.0))

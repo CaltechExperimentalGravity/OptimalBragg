@@ -130,6 +130,17 @@ def vector_cost(
                         vector_weights[cost + f"{int(lam/nm):d}"] = specs[
                             "weight"
                         ][lam]
+            if cost == "R":
+                for lam, target in specs["target"].items():
+                    if specs["weight"][lam]:
+                        vector_cost[cost + f"{int(lam/nm):d}"] = specs[
+                            "weight"
+                        ][lam] * refl_cost(
+                            Ls, target, stack, lam, **multilayer_diel_pars
+                        )
+                        vector_weights[cost + f"{int(lam/nm):d}"] = specs[
+                            "weight"
+                        ][lam]
             if cost == "Esurf":
                 for lam, target in specs["target"].items():
                     if specs["weight"][lam]:
@@ -237,6 +248,14 @@ def vector_score(Ls, stack, costs, to_pars, br_pars, multilayer_diel_pars):
                 for lam, target in specs["target"].items():
                     if specs["weight"][lam]:
                         actual = trans(lam, stack, **multilayer_diel_pars)
+                        abserr = np.abs(
+                            (min(actual, target) - max(actual, target))
+                        )
+                        rel_score[cost] = np.abs(max(actual, target)) / abserr
+            if cost == "R":
+                for lam, target in specs["target"].items():
+                    if specs["weight"][lam]:
+                        actual = refl(lam, stack, **multilayer_diel_pars)
                         abserr = np.abs(
                             (min(actual, target) - max(actual, target))
                         )

@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from physunits import um, nm, ppm
 
-from coatings.materials import *
-from coatings import qw_stack, Material
-from coatings.layers import refl
-from coatings.plot import plot_layers, plot_spectral
+from OptimalBragg.materials import *
+from OptimalBragg import qw_stack, Material
+from OptimalBragg.layers import *
+from OptimalBragg.plot import plot_layers, plot_spectral
 
 lam_ref = 1064 * nm
 silica = Material(SiO2)
@@ -22,7 +22,7 @@ stack = qw_stack(
 )
 
 # Results
-T_ref = 1 - refl(lam_ref, stack)
+T_ref = trans(lam_ref, stack)
 print(Rf"T = {T_ref/ppm:.1f} ppm at {lam_ref/um:.2f} um.")
 
 # Show layer structure and spectral refl/trans
