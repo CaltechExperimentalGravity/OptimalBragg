@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="OptimalBragg",
-    version="1.0.1",
+    version="1.0.2",
     author="CaltechExperimentalGravity",
     author_email="pacosalces@gmail.com",
     description="Package for the design and optimization of dielectric coatings",
