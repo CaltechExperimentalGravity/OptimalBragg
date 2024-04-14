@@ -12,6 +12,11 @@
 # Beta                : Thermorefractive coefficient in [1 / K]
 # Kappa               : Thermal conductivity in [W / m / K]
 
+# DISCLAIMER: There is no such thing as a comprehensive list of thin film
+# properties, for all wavelengths, temperatures, thicknesses, etc... please
+# let the numbers below be a starting point for the design and customization
+# of thin film stacks, and not a final and accurate rendition of their properties
+
 """ 
 TODO: 
     o Fill room-temp dicts using all/either of:
