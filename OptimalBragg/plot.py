@@ -6,6 +6,7 @@ from physunits.frequency import Hz
 from physunits.angle import deg, rad
 from physunits.length import nm, um
 from physunits.other import ppm
+from copy import deepcopy
 
 from matplotlib.ticker import FormatStrFormatter
 from .layers import *
@@ -103,24 +104,36 @@ def plot_spectral(
         wavelengths (arr): Wavelengths at which to evaluate
                            spectral reflection/transmission [m]
         stack (dict): Stack dictionary containing at least n,L keys
-        dispersion (arr, optional): User defined dispersion to interpolate from
+        dispersion (dict, optional): User defined dispersion for stack thin_films
         markers (list, optional): Wavelengths of interest [m]
         **multilayer_diel_pars: Kwargs for multilayer_diel_pars
 
     """
-    ns, Ls = stack["ns"], stack["Ls"]
-    design_Rs, design_Ts = [], []
+
+    # Spectral reflection and transmission
+    if dispersion is None:
+        RR = refl(wavelengths, stack, **multilayer_diel_pars)
+        TT = trans(wavelengths, stack, **multilayer_diel_pars)
+    else:
+        RR, TT = np.zeros_like(wavelengths), np.zeros_like(wavelengths)
+        disp_stack = deepcopy(stack)
+        for jj, lam in enumerate(wavelengths):
+            disp_stack["ns"][1:-1] = np.array(
+                [dispersion[X][jj] for X in disp_stack["pattern"]]
+            )
+            RR[jj] = refl(lam, disp_stack, **multilayer_diel_pars)
+            TT[jj] = trans(lam, disp_stack, **multilayer_diel_pars)
+
+    # R, T markers, including default T at ref wavelength
     markers["T"] = [stack["lam_ref"]]
+    design_Rs, design_Ts = [], []
     for RorT, lambdas in markers.items():
         for lam in lambdas:
             if "R" == RorT:
-                design_Rs.append(refl(lam, stack, **multilayer_diel_pars))
+                design_Rs.append(RR[np.argmin(np.abs(wavelengths - lam))])
             else:
-                design_Ts.append(trans(lam, stack, **multilayer_diel_pars))
+                design_Ts.append(TT[np.argmin(np.abs(wavelengths - lam))])
 
-    # Spectral reflection and transmission
-    RR = refl(wavelengths, stack, **multilayer_diel_pars)
-    TT = trans(wavelengths, stack, **multilayer_diel_pars)
     # lam1, lam2 = qwbandedges(stack)
     fig, ax = plt.subplots(1, 1)
     # HR bandwidth wavelengths, assuming qw stack:
@@ -171,7 +184,7 @@ def plot_spectral(
 
     ax.set_xlabel(R"Wavelength [$\mu \mathrm{m}$]")
     ax.set_ylabel(R"T or R")
-    ax.set_ylim((1 * ppm, 1.0))
+    ax.set_ylim((1 * ppm, 1.1))
     ax.legend(loc="lower left")
 
 
