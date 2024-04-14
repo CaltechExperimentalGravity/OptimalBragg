@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="OptimalBragg",
-    version="1.0.0",
+    version="1.0.1",
     author="pacosalces",
     author_email="pacosalces@gmail.com",
     description="Package for the design and optimization of dielectric coatings",
@@ -16,7 +16,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: BSD 3-Clause",
         "Operating System :: OS Independent",
     ],
     install_requires=[
