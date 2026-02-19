@@ -2,11 +2,43 @@
 # MC analysis of coating performance
 
 import numpy as np
+import numba
 import scipy.io as scio
 from scipy.interpolate import interp1d, PchipInterpolator
 import yaml
-import gwinc
 import sys
+
+
+@numba.njit(cache=True)
+def _transfer_matrix_loop(r, L_adj, lamb, M):
+    """Numba-accelerated inner loop of the transfer matrix method.
+
+    Parameters
+    ----------
+    r : array of complex128
+        Fresnel reflection coefficients at each interface.
+    L_adj : array of complex128
+        Angle-adjusted optical thicknesses of each layer.
+    lamb : array of float64
+        Wavelength(s) normalized to design wavelength.
+    M : int
+        Number of slabs.
+
+    Returns
+    -------
+    Gamma1 : array of complex128
+        Reflection coefficient at each wavelength.
+    """
+    N_wl = lamb.shape[0]
+    Gamma1 = np.empty(N_wl, dtype=np.complex128)
+    for j in range(N_wl):
+        Gamma1[j] = r[M]
+    for i in range(M - 1, -1, -1):
+        for j in range(N_wl):
+            delta = 2.0 * np.pi * L_adj[i] / lamb[j]
+            z = np.exp(-2.0j * delta)
+            Gamma1[j] = (r[i] + Gamma1[j] * z) / (1.0 + r[i] * Gamma1[j] * z)
+    return Gamma1
 
 #Some function definitions
 def multidiel1(n, L, lamb, theta=0, pol='te'):
@@ -16,21 +48,21 @@ def multidiel1(n, L, lamb, theta=0, pol='te'):
     Parameters:
     -----------
     n: array_like
-        Array of refractive indices, including the incident and 
-        transmitted media. Ordered from incident medium to 
+        Array of refractive indices, including the incident and
+        transmitted media. Ordered from incident medium to
         transmitted medium.
     L: array_like
-        Array of optical thicknesses comprising the dielectric 
+        Array of optical thicknesses comprising the dielectric
         stack, ordered from incident medium to transmitted medium.
         Should have 2 fewer elements than n.
     lamb: float or array_like
-        Wavelength(s) at which the reflectivity is to be evaluated, 
-        in units of some central (design) wavelength. 
+        Wavelength(s) at which the reflectivity is to be evaluated,
+        in units of some central (design) wavelength.
     theta: float
-        Angle of incidence in degrees. 
+        Angle of incidence in degrees.
         Defaults to 0 degrees (normal incidence)
     pol: str, 'te' or 'tm'
-        Polarization at which reflectivity is to be evaluated. 
+        Polarization at which reflectivity is to be evaluated.
         Defaults to 'te' (s-polarization)
 
     Returns:
@@ -43,34 +75,49 @@ def multidiel1(n, L, lamb, theta=0, pol='te'):
     Example usage:
     --------------
     r_p, _ = multidiel1(n, L, [1.0, 0.5], 45.3, 'te')
-    evaluates the amplitude reflectivity for the dielectric stack 
-    specified by n and L (which are wavelength dependent in general), 
-    at a design wavelength and the second harmonic wavelength, 
+    evaluates the amplitude reflectivity for the dielectric stack
+    specified by n and L (which are wavelength dependent in general),
+    at a design wavelength and the second harmonic wavelength,
     at an angle of incidence of 45.3 degrees for 'te' polarized (s-pol) light.
 
     References:
     -----------
     [1]: http://eceweb1.rutgers.edu/~orfanidi/ewa/
     '''
-    M = len(n) - 2                # number of slabs
-    if M == 0:
-        L = np.array([])
+    # Number of slabs
+    M = len(n) - 2
+
+    # AoI in radians
     theta = theta * np.pi / 180
+
+    # Cosine of theta; projection for oblique incidence
     costh = np.conj(np.sqrt(np.conj(1 - (n[0] * np.sin(theta) / n)**2)))
+
+    # Polarization projection
     if (pol=='te' or pol=='TE'):
         nT = n * costh
     else:
         nT = n / costh
-    if M > 0:
+
+    # Thicknesses
+    if M == 0:
+        L = np.array([])
+    else:
         L = L * costh[1:M+1]
+
+    # Reflectivity
     r = -np.diff(nT) / (np.diff(nT) + 2*nT[0:M+1])
-    Gamma1 = r[M] * np.ones(len(np.array([lamb])))
-    for i in range(M-1,-1,-1):
-        delta = 2*np.pi*L[i]/lamb
-        z = np.exp(-2*1j*delta)
-        Gamma1 = (r[i] + Gamma1*z) / (1 + r[i]*Gamma1*z)
+
+    # Ensure lamb is a 1-D float64 array for the JIT kernel
+    lamb_arr = np.atleast_1d(np.asarray(lamb, dtype=np.float64))
+
+    # Ensure r and L are complex128 arrays for the JIT kernel
+    r_c = np.asarray(r, dtype=np.complex128)
+    L_c = np.asarray(L, dtype=np.complex128)
+
+    Gamma1 = _transfer_matrix_loop(r_c, L_c, lamb_arr, M)
     Z1 = (1 + Gamma1) / (1 - Gamma1)
-    return Gamma1,Z1
+    return Gamma1, Z1
 
 def op2phys(L, n):
     '''
@@ -86,12 +133,11 @@ def op2phys(L, n):
     Returns:
     --------
     phys: array_like
-        Array of physical thicknesses for the dielectric stack 
+        Array of physical thicknesses for the dielectric stack
         specified by L and n.
     '''
     if len(L) != len(n):
         raise ValueError(f'L (dim {len(L)}) and n (dim {len(n)}) must have the same dimension.')
-        sys.exit()
     phys = L / n
     return phys
 
@@ -101,15 +147,15 @@ def lnprob(x, mu, icov):
 
 def surfaceField(gamm,Ei=27.46):
     '''
-    Calculates the surface electric field for a dielectric coating 
-    with given amplitude reflectivity at the interface of incidence, 
+    Calculates the surface electric field for a dielectric coating
+    with given amplitude reflectivity at the interface of incidence,
     for an incident electric field.
     Parameters:
     -----------
     gamm: float
         Amplitude reflectivity of coating at interface of incidence.
     Ei: float
-        Incident electric field, in V/m. Defaults to 27.46 V/m, 
+        Incident electric field, in V/m. Defaults to 27.46 V/m,
         corresponding to an intensity of 1 W/m^2.
     '''
     sField = Ei * np.abs(1+gamm)
@@ -118,7 +164,7 @@ def surfaceField(gamm,Ei=27.46):
 def specREFL(layers, dispFileName, lambda_0=1064e-9,
                  lam=np.linspace(0.4,1.6,2200), aoi=0., pol='tm'):
     '''
-    Computes the spectral (power) reflectivity for coating output 
+    Computes the spectral (power) reflectivity for coating output
     from the optimization code.
 
     Parameters:
@@ -129,33 +175,33 @@ def specREFL(layers, dispFileName, lambda_0=1064e-9,
     dispFileName: str
         Path to a .mat file containing the dispersion data for the coating.
     lambda_0: float
-        Design (central) wavelength for the coating optimization, in meters. 
+        Design (central) wavelength for the coating optimization, in meters.
         Defaults to 1064nm.
     lam: array_like
-        Array of wavelengths at whihc to evaluate the reflectivity. 
+        Array of wavelengths at whihc to evaluate the reflectivity.
         Defaults to [400nm 1600nm].
     aoi: float
-        Angle of incidence at which to evaluate reflectivity. 
+        Angle of incidence at which to evaluate reflectivity.
         Defaults to 0 (normal incidence)
     pol: str
-        Polarization to evaluate reflectivity. 
+        Polarization to evaluate reflectivity.
         Defaults to 'tm' (p-polarization).
 
     Returns:
     --------
     Rp: array_like
-        Reflectivity of coating 
+        Reflectivity of coating
     Tp: array_like
         Transmissivity of coating
     ll: array_like
         Array of wavelengths at which the reflectivity was evaluated.
     '''
-    if type(layers)==str:
+    if isinstance(layers, str):
         data = scio.loadmat(layers, struct_as_record=False, squeeze_me=True)
         aoi = float(np.copy(data['costOut'].aoi))
         #n_IR = np.copy(data['costOut'].n_IR)
         L = np.copy(data['costOut'].L)
-    elif type(layers)==np.ndarray:
+    elif isinstance(layers, np.ndarray):
         L = np.copy(layers)
     else:
         print('{} is an unknown type of layer specifications. Please provide \
@@ -200,7 +246,7 @@ def fieldDepth(L, n, lam=1064e-9, theta=0, pol='s', nPts=30):
     ------------
     L: array_like
         Array of PHYSICAL thickness of coating layers.
-    n: array_like 
+    n: array_like
         Array of refractive indices.
 
     Returns:
@@ -215,7 +261,7 @@ def fieldDepth(L, n, lam=1064e-9, theta=0, pol='s', nPts=30):
     '''
     # check to see that the lengths of L and n match in some way
 
-    
+
     def arrayTheta(n, theta0):
         alpha = []
         alpha.append(np.deg2rad(theta0))
@@ -307,9 +353,9 @@ def calcAbsorption(Esq, L, nPts, alphaOdd, alphaEven):
     -----------
     Esq: array_like
         NORMALIZED electric field squared as a function of distance in a coating
-    L: array_like         
+    L: array_like
         PHYSICAL thickness of coating layers
-    nPts: int 
+    nPts: int
         # of points inside each layer at which field is to be evaluated
     alphaOdd: float
         Absorption coefficient of all odd layers [m ^-1] (top layer is assumed layer #1)
@@ -317,7 +363,7 @@ def calcAbsorption(Esq, L, nPts, alphaOdd, alphaEven):
         Absorption coefficient of all even layers [m ^-1] (top layer is assumed layer #1)
     Returns:
     -------------
-    absorp: float 
+    absorp: float
         Absorption of coating [ppm]
     '''
     if len(Esq) != int(len(L)*nPts):
@@ -347,7 +393,7 @@ def sellmeier(B=[0.696166300, 0.407942600, 0.897479400], C=[4.67914826e-3, 1.351
         "C" coefficients in the Sellmeier equation [um^2].
         Defaults to first 3 coefficients for Fused Silica.
     lam: float or array_like
-        Value or array of wavelengths [m]. Conversion to 
+        Value or array of wavelengths [m]. Conversion to
         microns is done internally to the function.
         Defaults to 1064nm.
 
@@ -362,7 +408,6 @@ def sellmeier(B=[0.696166300, 0.407942600, 0.897479400], C=[4.67914826e-3, 1.351
     '''
     if len(B) != len(C):
         raise ValueError(f'The Sellmeier coefficients A (len {len(B)}) and B (len {len(C)}) must have the same number of elements.')
-        sys.exit()
     n = 1
     ll = lam*1e6 # Sellmeier coefficients are quoted for wavelength in microns
     for bb,cc in zip(B,C):

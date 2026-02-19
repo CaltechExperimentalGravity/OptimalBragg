@@ -13,8 +13,7 @@ import h5py
 # sys.path.append('../../pygwinc/')
 from gwinc import noise, Struct
 
-sys.path.append('../generic/')
-from generic_local.coatingUtils import *
+from generic.coatingUtils import *
 
 import numpy as np
 import matplotlib.pyplot as plt

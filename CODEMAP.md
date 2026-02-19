@@ -43,9 +43,6 @@ Coatings/
 |   |-- ETM.yaml                    #   GWINC material properties (ETM variant)
 |   |-- Ta2O5_ETM.yml               #   GWINC material properties (Ta2O5 variant)
 |   |-- Ta2O5_ITM.yml               #   GWINC material properties (Ta2O5 variant)
-|   |-- generic_local/              #   Local copy of generic/ (may diverge)
-|   |   |-- coatingUtils.py
-|   |   `-- optimUtils.py
 |   `-- Data/                       #   HDF5 optimizer output
 |
 |-- Ta2O5_Voyager/                  # Active: Ta2O5 / SiO2 coatings (LIGO Voyager)
@@ -61,9 +58,6 @@ Coatings/
 |   |-- ITM_params.yml              #   ITM cost targets/weights (new dict format)
 |   |-- Ta2O5_ETM.yml               #   GWINC material properties (Ta2O5 + SiO2 @ 123 K)
 |   |-- Ta2O5_ITM.yml               #   GWINC material properties
-|   |-- generic_local/              #   Local copy of generic/ (may diverge)
-|   |   |-- coatingUtils.py
-|   |   `-- optimUtils.py
 |   `-- Data/                       #   HDF5 optimizer output
 |
 |-- aSi_Voyager/                    # Dormant: older a-Si Voyager design
@@ -83,7 +77,20 @@ Coatings/
 |-- optimExp/                       # Legacy: MATLAB only (optimization experiments)
 |-- Barrel Coating/                 # Legacy: barrel coating designs
 |
-|-- coatingDev.yml                  # Conda environment specification
+|-- tests/                          # Pytest test suite
+|   |-- conftest.py                 #   Shared fixtures (ifo, QW stack, cost dicts)
+|   |-- test_coatingUtils.py       #   Unit tests for physics functions
+|   |-- test_optimUtils.py         #   Unit tests for cost functions
+|   `-- test_integration.py        #   Short optimization integration test
+|
+|-- benchmarks/                     # Performance benchmarks
+|   |-- bench_multidiel1.py        #   Micro-benchmark for multidiel1
+|   `-- RESULTS.md                 #   Profiling results table
+|
+|-- environment.yml                 # Conda environment specification (Python >=3.10, gwinc >=0.6)
+|-- coatingDev.yml                  # Legacy conda environment (Python 3.7.9, gwinc 0.2.2)
+|-- pyproject.toml                  # Package config + pytest settings
+|-- .gitlab-ci.yml                  # GitLab CI pipeline
 |-- README.md                       # Project overview + install instructions
 |-- CODEMAP.md                      # This file
 |-- CLAUDE.md                       # AI assistant instructions
@@ -233,7 +240,7 @@ getMirrorCost(L, costs, ifo, gam, verbose, misc)
 
 ## 3. Core Library Function Map
 
-### `coatingUtils.py` (generic_local/)
+### `coatingUtils.py` (generic/)
 
 | Function | Signature | Purpose | Called by |
 |----------|-----------|---------|----------|
@@ -247,7 +254,7 @@ getMirrorCost(L, costs, ifo, gam, verbose, misc)
 | `calcAbsorption` | `(Esq, L, nPts, alphaOdd, alphaEven)` | Integrated absorption from E-field profile [ppm] | Analysis scripts |
 | `sellmeier` | `(B, C, lam=1064e-9)` | Refractive index from Sellmeier coefficients | Dispersion analysis scripts |
 
-### `optimUtils.py` (generic_local/)
+### `optimUtils.py` (generic/)
 
 | Function | Signature | Purpose | Called by |
 |----------|-----------|---------|----------|
@@ -260,7 +267,7 @@ getMirrorCost(L, costs, ifo, gam, verbose, misc)
 | `thermoopticCost` | `(target, fTarget, L, ifo)` | Thermo-optic noise via pygwinc | `getMirrorCost` |
 | `getMirrorCost` | `(L, costs, ifo, gam, verbose=False, misc={})` | Master cost evaluator; weighted sum of all sub-costs | `devo()` in `mkETM.py`/`mkITM.py` |
 
-**Note:** The `generic_local/` versions (used by active projects) have the **new dict-style** `getMirrorCost` signature. The canonical `generic/optimUtils.py` still has the **old list-style** signature: `getMirrorCost(L, paramFile, ifo, gam, verbose)`.
+**Note:** All projects import directly from `generic/` using the dict-style `getMirrorCost` signature. The `multidiel1` inner loop is Numba JIT-compiled for performance.
 
 ---
 
@@ -386,18 +393,15 @@ gwincStructFile: aSiModel.m
 
 ## 7. Known Architecture Issues
 
-1. **`generic_local/` duplication** -- Each project copies `coatingUtils.py` and `optimUtils.py` into `generic_local/`. These have diverged from `generic/` (the canonical version still uses the old list-style `getMirrorCost` signature). Changes must be manually propagated.
+1. **Absorption cost not implemented** -- The `Absorption` key is accepted in the config but does nothing in the optimizer. The underlying `calcAbsorption` function exists in `coatingUtils` for post-analysis only.
 
-2. **Old vs new `getMirrorCost` signature** -- `generic/optimUtils.py` uses `getMirrorCost(L, paramFile, ifo, gam, verbose)` (reads YAML internally). `generic_local/` versions use `getMirrorCost(L, costs, ifo, gam, verbose, misc)` (receives pre-parsed dicts). Neither calls the other.
+2. **`specREFL` hardcodes Ta2O5/SiO2 dispersion** -- The function loads dispersion data from a `.mat` file keyed to `'SiO2'` and `'Ta2O5'`, making it unusable for SiN/a-Si materials without modification.
 
-3. **Hardcoded auxiliary wavelength ratios** -- `getMirrorCost` hardcodes the AUX wavelength ratio in the function body (`1550/2050` in SiN_aSi, `2/3` in Ta2O5_Voyager) rather than reading it from config. Each `generic_local/` copy has its own ratio, which is correct for its project but means the ratio must be manually edited when copying code between projects.
+### Resolved Issues (refactor/speed-and-robustness branch)
 
-4. **Absorption cost not implemented** -- The `Absorption` key is accepted in the config but does nothing in the optimizer (`pass` in the cost loop). The underlying `calcAbsorption` function exists in `coatingUtils` for post-analysis only.
-
-5. **`doMC.py` reads `.mat` files** -- Despite the optimizer now writing HDF5, `doMC.py` still reads `.mat` input via `scipy.io.loadmat`. The MC analysis pipeline hasn't been updated to consume HDF5 output directly.
-
-6. **No `__init__.py` in `generic_local/`** -- The package import works via relative import (`from .coatingUtils import *`) but there is no explicit `__init__.py`, relying on implicit namespace packages.
-
-7. **`specREFL` hardcodes Ta2O5/SiO2 dispersion** -- The function loads dispersion data from a `.mat` file keyed to `'SiO2'` and `'Ta2O5'`, making it unusable for SiN/a-Si materials without modification.
-
-8. **README describes only MATLAB workflows** -- The README references `pythonAddOns` (no longer exists), MATLAB PSO (`runSwarm.m`), and MATLAB engine installation. The active Python pipeline is undocumented there.
+- ~~`generic_local/` duplication~~ -- Eliminated. All projects import from canonical `generic/`.
+- ~~Old vs new `getMirrorCost` signature~~ -- Unified to dict-style API.
+- ~~Hardcoded AUX wavelength ratios~~ -- Now configurable via `lambdaAUX` in params YAML.
+- ~~`doMC.py` reads `.mat` files~~ -- Updated to read HDF5 output.
+- ~~No `__init__.py`~~ -- `generic/__init__.py` added; proper package structure with `pyproject.toml`.
+- ~~README describes only MATLAB workflows~~ -- Updated with Python pipeline docs.

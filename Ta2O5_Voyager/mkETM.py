@@ -6,6 +6,7 @@ the center wavelength of the laser is 2128.2 nm, and the AUX wavelength
 is 1418.8 nm
 """
 import os
+import warnings
 from datetime import datetime
 from timeit import default_timer
 
@@ -18,8 +19,8 @@ import h5py
 # sys.path.append('../../pygwinc/')
 import gwinc
 
-from generic_local.optimUtils import *
-from generic_local.coatingUtils import importParams
+from generic.optimUtils import *
+from generic.coatingUtils import importParams
 
 #print(help(gwinc))
 
@@ -70,7 +71,10 @@ def main(save=False):
             polish             = True, 
             callback           = diffevo_monitor,
             disp               = True)
-    
+
+    if not res.success:
+        warnings.warn(f"Optimizer did not converge: {res.message}")
+
     if __debug__:
         print(" ")
         dt = default_timer() - tic
@@ -115,6 +119,8 @@ def main(save=False):
                 f.create_dataset(main_group + '/vectorCost/' + cost, data=optimum)
             for key, out in output.items():
                 f.create_dataset(main_group + '/' + key, data=out)
+            f.create_dataset('gwincStructFile',
+                data=opt_params['misc']['gwincStructFile'])
 
 if __name__ == '__main__':
     main(save=True)

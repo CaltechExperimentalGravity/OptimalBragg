@@ -13,12 +13,13 @@ For a detailed architecture reference, see **[CODEMAP.md](CODEMAP.md)**.
    git clone <repo-url>
    cd Coatings
    ```
-2. Create the conda environment:
+2. Create the conda environment and install the package:
    ```bash
-   conda env create -f coatingDev.yml
+   conda env create -f environment.yml
    conda activate coatingDev
+   pip install -e .
    ```
-   Key dependencies: numpy, scipy, matplotlib, emcee, corner, gwinc (v0.2.2), lmfit, h5py.
+   Key dependencies: numpy, scipy, matplotlib, numba (>=0.56), emcee, corner, gwinc (>=0.6), lmfit, h5py, pytest.
 
 3. (Optional) For legacy MATLAB workflows, install the MATLAB engine for Python:
    ```bash
@@ -43,7 +44,7 @@ Output: `Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5`
 ### Monte Carlo sensitivity analysis
 
 ```bash
-python doMC.py Data/ETM/ETM_Layers_YYMMDD_HHMMSS.mat output_MC.hdf5 5000
+python doMC.py Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5 output_MC.hdf5 5000
 ```
 
 Uses `emcee` (20 walkers, 4D parameter space) to perturb angle of incidence, refractive indices, and layer thicknesses by 0.5% Gaussian.
@@ -76,6 +77,14 @@ Each objective is a weighted term in a scalar cost function. See [CODEMAP.md](CO
 |---------|-----------|-------------------|-------------|
 | `SiN_aSi/` | a-Si / SiN | 2050 nm | 123 K |
 | `Ta2O5_Voyager/` | Ta2O5 / SiO2 | 2128 nm | 123 K |
+
+## Running Tests
+
+```bash
+pytest tests/ -v -k "not slow"           # Unit tests (~1 sec)
+pytest tests/test_integration.py -m slow  # Integration test (~30 sec)
+python benchmarks/bench_multidiel1.py     # Performance benchmark
+```
 
 ## Paper draft
 

@@ -5,7 +5,7 @@
 costs:
     # PSL wavelength transmission
     TransPSL:
-        target: 30e-6
+        target: 5e-6
         weight: 5
     # Brownian noise level
     Brownian:
@@ -49,13 +49,13 @@ misc:
     # Angle of incidence (degrees)
     aoi: 0
     # Number of bilayers in variable stack
-    Npairs: 11
+    Npairs: 14
     # Number of fixed bilayers at the end of the stack
     Nfixed: 0
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer (20 x Npairs is a good guess)
-    Nparticles: 10
+    Nparticles: 200
     # Absolute Tolerance
     atol: 3e-9
     # Relative Tolerance
@@ -63,5 +63,7 @@ misc:
     # how to initialize the population
     #init_method: 'latinhypercube'
     init_method: 'halton'
-    # gwinc file 
+    # AUX wavelength ratio (lambda_AUX / lambda_PSL)
+    lambdaAUX: 0.756
+    # gwinc file
     gwincStructFile: 'aSiSiN.yaml'

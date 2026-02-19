@@ -21,9 +21,8 @@ import h5py
 # install gwinc with anaconda: conda install -c conda-forge gwinc
 #sys.path.append('../../pygwinc/')
 
-sys.path.append('../generic/')
-from optimUtils import *
-from coatingUtils import importParams
+from generic.optimUtils import *
+from generic.coatingUtils import importParams
 from gwinc import Struct
 
 

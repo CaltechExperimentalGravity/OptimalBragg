@@ -32,7 +32,7 @@ gwincStructFile: 'aSiModel.m'
 mirror_params: 'aSiModel.yaml'
 
 # optimizer params
-Npairs: 10         # how many layer pairs; N_layers = Npairs+1
+Npairs: 14         # how many layer pairs; N_layers = 2*Npairs + 1
 Nparticles: 20     # how many starting particles in the optimizer
 tol: 0.00
 atol: 0.01

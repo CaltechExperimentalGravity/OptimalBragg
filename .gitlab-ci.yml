@@ -1,0 +1,25 @@
+image: continuumio/miniconda3:latest
+
+stages:
+  - test
+
+variables:
+  CONDA_ENV: coatingDev
+
+before_script:
+  - conda env create -f environment.yml || conda env update -f environment.yml
+  - source activate $CONDA_ENV
+  - pip install -e .
+
+test:
+  stage: test
+  script:
+    - pytest tests/ -v --tb=short -k "not slow"
+  artifacts:
+    when: always
+
+test_integration:
+  stage: test
+  script:
+    - pytest tests/test_integration.py -v --tb=short -m slow
+  allow_failure: true

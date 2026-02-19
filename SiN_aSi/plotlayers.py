@@ -10,8 +10,7 @@ import sys,glob,os
 # installed through conda rather than direct import
 #sys.path.append('../../pygwinc/')
 
-sys.path.append('../generic/')
-from coatingUtils import *
+from generic.coatingUtils import *
 
 import numpy as np
 from timeit import default_timer
