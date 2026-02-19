@@ -32,3 +32,10 @@ octave-workspace
 
 #pyc
 **/*.pyc
+
+# Sphinx build output
+docs/_build/
+
+# Python cache
+__pycache__/
+*.egg-info/

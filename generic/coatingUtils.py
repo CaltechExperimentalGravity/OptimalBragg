@@ -15,18 +15,18 @@ def _transfer_matrix_loop(r, L_adj, lamb, M):
 
     Parameters
     ----------
-    r : array of complex128
+    r : ndarray of complex128
         Fresnel reflection coefficients at each interface.
-    L_adj : array of complex128
+    L_adj : ndarray of complex128
         Angle-adjusted optical thicknesses of each layer.
-    lamb : array of float64
+    lamb : ndarray of float64
         Wavelength(s) normalized to design wavelength.
     M : int
         Number of slabs.
 
     Returns
     -------
-    Gamma1 : array of complex128
+    Gamma1 : ndarray of complex128
         Reflection coefficient at each wavelength.
     """
     N_wl = lamb.shape[0]
@@ -40,50 +40,51 @@ def _transfer_matrix_loop(r, L_adj, lamb, M):
             Gamma1[j] = (r[i] + Gamma1[j] * z) / (1.0 + r[i] * Gamma1[j] * z)
     return Gamma1
 
-#Some function definitions
+
 def multidiel1(n, L, lamb, theta=0, pol='te'):
-    '''
-    Calculates reflectivity and compelx impedance of a dielectric stack.
+    """Compute reflection coefficient of a multilayer dielectric stack.
 
-    Parameters:
-    -----------
-    n: array_like
-        Array of refractive indices, including the incident and
-        transmitted media. Ordered from incident medium to
-        transmitted medium.
-    L: array_like
-        Array of optical thicknesses comprising the dielectric
-        stack, ordered from incident medium to transmitted medium.
-        Should have 2 fewer elements than n.
-    lamb: float or array_like
-        Wavelength(s) at which the reflectivity is to be evaluated,
-        in units of some central (design) wavelength.
-    theta: float
-        Angle of incidence in degrees.
-        Defaults to 0 degrees (normal incidence)
-    pol: str, 'te' or 'tm'
-        Polarization at which reflectivity is to be evaluated.
-        Defaults to 'te' (s-polarization)
+    Uses the transfer matrix method (TMM) to calculate the complex
+    reflection coefficient for a stack of dielectric layers. The inner
+    loop is Numba JIT-compiled for performance.
 
-    Returns:
+    Parameters
+    ----------
+    n : array_like
+        Refractive indices, including the incident and transmitted media.
+        Ordered from incident medium to substrate. Length ``M + 2`` where
+        ``M`` is the number of layers.
+    L : array_like
+        Optical thicknesses of each layer, in units of the design
+        wavelength. Length ``M``.
+    lamb : float or array_like
+        Wavelength(s) at which to evaluate, normalized to design
+        wavelength. For example, ``1.0`` is the design wavelength.
+    theta : float, optional
+        Angle of incidence in degrees. Default is 0 (normal incidence).
+    pol : {'te', 'tm'}, optional
+        Polarization. ``'te'`` is s-polarization, ``'tm'`` is
+        p-polarization. Default is ``'te'``.
+
+    Returns
+    -------
+    Gamma1 : complex or ndarray
+        Complex reflection coefficient at each wavelength.
+    Z1 : complex or ndarray
+        Complex impedance at the first interface (correct only when the
+        incident medium is vacuum).
+
+    Examples
     --------
-    Gamma1: complex
-        Amplitude reflectivity for the input dielectric stack.
-    Z1:
-        Complex impedance at the interface (only correct if incident medium
-        is vacuum).
-    Example usage:
-    --------------
-    r_p, _ = multidiel1(n, L, [1.0, 0.5], 45.3, 'te')
-    evaluates the amplitude reflectivity for the dielectric stack
-    specified by n and L (which are wavelength dependent in general),
-    at a design wavelength and the second harmonic wavelength,
-    at an angle of incidence of 45.3 degrees for 'te' polarized (s-pol) light.
+    >>> r, _ = multidiel1(n, L, [1.0, 0.5], 45.3, 'te')
 
-    References:
-    -----------
-    [1]: http://eceweb1.rutgers.edu/~orfanidi/ewa/
-    '''
+    Evaluates the amplitude reflectivity at the design wavelength and the
+    second harmonic, at 45.3 degrees for TE polarization.
+
+    References
+    ----------
+    .. [1] http://eceweb1.rutgers.edu/~orfanidi/ewa/
+    """
     # Number of slabs
     M = len(n) - 2
 
@@ -120,82 +121,107 @@ def multidiel1(n, L, lamb, theta=0, pol='te'):
     return Gamma1, Z1
 
 def op2phys(L, n):
-    '''
-    Converts optical lengths to physical lengths.
+    """Convert optical thicknesses to physical thicknesses.
 
-    Parameters:
-    -----------
-    L: array_like
-        Array of optical thicknesses
-    n: array_like
-        Array of refractive indices, of the same length as L.
+    Parameters
+    ----------
+    L : array_like
+        Optical thicknesses (in units of design wavelength).
+    n : array_like
+        Refractive indices. Must have the same length as ``L``.
 
-    Returns:
-    --------
-    phys: array_like
-        Array of physical thicknesses for the dielectric stack
-        specified by L and n.
-    '''
+    Returns
+    -------
+    phys : ndarray
+        Physical thicknesses.
+
+    Raises
+    ------
+    ValueError
+        If ``L`` and ``n`` have different lengths.
+    """
     if len(L) != len(n):
         raise ValueError(f'L (dim {len(L)}) and n (dim {len(n)}) must have the same dimension.')
     phys = L / n
     return phys
 
 def lnprob(x, mu, icov):
+    """Log-probability of a multivariate Gaussian.
+
+    Used as the target distribution for the ``emcee`` ensemble sampler
+    in Monte Carlo sensitivity analysis.
+
+    Parameters
+    ----------
+    x : array_like
+        Sample point.
+    mu : array_like
+        Mean of the Gaussian.
+    icov : ndarray
+        Inverse covariance matrix.
+
+    Returns
+    -------
+    logp : float
+        Log-probability at ``x``.
+    """
     diff = x - mu
     return -np.dot(diff, np.dot(icov, diff)) / 2.0
 
-def surfaceField(gamm,Ei=27.46):
-    '''
-    Calculates the surface electric field for a dielectric coating
-    with given amplitude reflectivity at the interface of incidence,
-    for an incident electric field.
-    Parameters:
-    -----------
-    gamm: float
-        Amplitude reflectivity of coating at interface of incidence.
-    Ei: float
-        Incident electric field, in V/m. Defaults to 27.46 V/m,
+def surfaceField(gamm, Ei=27.46):
+    """Compute the surface electric field of a dielectric coating.
+
+    Parameters
+    ----------
+    gamm : complex
+        Amplitude reflectivity at the interface of incidence.
+    Ei : float, optional
+        Incident electric field in V/m. Default is 27.46 V/m,
         corresponding to an intensity of 1 W/m^2.
-    '''
+
+    Returns
+    -------
+    sField : float
+        Surface electric field magnitude in V/m.
+    """
     sField = Ei * np.abs(1+gamm)
     return sField
 
 def specREFL(layers, dispFileName, lambda_0=1064e-9,
                  lam=np.linspace(0.4,1.6,2200), aoi=0., pol='tm'):
-    '''
-    Computes the spectral (power) reflectivity for coating output
-    from the optimization code.
+    """Compute spectral power reflectivity with dispersion.
 
-    Parameters:
-    -----------
-    layers: str or array_like
-        Path to the MATLAB output file from the coating optimization code.
-        Alternatively, this can be a 1D array of optical thicknesses.
-    dispFileName: str
-        Path to a .mat file containing the dispersion data for the coating.
-    lambda_0: float
-        Design (central) wavelength for the coating optimization, in meters.
-        Defaults to 1064nm.
-    lam: array_like
-        Array of wavelengths at whihc to evaluate the reflectivity.
-        Defaults to [400nm 1600nm].
-    aoi: float
-        Angle of incidence at which to evaluate reflectivity.
-        Defaults to 0 (normal incidence)
-    pol: str
-        Polarization to evaluate reflectivity.
-        Defaults to 'tm' (p-polarization).
+    Evaluates reflectivity across a wavelength range, accounting for the
+    wavelength dependence of the refractive indices via Pchip
+    interpolation of measured dispersion data.
 
-    Returns:
-    --------
-    Rp: array_like
-        Reflectivity of coating
-    Tp: array_like
-        Transmissivity of coating
-    ll: array_like
-        Array of wavelengths at which the reflectivity was evaluated.
-    '''
+    Parameters
+    ----------
+    layers : str or array_like
+        Path to a MATLAB ``.mat`` output file, or a 1-D array of optical
+        thicknesses.
+    dispFileName : str
+        Path to a ``.mat`` file containing dispersion data with keys
+        ``'SiO2'`` and ``'Ta2O5'``.
+    lambda_0 : float, optional
+        Design wavelength in meters. Default is 1064 nm.
+    lam : array_like, optional
+        Wavelengths at which to evaluate, normalized to ``lambda_0``.
+        Default spans 400--1600 nm.
+    aoi : float, optional
+        Angle of incidence in degrees. Default is 0.
+    pol : {'te', 'tm'}, optional
+        Polarization. Default is ``'tm'``.
+
+    Returns
+    -------
+    Rp : ndarray
+        Power reflectivity at each wavelength.
+    Tp : ndarray
+        Power transmissivity at each wavelength.
+    ll : ndarray
+        Wavelengths in meters.
+    """
     if isinstance(layers, str):
         data = scio.loadmat(layers, struct_as_record=False, squeeze_me=True)
         aoi = float(np.copy(data['costOut'].aoi))
@@ -238,27 +264,40 @@ def specREFL(layers, dispFileName, lambda_0=1064e-9,
     return Rp, Tp, lambda_0*lam
 
 def fieldDepth(L, n, lam=1064e-9, theta=0, pol='s', nPts=30):
-    '''
-    Function that calculates "Normalized" E-Field strength squared
-    as a function of penetration depth in a dielectric coating.
+    """Compute normalized E-field squared as a function of coating depth.
 
-    Parameters:
-    ------------
-    L: array_like
-        Array of PHYSICAL thickness of coating layers.
-    n: array_like
-        Array of refractive indices.
+    Follows the derivation in Arnon and Baumeister (1980) [1]_.
 
-    Returns:
-    --------
-    z: array_like
-        Array of penetration depths at which E-field is evaluated.
-    Enorm: array_like
-        Electric field SQUARED normalized to that at the interface of incidence.
+    Parameters
+    ----------
+    L : array_like
+        Physical thickness of each coating layer in meters.
+    n : array_like
+        Refractive indices, including the incident and substrate media.
+        Length is ``len(L) + 2``.
+    lam : float, optional
+        Wavelength in meters. Default is 1064 nm.
+    theta : float, optional
+        Angle of incidence in degrees. Default is 0.
+    pol : {'s', 'p'}, optional
+        Polarization. Default is ``'s'``.
+    nPts : int, optional
+        Number of sample points per layer. Default is 30.
 
-    Following derivation set out in Arnon and Baumeister, 1980
-    https://www.osapublishing.org/ao/abstract.cfm?uri=ao-19-11-1853
-    '''
+    Returns
+    -------
+    z : ndarray
+        Depth positions in meters (length ``len(L) * nPts``).
+    Enorm : ndarray
+        Electric field squared, normalized to the surface value
+        (length ``len(L) * nPts``).
+
+    References
+    ----------
+    .. [AB1980] Arnon and Baumeister, "Electric field distribution and the
+       reduction of laser damage in dielectrics," Appl. Opt. 19,
+       1853--1855 (1980).
+    """
     # check to see that the lengths of L and n match in some way
 
 
@@ -330,42 +369,53 @@ def fieldDepth(L, n, lam=1064e-9, theta=0, pol='s', nPts=30):
     return z, E_profile/E0pk(Mtot)
 
 def importParams(paramFile):
-    '''
-    Function to load some parameters from a yaml config file to run an optimizer.
-    Parameters:
-    -----------
-    paramFile: str
-        Path to parameter file
-    Returns:
-    --------
-    pars: dict
-        A dict from which we can access various params to set up the optimizer
-    '''
+    """Load optimization parameters from a YAML config file.
+
+    Parameters
+    ----------
+    paramFile : str
+        Path to the YAML parameter file.
+
+    Returns
+    -------
+    pars : dict
+        Parsed parameters with keys ``'costs'`` and ``'misc'``.
+    """
     with open(paramFile,'r') as f:
         params = yaml.safe_load(f)
     return(params)
 
 def calcAbsorption(Esq, L, nPts, alphaOdd, alphaEven):
-    '''
-    Function for calculating the Absorption given an electric field profile
-    Made to work together with fieldDepth.
-    Parameters:
-    -----------
-    Esq: array_like
-        NORMALIZED electric field squared as a function of distance in a coating
-    L: array_like
-        PHYSICAL thickness of coating layers
-    nPts: int
-        # of points inside each layer at which field is to be evaluated
-    alphaOdd: float
-        Absorption coefficient of all odd layers [m ^-1] (top layer is assumed layer #1)
-    alphaEven: float
-        Absorption coefficient of all even layers [m ^-1] (top layer is assumed layer #1)
-    Returns:
-    -------------
-    absorp: float
-        Absorption of coating [ppm]
-    '''
+    """Compute integrated absorption from an E-field profile.
+
+    Designed to work with the output of :func:`fieldDepth`.
+
+    Parameters
+    ----------
+    Esq : array_like
+        Normalized electric field squared as a function of depth.
+        Length must equal ``len(L) * nPts``.
+    L : array_like
+        Physical thickness of each coating layer in meters.
+    nPts : int
+        Number of sample points per layer (must match ``Esq``).
+    alphaOdd : float
+        Absorption coefficient of odd-numbered layers (1st, 3rd, ...)
+        in m^-1.
+    alphaEven : float
+        Absorption coefficient of even-numbered layers (2nd, 4th, ...)
+        in m^-1.
+
+    Returns
+    -------
+    absorp : float
+        Total coating absorption in ppm.
+
+    Raises
+    ------
+    ValueError
+        If ``len(Esq) != len(L) * nPts``.
+    """
     if len(Esq) != int(len(L)*nPts):
         raise ValueError(f'The input electric field vector length, {len(Esq)} is not consistent with the number of points requested per layer, {nPts}, and the number of layers, {len(L)}.')
     dL = L/nPts
@@ -381,31 +431,31 @@ def calcAbsorption(Esq, L, nPts, alphaOdd, alphaEven):
     return(absorp)
 
 def sellmeier(B=[0.696166300, 0.407942600, 0.897479400], C=[4.67914826e-3, 1.35120631e-2, 97.9340025], lam=1064e-9):
-    '''
-    Function to calculate dispersion using Sellmeier coefficients
+    """Compute refractive index from Sellmeier dispersion coefficients.
 
-    Parameters:
-    ------------
-    B: list or array_like
-        "B" coefficients in the Sellmeier equation.
-        Defaults to first 3 coefficients for Fused Silica.
-    C: list or array_like
-        "C" coefficients in the Sellmeier equation [um^2].
-        Defaults to first 3 coefficients for Fused Silica.
-    lam: float or array_like
-        Value or array of wavelengths [m]. Conversion to
-        microns is done internally to the function.
-        Defaults to 1064nm.
-
-    Returns:
+    Parameters
     ----------
-    n: float or array_like
-        Refractive index (same shape as lam)
+    B : list or array_like, optional
+        Sellmeier B coefficients. Default is fused silica.
+    C : list or array_like, optional
+        Sellmeier C coefficients in um^2. Default is fused silica.
+    lam : float or array_like, optional
+        Wavelength(s) in meters. Default is 1064 nm.
 
-    Ref:
-    ----
-    https://en.wikipedia.org/wiki/Sellmeier_equation#:~:text=The%20Sellmeier%20equation%20is%20an,of%20light%20in%20the%20medium.
-    '''
+    Returns
+    -------
+    n : float or ndarray
+        Refractive index at each wavelength.
+
+    Raises
+    ------
+    ValueError
+        If ``B`` and ``C`` have different lengths.
+
+    References
+    ----------
+    .. [Sellmeier] https://en.wikipedia.org/wiki/Sellmeier_equation
+    """
     if len(B) != len(C):
         raise ValueError(f'The Sellmeier coefficients A (len {len(B)}) and B (len {len(C)}) must have the same number of elements.')
     n = 1

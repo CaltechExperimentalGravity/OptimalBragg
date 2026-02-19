@@ -7,120 +7,114 @@ import os
 import gwinc.noise
 
 def transmissionCost(target, n, L, lamb=1, theta=0, pol='te'):
-    '''
-    Function that evaluates the transmission of the coating specified in
-    coat, and evaluates a cost based on how close/far it is to the target value
+    """Evaluate the transmission cost for a dielectric coating.
 
-    Parameters:
-    -------------
-    target: float
-        Target transmission
-    n: array_like
-        Array of refractive indices, including the incident
-        and transmitted media. Ordered from incident medium to
-        transmitted medium.
-    L: array_like
-        Array of optical thicknesses comprising the dielectric stack,
-        ordered from incident medium to transmitted medium.
-        Should have 2 fewer elements than n.
-    lamb: float or array_like
-        Wavelength(s) at which the reflectivity is to be evaluated,
-        in units of some central (design) wavelength.
-    theta: float
-        Angle of incidence in degrees. Defaults to 0 degrees (normal incidence)
-    pol: str, 'te' or 'tm'
-        Polarization at which reflectivity is to be evaluated.
-        Defaults to 'te' (s-polarization)
-    Returns:
-    ---------
-    cost: array_like
-        An array of scalar costs for the transmission
-    T: float
-        Transmission of the coating.
-    '''
+    Computes the power transmission of the stack and returns a
+    normalized squared-error cost relative to the target.
+
+    Parameters
+    ----------
+    target : float
+        Target power transmission.
+    n : array_like
+        Refractive indices, including incident and transmitted media.
+    L : array_like
+        Optical thicknesses of the dielectric stack.
+    lamb : float or array_like, optional
+        Wavelength(s) normalized to design wavelength. Default is 1.
+    theta : float, optional
+        Angle of incidence in degrees. Default is 0.
+    pol : {'te', 'tm'}, optional
+        Polarization. Default is ``'te'``.
+
+    Returns
+    -------
+    cost : float
+        Normalized squared error: ``|target - T|^2 / target^2``.
+    T : float or ndarray
+        Power transmission of the coating.
+    """
     r, _ = multidiel1(n, L, lamb, theta, pol)
     T = 1 - np.abs(r)**2
     return (np.abs((target - T)/target)**2)[0], T
 
 
 def sensitivityCost(target, n, L, lamb=1, theta=0, pol='te'):
-    '''
-    Function that evaluates the sensitivity cost from a target
-    transmission relative to 1% thickness perturbation
+    """Evaluate the sensitivity of transmission to a 1% thickness error.
 
-    Parameters:
-    -------------
-    target: float
-        Target transmission
-    n: array_like
-        Array of refractive indices, including the incident
-        and transmitted media. Ordered from incident medium to
-        transmitted medium.
-    L: array_like
-        Array of optical thicknesses comprising the dielectric stack,
-        ordered from incident medium to transmitted medium.
-        Should have 2 fewer elements than n.
-    lamb: float or array_like
-        Wavelength(s) at which the reflectivity is to be evaluated,
-        in units of some central (design) wavelength.
-    theta: float
-        Angle of incidence in degrees. Defaults to 0 degrees (normal incidence)
-    pol: str, 'te' or 'tm'
-        Polarization at which reflectivity is to be evaluated.
-        Defaults to 'te' (s-polarization)
-    Returns:
-    ---------
-    cost: array_like
-        An array of scalar costs for the transmission
-    '''
+    Perturbs all layer thicknesses by +1% and computes the transmission
+    cost at the perturbed thicknesses.
+
+    Parameters
+    ----------
+    target : float
+        Target power transmission.
+    n : array_like
+        Refractive indices, including incident and transmitted media.
+    L : array_like
+        Optical thicknesses of the dielectric stack.
+    lamb : float or array_like, optional
+        Wavelength(s) normalized to design wavelength. Default is 1.
+    theta : float, optional
+        Angle of incidence in degrees. Default is 0.
+    pol : {'te', 'tm'}, optional
+        Polarization. Default is ``'te'``.
+
+    Returns
+    -------
+    cost : float
+        Transmission cost evaluated at ``1.01 * L``.
+    """
     return transmissionCost(target, n, 1.01*L, lamb, theta, pol)[0]
 
 
 def surfEfieldCost(target, n, L, lamb=1, theta=0, pol='te'):
-    '''
-    Function that evaluates the surface E field cost
+    """Evaluate the surface electric field cost.
 
-    Parameters:
-    -------------
-    target: float
-        Target transmission
-    n: array_like
-        Array of refractive indices, including the incident
-        and transmitted media. Ordered from incident medium to
-        transmitted medium.
-    L: array_like
-        Array of optical thicknesses comprising the dielectric stack,
-        ordered from incident medium to transmitted medium.
-        Should have 2 fewer elements than n.
-    lamb: float or array_like
-        Wavelength(s) at which the reflectivity is to be evaluated,
-        in units of some central (design) wavelength.
-    theta: float
-        Angle of incidence in degrees. Defaults to 0 degrees (normal incidence)
-    pol: str, 'te' or 'tm'
-        Polarization at which reflectivity is to be evaluated.
-        Defaults to 'te' (s-polarization)
-    Returns:
-    ---------
-    cost: array_like
-        An array of scalar costs for the transmission
-    '''
+    Uses an ``arcsinh`` mapping to penalize high surface E-fields
+    while remaining smooth near zero.
+
+    Parameters
+    ----------
+    target : float
+        Not used directly; the cost is ``50 * arcsinh(|1 + r|^2)``.
+    n : array_like
+        Refractive indices, including incident and transmitted media.
+    L : array_like
+        Optical thicknesses of the dielectric stack.
+    lamb : float or array_like, optional
+        Wavelength(s) normalized to design wavelength. Default is 1.
+    theta : float, optional
+        Angle of incidence in degrees. Default is 0.
+    pol : {'te', 'tm'}, optional
+        Polarization. Default is ``'te'``.
+
+    Returns
+    -------
+    cost : float
+        Surface E-field cost: ``50 * arcsinh(|1 + r|^2)``.
+    """
     r, _ = multidiel1(n, L, lamb, theta, pol)
     return (50 * np.arcsinh(np.abs(1 + r)**2))[0]
 
 
 def stdevLCost(target, L,):
-    """Get cost of relative variation of thicknesses in the stack
+    """Evaluate layer thickness uniformity cost.
 
-    Args:
-        target (float): Target standard deviation
-        L: array_like
-        Array of optical thicknesses comprising the dielectric stack,
-        ordered from incident medium to transmitted medium.
-        Should have 2 fewer elements than n.
-    Returns:
-        cost: array_like
-            An array of scalar costs for the relative thickness variance
+    Penalizes deviations of the mean-to-standard-deviation ratio from
+    a target value. Uniform stacks (zero std) get ``relative_stdev = 0``.
+
+    Parameters
+    ----------
+    target : float
+        Target value of ``mean(L) / std(L)``.
+    L : array_like
+        Optical thicknesses of the dielectric stack.
+
+    Returns
+    -------
+    cost : float
+        Normalized squared error: ``|target - relative_stdev|^2 / target^2``.
     """
     if np.std(np.array(L)):
         relative_stdev = np.mean(np.array(L)) / np.std(np.array(L))
@@ -130,19 +124,21 @@ def stdevLCost(target, L,):
 
 
 def brownianProxy(ifo):
-    '''
-    Evaluate a bunch of material properties for speedy evaluation of Brownian noise.
-    Parameters:
-    -----------
-    ifo: pygwinc struct
-        Return object of pygwinc load_ifo function, which has
-        all the material properties
-    Returns:
-    --------
-    gam: float
-        The pre-factor for use in the proxy function for Brownian noise
-        per E0900068 pg4.
-    '''
+    """Pre-compute the Brownian noise proxy factor gamma.
+
+    Evaluates material properties from the ``ifo`` structure to build a
+    fast proxy for coating Brownian thermal noise, per LIGO-E0900068 p. 4.
+
+    Parameters
+    ----------
+    ifo : gwinc.Struct
+        Interferometer model containing material properties.
+
+    Returns
+    -------
+    gam : float
+        Brownian noise proxy pre-factor.
+    """
     phi_high = ifo.Materials.Coating.Phihighn
     n_high = ifo.Materials.Coating.Indexhighn
     Y_high = ifo.Materials.Coating.Yhighn
@@ -159,25 +155,25 @@ def brownianProxy(ifo):
 
 
 def brownianCost(target, L, gam,):
-    '''
-    Calculate a proxy for the brownian noise for a coating specified by L,
-    using the parameters specified in ifoModel which is a matlab struct
-    or pygwinc yaml file. Formula taken from E0900068 pg4.
-    Parameters:
-    -----------
-    target: float
-        Target value for this cost function.
-    L: array_like
-        Array of optical thicknesses comprising the dielectric stack,
-        ordered from incident medium to transmitted medium.
-    gam:float
-        The pre-factor for use in the proxy function for Brownian noise
-        per E0900068 pg4.
-    Returns:
-    ---------
-    cost: float
-        Scalar cost which is a proxy for the Brownian noise level
-    '''
+    """Compute Brownian noise proxy cost for a coating.
+
+    Uses the formula from LIGO-E0900068 p. 4:
+    ``cost = target * (sum_low + gamma * sum_high)``.
+
+    Parameters
+    ----------
+    target : float
+        Scaling factor for the Brownian noise cost.
+    L : array_like
+        Optical thicknesses of the dielectric stack.
+    gam : float
+        Pre-computed Brownian proxy factor from :func:`brownianProxy`.
+
+    Returns
+    -------
+    cost : float
+        Brownian noise proxy cost.
+    """
     zLow = np.sum(L[::2])    # Sum of thicknesses of low index layers
     zHigh = np.sum(L[1::2])   # Sum of thicknesses of high index layers
     SBrZ = zLow + gam*zHigh  # Proxy brownian noise
@@ -185,28 +181,27 @@ def brownianCost(target, L, gam,):
 
 
 def thermoopticCost(target, fTarget, L, ifo):
-    '''
-    Function to calculate a cost for the Thermo-Optic noise for
-    a coating specified by L.
-    pygwinc is used to do the TO noise evaluation.
+    """Compute thermo-optic noise cost via pygwinc.
 
-    Parameters:
-    -----------
-    target: float
-        Target value for this cost function
-    L: array_like
-        Array of optical thicknesses comprising the dielectric stack,
-        ordered from incident medium to transmitted medium.
-    fTarget: float
-        Frequency at which to evaluate TO noise.
-    ifo: pygwinc struct
-        Return object of pygwinc load_ifo function, which has
-        all the material properties
-    Returns:
-    ---------
-    cost: float
-        Scalar cost for the TO noise.
-    '''
+    Evaluates the thermo-optic noise power spectral density at a single
+    frequency using ``gwinc.noise.coatingthermal.coating_thermooptic``.
+
+    Parameters
+    ----------
+    target : float
+        Scaling factor for the thermo-optic cost.
+    fTarget : float
+        Frequency at which to evaluate TO noise, in Hz.
+    L : array_like
+        Optical thicknesses of the dielectric stack.
+    ifo : gwinc.Struct
+        Interferometer model containing material and optic properties.
+
+    Returns
+    -------
+    cost : float
+        Thermo-optic noise cost: ``target * S_TO(fTarget)``.
+    """
     # Get the TO noise PSD
     # Build up a "mirror" structure as required by pygwinc
     # Use shallow copies to avoid mutating the shared ifo object
@@ -219,37 +214,46 @@ def thermoopticCost(target, fTarget, L, ifo):
 
 
 def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
-    '''
-    Compute the cost function for a coating design specified by L,
-    based on the settings in paramFile.
+    """Master cost function for coating optimization.
 
-    Parameters:
-    ------------
-    costs: dict
-        Dictionary with scalar cost keys, and {'target':t, 'weight':w} vals
-        e.g. {'TransPSL': {'target':500e-6, 'weight': 1.0},
-              'TransAUX': {'target':100e-6, 'weight': 0.1},
-              'Esurf':    {'target':0,      'weight': 0.0}}
-    L: array_like
-        Array of optical thicknesses comprising the dielectric stack,
-        ordered from incident medium to transmitted medium.
-    ifo: pygwinc struct
-        Return object of pygwinc load_ifo function, which has
-        all the material properties
-    gam:
-        pre-computed value of little gamma used as a proxy Brownian
-        noise cost
-    verbose: bool
-        Determines level of detail returned by the function.
-        Defaults to False, which outputs only the value of the cost function.
-    **misc: keyword arguments parsed directly from the 'misc' parameters
-    Returns:
+    Evaluates a weighted sum of sub-costs (transmission, Brownian noise,
+    thermo-optic noise, sensitivity, surface E-field, thickness
+    uniformity) for a candidate coating design. Called by
+    ``scipy.optimize.differential_evolution`` on every candidate.
+
+    Uses consolidated ``multidiel1`` calls: one call with all active
+    wavelengths for transmission/E-field costs, and one call with
+    perturbed thicknesses for sensitivity cost.
+
+    Parameters
     ----------
-    scalarCost: float
-        Scalar cost function (obtained by multiplying vector cost by weights)
-    costOut: dict
-        If verbose=True, several sub-properties of the coating are supplied.
-    '''
+    L : array_like
+        Optical thicknesses of the candidate dielectric stack.
+    costs : dict
+        Cost specifications. Each key maps to
+        ``{'target': float, 'weight': float}``. Supported keys:
+        ``TransPSL``, ``TransAUX``, ``TransOPLEV``, ``Brownian``,
+        ``Thermooptic``, ``Lsens``, ``Esurf``, ``Lstdev``, ``Absorption``.
+    ifo : gwinc.Struct
+        Interferometer model containing material properties.
+    gam : float
+        Pre-computed Brownian proxy factor from :func:`brownianProxy`.
+    verbose : bool, optional
+        If True, return ``(scalar_cost, output_dict)`` with detailed
+        results. Default is False (return scalar only).
+    misc : dict, optional
+        Additional parameters: ``aoi``, ``pol``, ``fTO``, ``Npairs``,
+        ``Ncopies``, ``Nfixed``, ``lambdaAUX``.
+
+    Returns
+    -------
+    scalar_cost : float
+        Weighted sum of all active cost terms.
+    output : dict
+        Only returned when ``verbose=True``. Contains keys ``'n'``,
+        ``'L'``, ``'scalarCost'``, ``'vectorCost'``, ``'TPSL'``,
+        ``'RPSL'``, and additional transmission values if enabled.
+    """
 
     # Add Ncopies of single variable stack
     if misc.get('Ncopies', 0) > 0:

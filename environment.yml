@@ -21,4 +21,6 @@ dependencies:
   - pandas
   - astropy
   - pytest
+  - sphinx
+  - sphinx_rtd_theme
   - pip

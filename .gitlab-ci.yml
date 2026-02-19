@@ -2,6 +2,7 @@ image: continuumio/miniconda3:latest
 
 stages:
   - test
+  - deploy
 
 variables:
   CONDA_ENV: coatingDev
@@ -23,3 +24,13 @@ test_integration:
   script:
     - pytest tests/test_integration.py -v --tb=short -m slow
   allow_failure: true
+
+pages:
+  stage: deploy
+  script:
+    - sphinx-build -b html docs/ public/
+  artifacts:
+    paths:
+      - public
+  only:
+    - master

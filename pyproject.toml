@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Optical coating optimization for gravitational wave detector mirrors"
 requires-python = ">=3.10"
 
+[project.optional-dependencies]
+docs = ["sphinx", "sphinx-rtd-theme"]
+
 [tool.setuptools.packages.find]
 include = ["generic*"]
 
