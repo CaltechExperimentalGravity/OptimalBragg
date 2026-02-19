@@ -34,3 +34,4 @@ pages:
       - public
   only:
     - master
+    - refactor/speed-and-robustness
