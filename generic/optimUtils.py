@@ -3,6 +3,7 @@
 import copy
 import numpy as np
 from generic.coatingUtils import *
+from generic.thermoopticUtils import coating_thermooptic_fast, extract_ifo_params
 import os
 import gwinc.noise
 
@@ -180,11 +181,12 @@ def brownianCost(target, L, gam,):
     return target * SBrZ
 
 
-def thermoopticCost(target, fTarget, L, ifo):
-    """Compute thermo-optic noise cost via pygwinc.
+def thermoopticCost(target, fTarget, L, ifo, ifo_params=None):
+    """Compute thermo-optic noise cost.
 
-    Evaluates the thermo-optic noise power spectral density at a single
-    frequency using ``gwinc.noise.coatingthermal.coating_thermooptic``.
+    Uses a Numba JIT-compiled implementation of the thermo-optic noise
+    calculation (extracted from gwinc). Pass pre-computed ``ifo_params``
+    to avoid repeated attribute extraction overhead.
 
     Parameters
     ----------
@@ -196,21 +198,96 @@ def thermoopticCost(target, fTarget, L, ifo):
         Optical thicknesses of the dielectric stack.
     ifo : gwinc.Struct
         Interferometer model containing material and optic properties.
+    ifo_params : tuple, optional
+        Pre-computed material parameters from ``extract_ifo_params(ifo)``.
+        If None, extracted on each call.
 
     Returns
     -------
     cost : float
         Thermo-optic noise cost: ``target * S_TO(fTarget)``.
     """
-    # Get the TO noise PSD
-    # Build up a "mirror" structure as required by pygwinc
-    # Use shallow copies to avoid mutating the shared ifo object
-    mir = copy.copy(ifo.Optics.ETM)
-    mir.Coating = copy.copy(ifo.Optics.ETM.Coating)
-    mir.Coating.dOpt = L
-    StoZ, _, _, _ = gwinc.noise.coatingthermal.coating_thermooptic(
-        fTarget, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
+    if ifo_params is None:
+        ifo_params = extract_ifo_params(ifo)
+    StoZ = coating_thermooptic_fast(
+        fTarget, L, ifo.Laser.Wavelength,
+        ifo.Optics.ETM.BeamRadius, ifo_params)
     return target * StoZ
+
+
+def precompute_misc(costs, ifo, misc):
+    """Pre-compute cached values for getMirrorCost hot loop.
+
+    Call once before ``differential_evolution`` to populate ``misc``
+    with values that are constant across all evaluations, avoiding
+    redundant work on every cost-function call.
+
+    Parameters
+    ----------
+    costs : dict
+        Cost specifications (same as for :func:`getMirrorCost`).
+    ifo : gwinc.Struct
+        Interferometer model.
+    misc : dict
+        Will be updated in-place with cached keys:
+        ``_ifo_n``, ``_active_costs``, ``_wl_array``, ``_wl_map``,
+        ``_sens_wl``, ``_ifo_params``, ``_lambdaAUX``.
+    """
+    Npairs = misc.get('Npairs', 0)
+    Ncopies = misc.get('Ncopies', 0)
+    Nfixed = misc.get('Nfixed', 0)
+
+    # Total number of layers after copies/fixed
+    nLayers = 2 * Npairs + 1
+    if Ncopies > 0:
+        nLayers += (2 * Npairs) * Ncopies
+    if Nfixed > 0:
+        nLayers += 2 * Nfixed
+
+    # Pre-build the refractive index array
+    n_low = ifo.Materials.Coating.Indexlown
+    n_high = ifo.Materials.Coating.Indexhighn
+    n_sub = ifo.Materials.Substrate.RefractiveIndex
+    doublet = np.tile(np.array([n_low, n_high]), nLayers // 2)
+    if len(doublet) != nLayers:
+        doublet = np.append(doublet, n_low)
+    n = np.empty(len(doublet) + 2)
+    n[0] = 1.0
+    n[1:-1] = doublet
+    n[-1] = n_sub
+    misc['_ifo_n'] = n
+
+    # Active costs (nonzero weight)
+    active = frozenset(c for c, s in costs.items() if s['weight'])
+    misc['_active_costs'] = active
+
+    # AUX wavelength ratio
+    lambdaAUX = misc.get('lambdaAUX', 1550 / 2050)
+    misc['_lambdaAUX'] = lambdaAUX
+
+    # Wavelength array and map for consolidated multidiel1 call
+    wl_list, wl_map = [], {}
+    if 'TransPSL' in active or 'Esurf' in active:
+        wl_map['PSL'] = len(wl_list)
+        wl_list.append(1.0)
+    if 'TransAUX' in active:
+        wl_map['AUX'] = len(wl_list)
+        wl_list.append(lambdaAUX)
+    if 'TransOPLEV' in active:
+        wl_map['OPL'] = len(wl_list)
+        wl_list.append(0.297)
+    misc['_wl_array'] = np.array(wl_list) if wl_list else None
+    misc['_wl_map'] = wl_map
+
+    # Sensitivity wavelengths
+    if 'Lsens' in active:
+        misc['_sens_wl'] = np.array([1.0, lambdaAUX])
+
+    # Pre-extract ifo params for thermooptic JIT
+    if 'Thermooptic' in active:
+        misc['_ifo_params'] = extract_ifo_params(ifo)
+
+    return misc
 
 
 def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
@@ -244,6 +321,8 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
     misc : dict, optional
         Additional parameters: ``aoi``, ``pol``, ``fTO``, ``Npairs``,
         ``Ncopies``, ``Nfixed``, ``lambdaAUX``.
+        Pre-computed cache keys (from :func:`precompute_misc`):
+        ``_ifo_n``, ``_active_costs``, ``_wl_array``, ``_wl_map``.
 
     Returns
     -------
@@ -265,44 +344,50 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
         fixedLayers = np.tile(L[-2:].copy(), misc['Nfixed'])
         L = np.append(L, fixedLayers)
 
-    # Build up the array of refractive indices
-    doublet = np.tile(np.array([ifo.Materials.Coating.Indexlown,
-                                ifo.Materials.Coating.Indexhighn]),
-                          int(np.floor(len(L)/2)))
+    # Use pre-computed n array if available, else build it
+    n = misc.get('_ifo_n')
+    if n is None:
+        doublet = np.tile(np.array([ifo.Materials.Coating.Indexlown,
+                                    ifo.Materials.Coating.Indexhighn]),
+                              int(np.floor(len(L)/2)))
+        if len(doublet) != len(L):
+            doublet = np.append(doublet, doublet[0])
+        n = np.append(1, doublet)
+        n = np.append(n, ifo.Materials.Substrate.RefractiveIndex)
 
-    if len(doublet) != len(L):
-        # Add another low index layer at the bottom of the stack
-        doublet = np.append(doublet, doublet[0])
+    # Use pre-computed active set or build it
+    active = misc.get('_active_costs')
+    if active is None:
+        active = {c for c, s in costs.items() if s['weight']}
 
-    # Add air, fixed extension, and substrate
-    n = np.append(1, doublet)
-    n = np.append(n, ifo.Materials.Substrate.RefractiveIndex)
-
-    # AUX wavelength ratio (configurable per project)
-    lambdaAUX = misc.get('lambdaAUX', 1550/2050)
-
-    # Determine which costs are active (nonzero weight)
-    active = {c for c, s in costs.items() if s['weight']}
+    # Use pre-computed lambdaAUX or read from misc
+    lambdaAUX = misc.get('_lambdaAUX')
+    if lambdaAUX is None:
+        lambdaAUX = misc.get('lambdaAUX', 1550/2050)
 
     vector_cost, output = {}, {}
     scalar_cost = 0.0
     aoi, pol = misc['aoi'], misc['pol']
 
     # --- Consolidated multidiel1 call for main wavelengths ---
-    # Build wavelength array and index map for all transmission/Esurf costs
-    wl_list, wl_map = [], {}
-    if 'TransPSL' in active or 'Esurf' in active:
-        wl_map['PSL'] = len(wl_list)
-        wl_list.append(1.0)
-    if 'TransAUX' in active:
-        wl_map['AUX'] = len(wl_list)
-        wl_list.append(lambdaAUX)
-    if 'TransOPLEV' in active:
-        wl_map['OPL'] = len(wl_list)
-        wl_list.append(0.297)
+    # Use pre-computed wavelength array/map if available
+    wl_arr = misc.get('_wl_array')
+    wl_map = misc.get('_wl_map')
+    if wl_map is None:
+        wl_list, wl_map = [], {}
+        if 'TransPSL' in active or 'Esurf' in active:
+            wl_map['PSL'] = len(wl_list)
+            wl_list.append(1.0)
+        if 'TransAUX' in active:
+            wl_map['AUX'] = len(wl_list)
+            wl_list.append(lambdaAUX)
+        if 'TransOPLEV' in active:
+            wl_map['OPL'] = len(wl_list)
+            wl_list.append(0.297)
+        wl_arr = np.array(wl_list) if wl_list else None
 
-    if wl_list:
-        r_main, _ = multidiel1(n, L, np.array(wl_list), aoi, pol)
+    if wl_arr is not None and len(wl_arr) > 0:
+        r_main, _ = multidiel1(n, L, wl_arr, aoi, pol)
         T_main = 1 - np.abs(r_main)**2
 
     # Extract per-wavelength results
@@ -337,14 +422,19 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
         idx = wl_map['PSL']
         vector_cost['Esurf'] = 50 * np.arcsinh(np.abs(1 + r_main[idx])**2)
 
-    # --- Brownian (no multidiel1 needed) ---
+    # --- Brownian (no multidiel1 needed, inlined for speed) ---
     if 'Brownian' in active:
-        vector_cost['Brownian'] = brownianCost(costs['Brownian']['target'], L, gam)
+        vector_cost['Brownian'] = costs['Brownian']['target'] * (
+            L[::2].sum() + gam * L[1::2].sum())
 
-    # --- Thermooptic (uses gwinc, not multidiel1) ---
+    # --- Thermooptic (JIT-compiled, no gwinc in hot path) ---
     if 'Thermooptic' in active:
+        ifo_params = misc.get('_ifo_params')
+        if ifo_params is None:
+            ifo_params = extract_ifo_params(ifo)
         vector_cost['Thermooptic'] = thermoopticCost(
-            costs['Thermooptic']['target'], misc['fTO'], L, ifo)
+            costs['Thermooptic']['target'], misc['fTO'], L, ifo,
+            ifo_params=ifo_params)
 
     # --- Absorption (not implemented) ---
 
@@ -355,8 +445,10 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
     # --- Consolidated multidiel1 call for sensitivity (perturbed L) ---
     if 'Lsens' in active:
         L_pert = 1.01 * L
-        sens_wl = [1.0, lambdaAUX]
-        r_pert, _ = multidiel1(n, L_pert, np.array(sens_wl), aoi, pol)
+        sens_wl = misc.get('_sens_wl')
+        if sens_wl is None:
+            sens_wl = np.array([1.0, lambdaAUX])
+        r_pert, _ = multidiel1(n, L_pert, sens_wl, aoi, pol)
         T_pert = 1 - np.abs(r_pert)**2
         target_sens = costs['Lsens']['target']
         sensPSL = np.abs((target_sens - T_pert[0]) / target_sens)**2

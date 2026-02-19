@@ -58,7 +58,6 @@ with h5py.File(hdf5FileName, 'r') as f:
     else:
         gwincFile = str(gwincFile)
 
-n_green_out = np.copy(n_IR_out)
 L_out = op2phys(L_opt, n_IR_out[1:-1])
 
 # Now extract the "ifo" variable
@@ -67,26 +66,25 @@ ifo = gwinc.Struct.from_file(gwincFile)
 # AUX wavelength ratio — read from params if available, else default
 lambdaAUX = 2/3  # default; override from params if needed
 
+# Pre-build all perturbed arrays at once (vectorized, no per-iteration copies)
+perturb_factors = 1 + perturbs  # (nSamples, 4)
+
+# Pre-build all perturbed n arrays: (nSamples, len(n_IR_out))
+n_IR_all = np.tile(n_IR_out, (nSamples, 1))
+n_IR_all[:, 1:-1:2] *= perturb_factors[:, 2:3]   # low-n perturbation
+n_IR_all[:, 2::2] *= perturb_factors[:, 1:2]      # high-n perturbation
+
+# Pre-build all perturbed L arrays: (nSamples, len(L_out))
+L_all = L_out[None, :] * perturb_factors[:, 3:4]  # thickness perturbation
+
 for jj in tqdm.tqdm(range(nSamples)):
-    aoi = 0
-    n_IRs = np.copy(n_IR_out)
-    n_greens = np.copy(n_green_out)
-    # Make it a fractional change
-    perturb = 1 + sampler.flatchain[jj, :]
-    # Physical lengths
-    Ls = np.copy(L_out)
-    Ls *= (perturb[3])
-    # Low-n refractive indices
-    n_IRs[1:-1:2] *= perturb[2]
-    n_greens[1:-1:2] *= perturb[2]
-    # High-n refractive indices
-    n_IRs[2::2] *= perturb[1]
-    n_greens[2::2] *= perturb[1]
+    n_IRs = n_IR_all[jj]
+    Ls = L_all[jj]
     # Compute reflectivities
-    [Gamma5p, t1] = multidiel1(n_IRs, Ls*n_IRs[1:-1], 1)
+    [Gamma5p, t1] = multidiel1(n_IRs, Ls * n_IRs[1:-1], 1)
     Tp_IR[jj] = (1. - np.abs(Gamma5p)**2)
     surfField[jj] = surfaceField(Gamma5p)
-    [Gamma5p, t2] = multidiel1(n_greens, Ls*n_greens[1:-1], lambdaAUX)
+    [Gamma5p, t2] = multidiel1(n_IRs, Ls * n_IRs[1:-1], lambdaAUX)
     Tp_AUX[jj] = (1 - np.abs(Gamma5p)**2)
 
 idx = np.argmin(np.abs(ff - 100))

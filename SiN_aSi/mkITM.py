@@ -21,6 +21,7 @@ import h5py
 import gwinc
 
 from generic.optimUtils import *
+from generic.optimUtils import precompute_misc
 from generic.coatingUtils import importParams
 
 def main(save=False):
@@ -49,13 +50,16 @@ def main(save=False):
         print(f'Bounds = {bounds[-1]}')
         tic = default_timer()
 
+    # Pre-compute cached values for the hot loop
+    precompute_misc(opt_params['costs'], ifo, opt_params['misc'])
+
     vector_mon, conv_mon = [], []
     def diffevo_monitor(xk, convergence):
         vector_mon.append(xk)
         conv_mon.append(1/convergence)
         return False
 
-    # Do global optimization
+    # Do global optimization (workers=1: IPC overhead dwarfs eval cost)
     res = devo(func=getMirrorCost,
             bounds=bounds,
             updating='deferred',
@@ -63,7 +67,7 @@ def main(save=False):
             mutation=(0.05, 1.5),
             popsize=opt_params['misc']['Nparticles'],
             init=opt_params['misc']['init_method'],
-            workers=-1,
+            workers=1,
             maxiter=2000,
             atol=opt_params['misc']['atol'],
             tol=opt_params['misc']['tol'],
