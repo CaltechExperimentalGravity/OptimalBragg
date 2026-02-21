@@ -89,26 +89,26 @@ class TestGetMirrorCost:
         assert 'n' in output
         assert 'L' in output
         assert 'vectorCost' in output
-        assert 'TPSL' in output
+        assert 'T1064' in output
 
-    def test_zero_weights_zero_cost(self, ifo_voyager, sample_misc):
-        """All weights=0 should give cost=0."""
+    def test_zero_weights_identity_cost(self, ifo_voyager, sample_misc):
+        """All weights=0 should give cost=1 (empty product identity)."""
         gam = brownianProxy(ifo_voyager)
         zero_costs = {
-            'TransPSL':    {'target': 5e-6,   'weight': 0},
-            'Brownian':    {'target': 0.1,    'weight': 0},
-            'Thermooptic': {'target': 1e43,   'weight': 0},
+            'Trans1064':    {'target': 5e-6,   'weight': 0},
+            'Brownian':    {'target': 60.0,   'weight': 0},
+            'Thermooptic': {'target': 1.3e-42,'weight': 0},
             'Lsens':       {'target': 1e-7,   'weight': 0},
             'Esurf':       {'target': 1e-9,   'weight': 0},
             'Absorption':  {'target': 1e-4,   'weight': 0},
-            'TransAUX':    {'target': 1000e-6, 'weight': 0},
+            'Trans532':    {'target': 1000e-6, 'weight': 0},
             'TransOPLEV':  {'target': 0.05,   'weight': 0},
             'Lstdev':      {'target': 0.5,    'weight': 0},
         }
         L = 0.25 * np.ones(10)
         cost = getMirrorCost(L, zero_costs, ifo_voyager, gam,
                              verbose=False, misc=sample_misc)
-        assert cost == 0.0
+        assert cost == 1.0
 
     def test_ncopies_extends_stack(self, ifo_voyager, sample_costs, sample_misc):
         """Ncopies > 0 should produce a longer L in verbose output."""

@@ -114,7 +114,7 @@ def plot_trans(save = savePlots):
     ifo = Struct.from_file(opt_params['misc']['gwincStructFile'])
     lambdaPSL = ifo.Laser.Wavelength
 
-    data = h5read(targets=['n', 'L', 'TPSL', 'TAUX', 'TOPL'])
+    data = h5read(targets=['n', 'L', 'T1064', 'T532', 'TOPL'])
     L  = lambdaPSL * op2phys(data['L'], data['n'][1:-1])
 
     # Other wavelength ratios to ifo.Laser.Wavelength
@@ -125,8 +125,8 @@ def plot_trans(save = savePlots):
     # Spectral reflectivities
     rr1550, _ = multidiel1(data['n'], data['L'], rellambda1550)
     T1550 = 1 - np.abs(rr1550[0])**2
-    TPSL = data['TPSL'][0]
-    TAUX = data['TAUX'][0]
+    T1064 = data['T1064'][0]
+    T532 = data['T532'][0]
     TOPV = data['TOPL'][0]
 
     wavelengths = np.linspace(0.2, 1.8, 512)
@@ -167,7 +167,7 @@ def plot_trans(save = savePlots):
     ax.semilogy(1e6*wavelengths*lambdaPSL, RR, lw=1.5, 
                 label='Reflectivity', c='xkcd:electric blue', alpha=0.7)
     for wvl, trans, c in zip([1., rellambda1550, rellambdaAUX, rellambdaHeNe],
-                             [TPSL, T1550, TAUX, TOPV],
+                             [T1064, T1550, T532, TOPV],
                              ['brown', 'crimson', 'blue', 'red']):
         ax.vlines(wvl*1e6*lambdaPSL, trans, 1.0, linestyle='--', color=c,
                   label=f'T={trans*1e6:.2f} ppm @ {1e6*wvl*lambdaPSL:.3f} um')

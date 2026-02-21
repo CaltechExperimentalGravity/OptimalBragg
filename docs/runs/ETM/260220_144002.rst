@@ -1,0 +1,90 @@
+ETM Run 260220_144002
+=====================
+
+.. list-table:: Design Summary
+   :header-rows: 1
+   :widths: 30 25 25 20
+
+   * - Metric
+     - Achieved
+     - Target
+     - Status
+   * - Trans1064
+     - 15.99 ppm
+     - 5.0 ppm
+     - FAIL
+   * - Trans532
+     - 3.375%
+     - 2.0%
+     - WARN
+   * - Number of layers
+     - 35
+     -
+     -
+   * - Total thickness
+     - 5.47 um
+     -
+     -
+   * - Total scalar cost
+     - 93.773729
+     -
+     -
+
+.. list-table:: Cost Function Breakdown
+   :header-rows: 1
+   :widths: 40 30 30
+
+   * - Cost Term
+     - Value
+     - Weight
+   * - Brownian
+     - 6.602017
+     - 2
+   * - Thermooptic
+     - 27.017339
+     - 2
+   * - Trans532
+     - 0.472996
+     - 5
+   * - Trans1064
+     - 4.834007
+     - 5
+
+Layer Structure & E-Field
+-------------------------
+
+.. image:: ../../../Arms/Figures/ETM/ETM_Layers_0220_144002.svg
+   :width: 100%
+
+Electric field profile through the dielectric stack. The upper panel
+shows the normalized :math:`|E(z)|^2`, and the lower panel shows the physical
+layer thicknesses. Surface E-field and integrated absorption are annotated.
+
+Spectral Reflectivity
+---------------------
+
+.. image:: ../../../Arms/Figures/ETM/ETM_R0220_144002.svg
+   :width: 100%
+
+Spectral transmission and reflectivity across the operating band.
+The inset starfish chart shows the relative quality of each cost
+function term (higher = better).
+
+Starfish Cost Chart
+-------------------
+
+.. image:: ../../../Arms/Figures/ETM/ETM_SF0220_144002.png
+   :width: 60%
+
+Polar chart of cost function term quality. Larger radii indicate
+better performance on that objective.
+
+Thermal Noise Budget
+--------------------
+
+.. image:: ../../../Arms/Figures/ETM/ETM_TN_0220_144002.svg
+   :width: 100%
+
+Displacement noise budget showing Brownian, thermo-optic
+(thermo-elastic + thermo-refractive), and substrate contributions.
+

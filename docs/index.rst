@@ -18,6 +18,14 @@ noise, manufacturing tolerance, and surface E-field constraints.
 
    physics/transfer-matrix
    physics/cost-function
+   physics/thermal-noise
+   physics/mcmc
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Run Reports
+
+   runs/index
 
 .. toctree::
    :maxdepth: 2

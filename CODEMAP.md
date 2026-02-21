@@ -112,7 +112,7 @@ Coatings/
                     +-----------------------+
                     | ETM_params.yml        |     aSiSiN.yaml (or Ta2O5_ETM.yml)
                     |   costs:              |     Material properties, substrate,
-                    |     TransPSL:         |     laser wavelength, mirror geometry
+                    |     Trans1064:         |     laser wavelength, mirror geometry
                     |       target / weight |         |
                     |     Brownian: ...     |         |
                     |   misc:              |         |
@@ -144,8 +144,8 @@ Coatings/
                     |     +----------------------------------+ |
                     |     |       getMirrorCost(L, ...)       | |
                     |     |  For each cost with weight > 0:  | |
-                    |     |    TransPSL  -> transmissionCost  | |
-                    |     |    TransAUX  -> transmissionCost  | |
+                    |     |    Trans1064  -> transmissionCost  | |
+                    |     |    Trans532  -> transmissionCost  | |
                     |     |    TransOPLEV-> transmissionCost  | |
                     |     |    Brownian  -> brownianCost      | |
                     |     |    Thermooptic->thermoopticCost   | |
@@ -169,8 +169,8 @@ Coatings/
                       |   L            (optical thickness) |
                       |   n            (refractive indices)|
                       |   scalarCost                       |
-                      |   TPSL, RPSL, TAUX, RAUX, ...     |
-                      |   vectorCost/{TransPSL, ...}       |
+                      |   T1064, RPSL, T532, RAUX, ...     |
+                      |   vectorCost/{Trans1064, ...}       |
                       +------------------------------------+
                                        |
                     +------------------+------------------+
@@ -206,10 +206,10 @@ getMirrorCost(L, costs, ifo, gam, verbose, misc)
     |
     |-- For each cost term with weight > 0:
     |
-    |   TransPSL -----> transmissionCost(target, n, L, lamb=1.0)
+    |   Trans1064 -----> transmissionCost(target, n, L, lamb=1.0)
     |                       \-> multidiel1(n, L, lamb, theta, pol)
     |
-    |   TransAUX -----> transmissionCost(target, n, L, lamb=1550/2050)
+    |   Trans532 -----> transmissionCost(target, n, L, lamb=1550/2050)
     |                       \-> multidiel1(...)
     |
     |   TransOPLEV ---> transmissionCost(target, n, L, lamb=0.297)
@@ -277,8 +277,8 @@ All costs are computed inside `getMirrorCost`. Each cost term is independently w
 
 | Cost key | Physics | Formula / Method | Computed by |
 |----------|---------|-----------------|-------------|
-| **TransPSL** | Transmission at primary laser wavelength | `\|target - T\|^2 / target^2` where `T = 1 - \|r\|^2` at `lamb=1.0` | `transmissionCost` -> `multidiel1` |
-| **TransAUX** | Transmission at auxiliary wavelength | Same formula at `lamb = 1550/2050` (SiN_aSi) or `lamb = 1418.8/2128.2` (Ta2O5) | `transmissionCost` -> `multidiel1` |
+| **Trans1064** | Transmission at primary laser wavelength | `\|target - T\|^2 / target^2` where `T = 1 - \|r\|^2` at `lamb=1.0` | `transmissionCost` -> `multidiel1` |
+| **Trans532** | Transmission at auxiliary wavelength | Same formula at `lamb = 1550/2050` (SiN_aSi) or `lamb = 1418.8/2128.2` (Ta2O5) | `transmissionCost` -> `multidiel1` |
 | **TransOPLEV** | Transmission at optical lever wavelength | Same formula at `lamb = 0.297` (~608 nm) | `transmissionCost` -> `multidiel1` |
 | **Brownian** | Coating Brownian thermal noise | Proxy: `target * (sum_low + gam * sum_high)` per E0900068 p.4 | `brownianCost` |
 | **Thermooptic** | Thermo-optic noise (thermoelastic + thermorefractive) | `target * S_TO(f)` via pygwinc `coating_thermooptic` | `thermoopticCost` -> `gwinc` |
@@ -330,7 +330,7 @@ Used by all active projects. Loaded by `importParams()`, passed directly to `get
 # Cost function terms: each key maps to {target, weight}
 # Set weight: 0 to disable a term
 costs:
-    TransPSL:                # Transmission at primary laser wavelength
+    Trans1064:                # Transmission at primary laser wavelength
         target: 5e-6         # Target value (5 ppm)
         weight: 5            # Relative weight in scalar cost
     Brownian:                # Brownian thermal noise proxy
@@ -348,7 +348,7 @@ costs:
     Absorption:              # Integrated absorption (NOT IMPLEMENTED)
         target: 1e-4
         weight: 0
-    TransAUX:                # Transmission at auxiliary wavelength
+    Trans532:                # Transmission at auxiliary wavelength
         target: 1000e-6
         weight: 0
     TransOPLEV:              # Transmission at optical lever wavelength

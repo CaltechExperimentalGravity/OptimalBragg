@@ -158,13 +158,13 @@ def brownianProxy(ifo):
 def brownianCost(target, L, gam,):
     """Compute Brownian noise proxy cost for a coating.
 
-    Uses the formula from LIGO-E0900068 p. 4:
-    ``cost = target * (sum_low + gamma * sum_high)``.
+    Uses the formula from LIGO-E0900068 p. 4, normalized by a
+    reference value (e.g. quarter-wave stack proxy) so the cost is O(1).
 
     Parameters
     ----------
     target : float
-        Scaling factor for the Brownian noise cost.
+        Reference Brownian proxy value for normalization (e.g. QW stack).
     L : array_like
         Optical thicknesses of the dielectric stack.
     gam : float
@@ -173,25 +173,25 @@ def brownianCost(target, L, gam,):
     Returns
     -------
     cost : float
-        Brownian noise proxy cost.
+        Normalized Brownian noise proxy: ``SBrZ / target``.
     """
     zLow = np.sum(L[::2])    # Sum of thicknesses of low index layers
     zHigh = np.sum(L[1::2])   # Sum of thicknesses of high index layers
     SBrZ = zLow + gam*zHigh  # Proxy brownian noise
-    return target * SBrZ
+    return SBrZ / target
 
 
 def thermoopticCost(target, fTarget, L, ifo, ifo_params=None):
     """Compute thermo-optic noise cost.
 
     Uses a Numba JIT-compiled implementation of the thermo-optic noise
-    calculation (extracted from gwinc). Pass pre-computed ``ifo_params``
-    to avoid repeated attribute extraction overhead.
+    calculation (extracted from gwinc), normalized by a reference value
+    (e.g. quarter-wave stack S_TO) so the cost is O(1).
 
     Parameters
     ----------
     target : float
-        Scaling factor for the thermo-optic cost.
+        Reference S_TO value for normalization (e.g. QW stack at fTarget).
     fTarget : float
         Frequency at which to evaluate TO noise, in Hz.
     L : array_like
@@ -205,14 +205,14 @@ def thermoopticCost(target, fTarget, L, ifo, ifo_params=None):
     Returns
     -------
     cost : float
-        Thermo-optic noise cost: ``target * S_TO(fTarget)``.
+        Normalized thermo-optic noise cost: ``S_TO(fTarget) / target``.
     """
     if ifo_params is None:
         ifo_params = extract_ifo_params(ifo)
     StoZ = coating_thermooptic_fast(
         fTarget, L, ifo.Laser.Wavelength,
         ifo.Optics.ETM.BeamRadius, ifo_params)
-    return target * StoZ
+    return StoZ / target
 
 
 def precompute_misc(costs, ifo, misc):
@@ -267,10 +267,10 @@ def precompute_misc(costs, ifo, misc):
 
     # Wavelength array and map for consolidated multidiel1 call
     wl_list, wl_map = [], {}
-    if 'TransPSL' in active or 'Esurf' in active:
+    if 'Trans1064' in active or 'Esurf' in active:
         wl_map['PSL'] = len(wl_list)
         wl_list.append(1.0)
-    if 'TransAUX' in active:
+    if 'Trans532' in active:
         wl_map['AUX'] = len(wl_list)
         wl_list.append(lambdaAUX)
     if 'TransOPLEV' in active:
@@ -293,10 +293,11 @@ def precompute_misc(costs, ifo, misc):
 def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
     """Master cost function for coating optimization.
 
-    Evaluates a weighted sum of sub-costs (transmission, Brownian noise,
-    thermo-optic noise, sensitivity, surface E-field, thickness
-    uniformity) for a candidate coating design. Called by
-    ``scipy.optimize.differential_evolution`` on every candidate.
+    Evaluates a multiplicative product of sub-costs:
+    ``C = prod( 1 + w_i * c_i )`` where each ``c_i`` is O(1).
+    Every factor is >= 1, so no single term can zero the product.
+    This prevents the optimizer from sacrificing one objective for
+    another, unlike an additive weighted sum.
 
     Uses consolidated ``multidiel1`` calls: one call with all active
     wavelengths for transmission/E-field costs, and one call with
@@ -309,7 +310,7 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
     costs : dict
         Cost specifications. Each key maps to
         ``{'target': float, 'weight': float}``. Supported keys:
-        ``TransPSL``, ``TransAUX``, ``TransOPLEV``, ``Brownian``,
+        ``Trans1064``, ``Trans532``, ``TransOPLEV``, ``Brownian``,
         ``Thermooptic``, ``Lsens``, ``Esurf``, ``Lstdev``, ``Absorption``.
     ifo : gwinc.Struct
         Interferometer model containing material properties.
@@ -330,8 +331,8 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
         Weighted sum of all active cost terms.
     output : dict
         Only returned when ``verbose=True``. Contains keys ``'n'``,
-        ``'L'``, ``'scalarCost'``, ``'vectorCost'``, ``'TPSL'``,
-        ``'RPSL'``, and additional transmission values if enabled.
+        ``'L'``, ``'scalarCost'``, ``'vectorCost'``, ``'T1064'``,
+        ``'R1064'``, and additional transmission values if enabled.
     """
 
     # Add Ncopies of single variable stack
@@ -366,7 +367,6 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
         lambdaAUX = misc.get('lambdaAUX', 1550/2050)
 
     vector_cost, output = {}, {}
-    scalar_cost = 0.0
     aoi, pol = misc['aoi'], misc['pol']
 
     # --- Consolidated multidiel1 call for main wavelengths ---
@@ -375,10 +375,10 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
     wl_map = misc.get('_wl_map')
     if wl_map is None:
         wl_list, wl_map = [], {}
-        if 'TransPSL' in active or 'Esurf' in active:
+        if 'Trans1064' in active or 'Esurf' in active:
             wl_map['PSL'] = len(wl_list)
             wl_list.append(1.0)
-        if 'TransAUX' in active:
+        if 'Trans532' in active:
             wl_map['AUX'] = len(wl_list)
             wl_list.append(lambdaAUX)
         if 'TransOPLEV' in active:
@@ -391,23 +391,23 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
         T_main = 1 - np.abs(r_main)**2
 
     # Extract per-wavelength results
-    if 'TransPSL' in active:
+    if 'Trans1064' in active:
         idx = wl_map['PSL']
-        TPSL = T_main[idx]
-        vector_cost['TransPSL'] = np.abs((costs['TransPSL']['target'] - TPSL)
-                                         / costs['TransPSL']['target'])**2
+        T1064 = T_main[idx]
+        vector_cost['Trans1064'] = np.abs((costs['Trans1064']['target'] - T1064)
+                                         / costs['Trans1064']['target'])**2
         if verbose:
-            output['TPSL'] = TPSL
-            output['RPSL'] = 1 - TPSL
+            output['T1064'] = T1064
+            output['R1064'] = 1 - T1064
 
-    if 'TransAUX' in active:
+    if 'Trans532' in active:
         idx = wl_map['AUX']
-        TAUX = T_main[idx]
-        vector_cost['TransAUX'] = np.abs((costs['TransAUX']['target'] - TAUX)
-                                         / costs['TransAUX']['target'])**2
+        T532 = T_main[idx]
+        vector_cost['Trans532'] = np.abs((costs['Trans532']['target'] - T532)
+                                         / costs['Trans532']['target'])**2
         if verbose:
-            output['TAUX'] = TAUX
-            output['RAUX'] = 1 - TAUX
+            output['T532'] = T532
+            output['R532'] = 1 - T532
 
     if 'TransOPLEV' in active:
         idx = wl_map['OPL']
@@ -424,8 +424,8 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
 
     # --- Brownian (no multidiel1 needed, inlined for speed) ---
     if 'Brownian' in active:
-        vector_cost['Brownian'] = costs['Brownian']['target'] * (
-            L[::2].sum() + gam * L[1::2].sum())
+        vector_cost['Brownian'] = (
+            L[::2].sum() + gam * L[1::2].sum()) / costs['Brownian']['target']
 
     # --- Thermooptic (JIT-compiled, no gwinc in hot path) ---
     if 'Thermooptic' in active:
@@ -436,7 +436,18 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
             costs['Thermooptic']['target'], misc['fTO'], L, ifo,
             ifo_params=ifo_params)
 
-    # --- Absorption (not implemented) ---
+    # --- Absorption (E-field profile integration, slow — only runs if weight > 0) ---
+    if 'Absorption' in active:
+        wavelength = ifo.Laser.Wavelength
+        L_phys = wavelength * op2phys(L, n[1:-1])
+        nPts = 4  # coarse grid (matches OptimalBragg default)
+        _, Esq = fieldDepth(L_phys, n, lam=wavelength, theta=aoi,
+                            pol='s' if pol == 'te' else 'p', nPts=nPts)
+        alpha_low = getattr(ifo.Optics.ETM.Coating, 'Absorptionlown', 0)
+        alpha_high = getattr(ifo.Optics.ETM.Coating, 'Absorptionhighn', 0)
+        absorp = calcAbsorption(Esq, L_phys, nPts, alpha_low, alpha_high)
+        target_abs = costs['Absorption']['target']
+        vector_cost['Absorption'] = np.abs((target_abs - absorp) / target_abs)
 
     # --- Layer thickness std dev (no multidiel1 needed) ---
     if 'Lstdev' in active:
@@ -455,9 +466,12 @@ def getMirrorCost(L, costs, ifo, gam, verbose=False, misc={}):
         sensAUX = np.abs((target_sens - T_pert[1]) / target_sens)**2
         vector_cost['Lsens'] = np.sqrt(sensPSL**2 + sensAUX**2)
 
-    # Weighted sum
+    # Multiplicative product: C = prod( 1 + w*c_i )
+    # Each factor >= 1, so no single zero can collapse the product.
+    scalar_cost = 1.0
     for cost_name, cost_val in vector_cost.items():
-        scalar_cost += costs[cost_name]['weight'] * cost_val
+        w = costs[cost_name]['weight']
+        scalar_cost *= (1 + w * cost_val)
 
     if verbose:
         for cost_name in vector_cost:

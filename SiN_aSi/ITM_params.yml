@@ -4,7 +4,7 @@
 # certain costs from the optimization run, simply set weight to 0.0
 costs:
     # PSL transmission
-    TransPSL:
+    Trans1064:
         target: 0.002
         weight: 3e3
     # Brownian noise level
@@ -28,7 +28,7 @@ costs:
         target: 1e-4
         weight: 0.0
     # AUX transmission
-    TransAUX:
+    Trans532:
         target: 50e-6
         weight: 3e0
     # OPLEV transmission

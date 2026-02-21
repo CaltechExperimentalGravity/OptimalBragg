@@ -1,19 +1,20 @@
 #  parameter file for doing cost function minimization for optimal coating design
+# aLIGO ETM: SiO2/Ta2O5 at 1064 nm, 294 K
 
-# This specifies the terms to include in your cost function. To exclude 
+# This specifies the terms to include in your cost function. To exclude
 # certain costs from the optimization run, simply set weight to 0.0
 costs:
     # PSL wavelength transmission
     Trans1064:
         target: 5e-6
         weight: 5
-    # Brownian noise level
+    # Brownian noise level (reference: QW stack proxy for 18 bilayers, TiTa2O5)
     Brownian:
-        target: 0.1
+        target: 20.0
         weight: 2
-    # Thermo-optic noise level
+    # Thermo-optic noise level (reference: QW S_TO at 100 Hz, 18 bilayers, TiTa2O5)
     Thermooptic:
-        target: 1e43
+        target: 1.6e-42
         weight: 2
     # Optical thickness sensitivity
     Lsens:
@@ -27,10 +28,10 @@ costs:
     Absorption:
         target: 1e-4
         weight: 0
-    # AUX transmission
+    # AUX transmission (532 nm, 3.2% target per aLIGO spec R=96.8%)
     Trans532:
-        target: 1000e-6
-        weight: 0
+        target: 0.032
+        weight: 5
     # OPLEV transmission
     TransOPLEV:
         target: 0.05
@@ -49,21 +50,20 @@ misc:
     # Angle of incidence (degrees)
     aoi: 0
     # Number of bilayers in variable stack
-    Npairs: 14
+    Npairs: 18
     # Number of fixed bilayers at the end of the stack
     Nfixed: 0
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer (20 x Npairs is a good guess)
-    Nparticles: 200
+    Nparticles: 500
     # Absolute Tolerance
-    atol: 3e-9
+    atol: 1e-10
     # Relative Tolerance
-    tol: 1e-2
+    tol: 1e-3
     # how to initialize the population
-    #init_method: 'latinhypercube'
     init_method: 'halton'
-    # AUX wavelength ratio (lambda_AUX / lambda_PSL)
-    lambdaAUX: 0.756
+    # AUX wavelength ratio (lambda_AUX / lambda_PSL) -- 532 nm / 1064 nm
+    lambdaAUX: 0.5
     # gwinc file
-    gwincStructFile: 'aSiSiN.yaml'
+    gwincStructFile: 'aLIGO_SiO2Ta2O5.yaml'

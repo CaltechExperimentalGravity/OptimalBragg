@@ -15,13 +15,13 @@ def test_short_optimization():
 
     Npairs = 3
     costs = {
-        'TransPSL':    {'target': 5e-6,    'weight': 5},
+        'Trans1064':    {'target': 5e-6,    'weight': 5},
         'Brownian':    {'target': 0.1,     'weight': 2},
         'Thermooptic': {'target': 1e43,    'weight': 0},
         'Lsens':       {'target': 1e-7,    'weight': 0},
         'Esurf':       {'target': 1e-9,    'weight': 0},
         'Absorption':  {'target': 1e-4,    'weight': 0},
-        'TransAUX':    {'target': 1000e-6, 'weight': 0},
+        'Trans532':    {'target': 1000e-6, 'weight': 0},
         'TransOPLEV':  {'target': 0.05,    'weight': 0},
         'Lstdev':      {'target': 0.5,     'weight': 0},
     }

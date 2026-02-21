@@ -1,29 +1,22 @@
 r"""
-run this code to optimize a layer structure design for a ETM HR coating
-this coating is for the LIGO Voyager ETM operating at 123 K;
-the low index material is SiO2 and the high index material is Ta2O5(tantala)
-the center wavelength of the laser is 2128.2 nm, and the AUX wavelength
-is 1418.8 nm
+run this code to optimize a layer structure design for an aLIGO ETM HR coating
+this coating is SiO2/Ta2O5 operating at 294 K;
+the low index material is SiO2 and the high index material is Ta2O5
+the center wavelength of the laser is 1064 nm,
+and the AUX wavelength is 532 nm
 """
 import os
 import warnings
 from datetime import datetime
 from timeit import default_timer
-
 from scipy.optimize import differential_evolution as devo
 import h5py
 
-# To use pygwinc, first install; 
-# >> conda install -c conda-forge gwinc
-# import sys
-# sys.path.append('../../pygwinc/')
 import gwinc
 
 from generic.optimUtils import *
 from generic.optimUtils import precompute_misc
 from generic.coatingUtils import importParams
-
-#print(help(gwinc))
 
 
 def main(save=False):
@@ -32,21 +25,20 @@ def main(save=False):
 
     # Load other IFO parameters
     ifo = gwinc.Struct.from_file(opt_params['misc']['gwincStructFile'])
-    # Load noise budget
-    voy = gwinc.load_budget('Voyager')
     # This is a fast approximator for Brownian noise
     gam = brownianProxy(ifo)
 
     # Initial guess
-    Ls = 0.75*np.ones(2 * opt_params['misc']['Npairs'] + 1)
+    Ls = np.ones(2 * opt_params['misc']['Npairs'] + 1)
+    Ls *= np.random.rand(len(Ls))
     if __debug__:
         print(f"Shape of Ls array ={Ls.shape}")
 
-    bounds = ((0.05, 0.48),)*(len(Ls) - 1)
+    bounds   = ((0.05, 0.48),) * (len(Ls) - 1)
     # Minimum thickness with 20 nm cap
-    minThick = 20e-9 / ifo.Laser.Wavelength * 1.5
+    minThick = 10e-9 / ifo.Laser.Wavelength
     # Make the first layer thin
-    bounds = ((minThick, 0.48),) + bounds
+    bounds   = ((minThick, 0.48),) + bounds
 
     if __debug__:
         print(f'Bounds = {bounds[-1]}')
@@ -71,6 +63,8 @@ def main(save=False):
             init               = opt_params['misc']['init_method'],
             workers            = 1,
             maxiter            = 2000,
+            atol               = opt_params['misc']['atol'],
+            tol                = opt_params['misc']['tol'],
             args = (opt_params['costs'], ifo, gam, False, opt_params['misc']),
             polish             = True,
             callback           = diffevo_monitor,
@@ -87,7 +81,7 @@ def main(save=False):
 
     # Construct the optimum stack for saving / plotting
     Lres         = res.x
-    copiedLayers = np.tile(Lres[1:2*opt_params['misc']['Npairs']+1].copy(), 
+    copiedLayers = np.tile(Lres[1:2*opt_params['misc']['Npairs']+1].copy(),
                             opt_params['misc']['Ncopies'])
     Lres         = np.append(Lres, copiedLayers)
 

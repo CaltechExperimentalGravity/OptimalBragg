@@ -1,19 +1,16 @@
 """ Python script that plots the layer thicknesses and E field (normalized)
 Example usage:
-    plotLayers.py aLIGO_ETM_20layers.mat
-will take the coating design in aLIGO_ETM_20layers.mat and make a plot of the
-E-field within the dielectric layer structure."""
+    plot_ITM.py
+will take the most recent coating design HDF5 and make plots of the
+E-field within the dielectric layer structure for aLIGO SiO2/Ta2O5."""
 
 import sys, glob, os
 import h5py
 
-# To use pygwinc, first install;
-# >> conda install -c conda-forge gwinc
-# import sys
-# sys.path.append('../../pygwinc/')
 from gwinc import noise, Struct
 
 from generic.coatingUtils import *
+from generic.reportUtils import generate_run_rst
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,19 +19,17 @@ from matplotlib.ticker import FormatStrFormatter
 
 
 # setup paths for data and figs; make dirs if do not exist yet
-spath = "Data/ETM/"
+spath = "Data/ITM/"
 os.makedirs(spath, exist_ok=True)
 
-fpath = "Figures/ETM/"
+fpath = "Figures/ITM/"
 os.makedirs(fpath, exist_ok=True)
 
 savePlots = True
 
 if len(sys.argv) == 1:
     fname = max(glob.iglob(spath + "*Layers*.hdf5"), key=os.path.getctime)
-    # fname = fname[5:] # rm 'data' from the name
 else:
-    # For example fname = 'ETM_Layers_190519_1459.hdf5'
     fname = str(sys.argv[1])
 
 
@@ -51,21 +46,19 @@ def h5read(targets):
 
 def plot_layers(save=savePlots):
     # Load ifo
-    opt_params = importParams("ETM_params.yml")
+    opt_params = importParams("ITM_params.yml")
     ifo = Struct.from_file(opt_params["misc"]["gwincStructFile"])
     lambdaPSL = ifo.Laser.Wavelength
 
     data = h5read(targets=["n", "L"])
     L = lambdaPSL * op2phys(data["L"], data["n"][1:-1])
 
-    # Constants for calculating absorption, we should get a better
-    # number for 2.128 um at 123 K than -->
-    #   https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
-    #   https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
-    #       -- figures (2-3)
-    alpha_low = 27  # Paco used extinction coeffs
-    alpha_high = 540.35  # Paco used extinction coeffs
-    # alpha_high = 10e-6 / 0.5e-6  # personal comm from Manel Ruiz to RXA 3/2023
+    # Absorption coefficients [1/m] for IBS SiO2/Ta2O5 at 1064 nm
+    # Order-of-magnitude estimates consistent with total stack absorption
+    # ~0.2-0.5 ppm (Granata et al. CQG 37 095004, 2020; Pinard et al.
+    # Appl. Opt. 56 C11, 2017)
+    alpha_low = 0.5
+    alpha_high = 5.0
 
     Name_high = ifo.Materials.Coating.Name_high
     Name_low = ifo.Materials.Coating.Name_low
@@ -77,7 +70,7 @@ def plot_layers(save=savePlots):
     layers = np.cumsum(1e6 * L)
     layers = np.append(0, layers)
 
-    # Make the plotof the Layer structure
+    # Make the plot of the Layer structure
     fig2, ax2 = plt.subplots(2, 1, sharex=True)
     ax2[0].plot(
         Z * 1e6,
@@ -141,33 +134,26 @@ def plot_layers(save=savePlots):
     fig2.subplots_adjust(hspace=0.01, left=0.09, right=0.95, top=0.92)
     fig2.suptitle(Name_high + ":" + Name_low + " coating electric field")
 
-    plt.savefig(fpath + "/ETM_Layers_" + fname[-16:-5] + ".pdf")
-    plt.savefig(fpath + "ETM_Layers" + ".pdf")
+    plt.savefig(fpath + "/ITM_Layers_" + fname[-16:-5] + ".svg")
 
 
 def plot_trans(save=savePlots):
     # Load ifo
-    opt_params = importParams("ETM_params.yml")
+    opt_params = importParams("ITM_params.yml")
     ifo = Struct.from_file(opt_params["misc"]["gwincStructFile"])
     lambdaPSL = ifo.Laser.Wavelength
 
     data = h5read(targets=["n", "L", "T1064", "T532", "TOPL"])
     L = lambdaPSL * op2phys(data["L"], data["n"][1:-1])
 
-    # Other wavelength ratios to ifo.Laser.Wavelength
-    rellambda1550 = 1550e-9 / lambdaPSL
-    rellambdaHeNe = 632e-9 / lambdaPSL
-
     # Spectral reflectivities
-    rr1550, _ = multidiel1(data["n"], data["L"], rellambda1550)
-    T1550 = 1 - np.abs(rr1550[0]) ** 2
     T1064 = float(data["T1064"])
     try:
         T532 = float(data["T532"])
     except (TypeError, KeyError):
         T532 = 0.0
     try:
-        TOPV = float(data["TOPV"])
+        TOPV = float(data["TOPL"])
     except (KeyError, TypeError):
         TOPV = 0.0
 
@@ -181,7 +167,7 @@ def plot_trans(save=savePlots):
     for cost, spec in opt_params["costs"].items():
         if spec["weight"]:
             optcost = list(h5read(targets=["vectorCost/" + cost]).values())[0]
-            stat = 1 / (1e-11 + optcost)  # 1e-11 is there to avoid div by zero
+            stat = 1 / (1e-11 + optcost)
             if optcost > 1e3 or optcost < 1e-5:
                 stat = 1e-2
             stats[cost] = np.abs(np.log(np.abs(stat)))
@@ -190,7 +176,7 @@ def plot_trans(save=savePlots):
     Nlayers = 2 * opt_params["misc"]["Npairs"] + 1
     N_particles = opt_params["misc"]["Nparticles"]
 
-    sfplot_head = fpath + "ETM_SF"
+    sfplot_head = fpath + "ITM_SF"
     sfplot_tail = ".png"
     sfplot_name = sfplot_head + fname[-16:-5] + sfplot_tail
     polar_cost(
@@ -199,8 +185,6 @@ def plot_trans(save=savePlots):
         fname=sfplot_name,
         figtitle=Rf"Stack with {Nlayers} layers ({Nfixed} fixed bilayers) and {N_particles} particles",
     )
-    os.system("cp " + sfplot_name + " " + sfplot_head + sfplot_tail)
-
     # Convert from optical thickness to physical thickness
     L = lambdaPSL * op2phys(data["L"], data["n"][1:-1])
 
@@ -221,15 +205,9 @@ def plot_trans(save=savePlots):
         alpha=0.7,
     )
     for wvl, trans, c in zip(
-        [
-            1.0,
-        ],
-        [
-            T1064,
-        ],
-        [
-            "blue",
-        ],
+        [1.0],
+        [T1064],
+        ["blue"],
     ):
         if trans:
             ax.vlines(
@@ -245,19 +223,18 @@ def plot_trans(save=savePlots):
     ax.set_ylim((5e-8, 1.0))
 
     # Add starfish inset
-    im = plt.imread(fpath + "ETM_SF" + fname[-16:-5] + ".png")
+    im = plt.imread(fpath + "ITM_SF" + fname[-16:-5] + ".png")
     newax = fig.add_axes([0.55, 0.1, 0.4, 0.4], anchor="NE")
     newax.imshow(im)
     newax.axis("off")
 
     ax.legend(loc="lower left")
-    plt.savefig(fpath + "ETM_R" + fname[-16:-5] + ".pdf")
-    plt.savefig(fpath + "ETM_R" + ".pdf")
+    plt.savefig(fpath + "ITM_R" + fname[-16:-5] + ".svg")
 
 
 def plot_noise(save=savePlots):
     # Load ifo
-    opt_params = importParams("ETM_params.yml")
+    opt_params = importParams("ITM_params.yml")
     ifo = Struct.from_file(opt_params["misc"]["gwincStructFile"])
     lambdaPSL = ifo.Laser.Wavelength
 
@@ -268,26 +245,27 @@ def plot_noise(save=savePlots):
     ff = np.logspace(0, 4, 500)
 
     # Build up a "mirror" structure as required by pygwinc
+    # Use ETM for coating/substrate properties, ITM for beam radius
     mir = ifo.Optics.ETM
     mir.Coating.dOpt = data["L"][:]
     StoZ, SteZ, StrZ, _ = noise.coatingthermal.coating_thermooptic(
-        ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius
+        ff, mir, ifo.Laser.Wavelength, ifo.Optics.ITM.BeamRadius
     )
     SbrZ = noise.coatingthermal.coating_brownian(
-        ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius
+        ff, mir, ifo.Laser.Wavelength, ifo.Optics.ITM.BeamRadius
     )
     subBrown = noise.substratethermal.substrate_brownian(
-        ff, mir, ifo.Optics.ETM.BeamRadius
+        ff, mir, ifo.Optics.ITM.BeamRadius
     )
     subTE = noise.substratethermal.substrate_thermoelastic(
-        ff, mir, ifo.Optics.ETM.BeamRadius
+        ff, mir, ifo.Optics.ITM.BeamRadius
     )
 
     CTNtot = np.sqrt(StoZ + SbrZ)
     SUBtot = np.sqrt(subBrown + subTE)
     Stot = np.sqrt(CTNtot**2 + SUBtot**2)
 
-    Larm = 1  # 4000, but why?
+    Larm = 1
     # Figure
     fig3, ax3 = plt.subplots(1, 1)
     ax3.loglog(
@@ -342,7 +320,7 @@ def plot_noise(save=savePlots):
     ax3.set_ylabel(R"Displacement Noise $[\mathrm{m} / \sqrt{\mathrm{Hz}}]$")
     ax3.set_xlabel(R"Frequency [Hz]")
 
-    plt.savefig(fpath + "ETM_TN.pdf")
+    plt.savefig(fpath + "ITM_TN_" + fname[-16:-5] + ".svg")
 
 
 def main(layers=True, trans=True, noise=True):
@@ -383,6 +361,21 @@ def main(layers=True, trans=True, noise=True):
     plot_layers(layers)
     plot_trans(trans)
     plot_noise(noise)
+
+    # Generate Sphinx run report
+    ts = fname[-16:-5]  # YYMMDD_HHMMSS
+    fig_paths = {
+        'layers': f'Figures/ITM/ITM_Layers_{ts}.svg',
+        'reflectivity': f'Figures/ITM/ITM_R{ts}.svg',
+        'starfish': f'Figures/ITM/ITM_SF{ts}.png',
+        'thermal_noise': f'Figures/ITM/ITM_TN_{ts}.svg',
+    }
+    opt_params = importParams("ITM_params.yml")
+    ifo = Struct.from_file(opt_params["misc"]["gwincStructFile"])
+    opt_params['_wavelength'] = ifo.Laser.Wavelength
+    _, rst_path = generate_run_rst(fname, 'ITM', fig_paths, opt_params,
+                                   project_dir='Arms')
+    print(f"Run report: {rst_path}")
 
 
 if __name__ == "__main__":

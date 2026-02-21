@@ -15,7 +15,7 @@ The master evaluator is :func:`~generic.optimUtils.getMirrorCost`.
 Cost Terms
 ----------
 
-TransPSL -- Primary Laser Transmission
+Trans1064 -- Primary Laser Transmission
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Targets a specific power transmission at the primary laser wavelength
@@ -23,14 +23,14 @@ Targets a specific power transmission at the primary laser wavelength
 
 .. math::
 
-   c_\text{TransPSL} = \left|\frac{T_\text{target} - T}{T_\text{target}}\right|^2
+   c_\text{Trans1064} = \left|\frac{T_\text{target} - T}{T_\text{target}}\right|^2
 
 where :math:`T = 1 - |r|^2` from :func:`~generic.coatingUtils.multidiel1`.
 
-TransAUX -- Auxiliary Wavelength Transmission
+Trans532 -- Auxiliary Wavelength Transmission
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Same formula as TransPSL, evaluated at the auxiliary wavelength ratio
+Same formula as Trans1064, evaluated at the auxiliary wavelength ratio
 ``lambdaAUX`` (configured per project in the YAML ``misc`` section).
 
 TransOPLEV -- Optical Lever Transmission
@@ -116,7 +116,7 @@ The optimizer is ``scipy.optimize.differential_evolution`` with:
 - Strategy: ``best1bin``
 - Mutation: ``(0.05, 1.5)``
 - Population: configurable via ``Nparticles``
-- Workers: ``-1`` (all CPU cores)
+- Workers: ``1`` (IPC overhead exceeds per-eval cost)
 - Polish: ``True`` (L-BFGS-B refinement after convergence)
 
 Layer thicknesses are bounded to ``[0.05, 0.48]`` in units of the design
