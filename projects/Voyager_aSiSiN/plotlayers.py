@@ -1,29 +1,28 @@
-'''
-'Python script that plots the layer thicknesses and E field (normalized)
-Example usage:
-	plotLayers.py aLIGO_ETM_20layers.mat
-will take the coating design in aLIGO_ETM_20layers.mat and make a plot of the
-E-field within the dielectric layer structure.
-'''
-import sys,glob,os
+"""Plot layer structure, E-field, spectral reflectivity, and thermal noise.
 
-# installed through conda rather than direct import
-#sys.path.append('../../pygwinc/')
+Loads the most recent optimization result from Data/ and generates plots.
 
-from generic.coatingUtils import *
+Usage:
+    cd projects/Voyager_aSiSiN
+    python plotlayers.py
+"""
+import sys
+import glob
+import os
 
 import numpy as np
 from timeit import default_timer
-#import matplotlib as mpl
 import matplotlib.pyplot as plt
-
 import scipy.io as scio
 from matplotlib.ticker import FormatStrFormatter
-from gwinc import noise
-from gwinc import Struct
 
-#plt.style.use('bmh')
-
+from OptimalBragg.layers import multidiel1, op2phys, fieldDepth, calc_abs
+from OptimalBragg.noise import (
+    coating_thermooptic, coating_brownian,
+    substrate_brownian, substrate_thermoelastic,
+)
+from OptimalBragg import Material
+from OptimalBragg.materials import SiN_123, aSi_123, cSi_123
 
 plt.rcParams.update({'text.usetex': False,
                      'lines.linewidth': 4,
@@ -54,181 +53,143 @@ plt.rcParams.update({'text.usetex': False,
                      'savefig.bbox': 'tight',
                      'pdf.compression': 9})
 
+# Absorption coefficients
+alpha_SiN = 1e-3  # 1/m
+alpha_aSi = 100e-6 / 1e-6  # 1/m
 
-# Constants for calculating absorption
-alpha_SiN = 1e-3 # (get a better # for 2 um and 123 K) https://journals.aps.org/prd/pdf/10.1103/PhysRevD.91.042002
-alpha_aSi = 100e-6 / 1e-6 # Figs 2/3, https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.120.263602#page=3
+# Material properties
+mat_sub = Material(cSi_123)
+mat_low = Material(SiN_123)
+mat_high = Material(aSi_123)
+lambda0 = 2050e-9  # m
 
-# load Data file from run of mkMirror.py
+# Load most recent optimization result
 fname = max(glob.iglob('Data/*Layers*.mat'), key=os.path.getctime)
-fname = fname[5:] # rm 'data' from the name
-#fname = 'ETM_Layers_190519_1459.mat'
+fname = fname[5:]  # rm 'Data/' prefix
+timestamp_str = 'date = ' + fname[-15:-9] + ' time = ' + fname[-8:-3]
 
-timestamp_str = 'date = ' + fname[-15:-9] + ' time = ' +  fname[-8:-3]
+print('Loading ' + fname + '...')
+z = scio.loadmat('Data/' + fname, squeeze_me=True)
+n = z['n']
+T = z['T']
 
-if __debug__:
-    print('Loading ' + fname + '...')
+# Spectral reflectivity
+lams = np.linspace(0.4, 1.6, 300)
+rr, _ = multidiel1(n, z['L'], lams)
+RR = np.abs(rr)**2
+TT = 1 - RR
 
-z       = scio.loadmat('Data/' + fname, squeeze_me=True)
-n       = z['n']
-T       = z['T']
+# Physical thicknesses
+L = lambda0 * op2phys(z['L'], n[1:-1])
 
+# E-field depth profile
+Z, field = fieldDepth(L, n, pol='p', nPts=300, lam=lambda0)
 
-if __debug__:
-    print('Loading ' + 'gwinc.ifo' + ' ' + fname)
-    tic = default_timer()
+layers = np.cumsum(1e6 * L)
+layers = np.append(0, layers)
 
-#ifo     = gwinc.Struct.from_file(z["ifo_name"])
-ifo = Struct.from_file('aSiModel.yaml')
-#if __debug__:
-#    dt = default_timer() - tic
-#    print('Took ' + str(round(dt,3)) + ' sec to load IFO w/ matlab.')
+tic = default_timer()
 
-lambda0 = ifo.Laser.Wavelength # meters
-
-#  plot of the spectral reflectivity
-lams    = np.linspace(0.4, 1.6, 300)
-rr, _   = multidiel1(n, z['L'], lams)
-RR      = np.abs(rr)**2
-TT      = 1 - RR
-
-#  convert from optical thickness to physical thickness
-L       = lambda0 * op2phys(z['L'], n[1:-1])
-
-# calculate field v. distance into coating
-Z,field = fieldDepth(L, n, pol='p', nPts=300, lam=ifo.Laser.Wavelength)
-
-layers  = np.cumsum(1e6 * L)
-layers  = np.append(0, layers)
-
-if __debug__:
-    print('Make plots...')
-    tic = default_timer()
-
-# Spectral Tronsmission
-fig, ax = plt.subplots(1,1)
-xx = 1e6*lams*lambda0
-ax.semilogy(xx, TT,
-                lw=3, label='Transmissivity', c='xkcd:Red')
-ax.semilogy(xx, RR,
-                lw=3, label='Reflectivity', c='xkcd:electric blue', alpha=0.5)
-ax.vlines(lambda0*1e6, T, 1, linestyle='--')
-ax.set_xlabel('Wavelength [$\mu \\mathrm{m}$]')
+# --- Spectral Transmission plot ---
+fig, ax = plt.subplots(1, 1)
+xx = 1e6 * lams * lambda0
+ax.semilogy(xx, TT, lw=3, label='Transmissivity', c='xkcd:Red')
+ax.semilogy(xx, RR, lw=3, label='Reflectivity', c='xkcd:electric blue', alpha=0.5)
+ax.vlines(lambda0 * 1e6, T, 1, linestyle='--')
+ax.set_xlabel(r'Wavelength [$\mu \mathrm{m}$]')
 ax.set_ylabel('T or R')
 ax.set_ylim((1e-6, 1))
-ax.text(lambda0*1.25e6, 1e-3, 'T @ {:0.1f} nm'.format(
-    1e9*lambda0), size='x-small')
-ax.text(lambda0*1.25e6, 0.5e-3, '= {} ppm'.format(
-    round(1e6*T,1)), size='x-small')
+ax.text(lambda0 * 1.25e6, 1e-3, f'T @ {1e9*lambda0:.1f} nm', size='x-small')
+ax.text(lambda0 * 1.25e6, 0.5e-3, f'= {1e6*T:.1f} ppm', size='x-small')
 ax.legend()
-ax.text(1, 0.7, timestamp_str,
-                 fontsize=8, color='xkcd:Burple', alpha=0.95,
-        rotation='-90', ha='left', va='center',
-        transform=ax.transAxes)
-
-if __debug__:
-    print('Transmission of this coating at {} nm is {} ppm'.format(
-        1e9*lambda0, round(1e6*T,2)))
-
+ax.text(1, 0.7, timestamp_str, fontsize=8, color='xkcd:Burple', alpha=0.95,
+        rotation='-90', ha='left', va='center', transform=ax.transAxes)
 fig.suptitle('a-Si:SiN coating')
-plt.savefig('Figures/' + 'ETM_R' + '.pdf')
+plt.savefig('Figures/ETM_R.pdf')
 
+# --- Layer structure + E-field plot ---
+fig2, ax2 = plt.subplots(2, 1, sharex=True)
+ax2[0].plot(Z * 1e6, field, color='xkcd:electric purple', alpha=0.97, rasterized=False)
 
-# Make the plot of the Layer structure
-fig2 , ax2 = plt.subplots(2,1, sharex=True)
-ax2[0].plot(Z*1e6,field, color='xkcd:electric purple',
-               alpha=0.97, rasterized=False)
 absStr = f'$|\\vec E_{{\mathrm{{surface}}}}| = {1e6*field[0]:.0f}$ ppm of $\\vec |E_{{\mathrm{{inc}}}}|$'
 absStr += '\n'
-intAbs = calcAbsorption(field, L, 300, alpha_SiN, alpha_aSi)
-absStr += f'Integrated absorption in stack is {intAbs:.1f} ppm'
-print(f'Total integrated absorption {intAbs:.1f} ppm. alpha_SiN = {alpha_SiN:.1g} ppm/um; alpha_a-Si = {alpha_aSi:.1f} ppm/um.')
+Esq = field  # field is already |E|^2 normalized
+alphas = np.where(np.arange(len(L)) % 2 == 0, alpha_SiN, alpha_aSi)
+intAbs = calc_abs(Esq, L, alphas)
+absStr += f'Integrated absorption in stack is {1e6*intAbs:.1f} ppm'
+print(f'Total integrated absorption {1e6*intAbs:.1f} ppm.')
 ax2[0].text(0.5, 0.7, absStr, transform=ax2[0].transAxes, fontsize=14)
 
-# Add some vlines
-ax2[0].vlines(np.cumsum(L)[1:-1:2]*1e6, 1e-5, 0.55,
-            color='xkcd:bright teal', linewidth=0.6,
-                 linestyle='--', alpha=0.75, rasterized=False)
-ax2[0].vlines(np.cumsum(L)[::2]*1e6, 1e-5, 0.55,
-            color='xkcd:deep purple', linewidth=0.6,
-                 linestyle='--', alpha=0.75,rasterized=False)
+ax2[0].vlines(np.cumsum(L)[1:-1:2] * 1e6, 1e-5, 0.55,
+              color='xkcd:bright teal', linewidth=0.6, linestyle='--', alpha=0.75)
+ax2[0].vlines(np.cumsum(L)[::2] * 1e6, 1e-5, 0.55,
+              color='xkcd:deep purple', linewidth=0.6, linestyle='--', alpha=0.75)
 
-
-#  Also visualize the layer thicknesses
-ax2[1].bar(layers[:-1:2], 1e9*L[::2], width=1e6*L[::2],
-
-        align='edge', color='xkcd:bright teal',
-              alpha=0.4, label='$\mathrm{SiN}$')
-ax2[1].bar(layers[1:-1:2],  1e9*L[1::2], width=1e6*L[1::2],
-        align='edge', color='xkcd:deep purple',
-              alpha=0.4, label='$a-Si$')
+ax2[1].bar(layers[:-1:2], 1e9 * L[::2], width=1e6 * L[::2],
+           align='edge', color='xkcd:bright teal', alpha=0.4, label=r'$\mathrm{SiN}$')
+ax2[1].bar(layers[1:-1:2], 1e9 * L[1::2], width=1e6 * L[1::2],
+           align='edge', color='xkcd:deep purple', alpha=0.4, label=r'$a-Si$')
 ax2[1].legend()
 ax2[1].yaxis.set_major_formatter(FormatStrFormatter("%3d"))
-ax2[0].set_ylabel('Normalized $|E(z)|^2$')
+ax2[0].set_ylabel(r'Normalized $|E(z)|^2$')
 ax2[1].set_ylabel('Physical layer thickness [nm]')
-ax2[1].set_xlabel('Distance from air interface $[\mu \mathrm{m}]$')
-ax2[0].text(1, 0.7, timestamp_str,
-                 fontsize=8, color='xkcd:Burple', alpha=0.95,
-        rotation='-90', ha='left', va='center',
-        transform=ax2[0].transAxes)
-
-
-fig2.subplots_adjust(hspace=0.01,left=0.09,right=0.95,top=0.92)
+ax2[1].set_xlabel(r'Distance from air interface $[\mu \mathrm{m}]$')
+ax2[0].text(1, 0.7, timestamp_str, fontsize=8, color='xkcd:Burple', alpha=0.95,
+            rotation='-90', ha='left', va='center', transform=ax2[0].transAxes)
+fig2.subplots_adjust(hspace=0.01, left=0.09, right=0.95, top=0.92)
 fig2.suptitle('a-Si:SiN coating electric field')
-
 plt.savefig('Figures/' + fname[:-4] + '.pdf')
-plt.savefig('Figures/' + 'ETM_Layers' + '.pdf')
+plt.savefig('Figures/ETM_Layers.pdf')
 
+# --- Thermal Noise plot ---
+from OptimalBragg import qw_stack
 
-# ----  plot the Thermal Noise
+Npairs = len(L) // 2
+stack = qw_stack(
+    lam_ref=lambda0,
+    substrate=mat_sub,
+    superstrate=Material({'Properties': {'n': 1.0}}),
+    thin_films={'L': mat_low, 'H': mat_high},
+    pattern='LH' * Npairs,
+)
+# Override with actual optimized thicknesses
+stack['Ls_opt'] = z['L']
+stack['Ls'] = L
+
+w_beam = 0.062  # ETM beam radius [m]
+
 ff = np.logspace(0, 4, 500)
-fig3, ax3 = plt.subplots(1,1)
-# Build up a "mirror" structure as required by pygwinc
-mir = ifo.Optics.ETM
-mir.Coating.dOpt = z['L'][:]
-StoZ, SteZ, StrZ, _ = gwinc.noise.coatingthermal.coating_thermooptic(ff, 
-                                                mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
-SbrZ = gwinc.noise.coatingthermal.coating_brownian(ff, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
-# find index of closest value to 100 Hz
+fig3, ax3 = plt.subplots(1, 1)
+
+StoZ = np.array([coating_thermooptic(np.array([f]), stack, w_beam, 0.17, 0.20)[0]
+                 for f in ff])
+SbrZ = np.array([coating_brownian(f, stack, w_beam) for f in ff])
+subBrown = np.array([substrate_brownian(f, stack, w_beam) for f in ff])
+subTE = np.array([substrate_thermoelastic(f, stack, w_beam) for f in ff])
+
 ii = np.abs(ff - 100).argmin()
 SbrZ100 = SbrZ[ii]
 
-subBrown    = gwinc.noise.substratethermal.substrate_brownian(ff, mir, ifo.Optics.ETM.BeamRadius)
-subTE       = gwinc.noise.substratethermal.substrate_thermoelastic(ff, mir, ifo.Optics.ETM.BeamRadius)
-
-Larm = 1 #4000
-
-ax3.loglog(ff, Larm * np.sqrt(StoZ), label='Thermo-Optic', c='xkcd:Purplish Blue')
-ax3.loglog(ff, Larm * np.sqrt(SteZ), label='Thermo-Elastic', c='xkcd:Golden')
-ax3.loglog(ff, Larm * np.sqrt(StrZ), label='Thermo-Refractive', c='xkcd:Puke')
-ax3.loglog(ff, Larm * np.sqrt(SbrZ), label='Brownian', c='xkcd:Tomato')
-ax3.loglog(ff, Larm * np.sqrt(subBrown), label='Substrate Brownian', c='xkcd:Dusty Blue')
-ax3.loglog(ff, Larm * np.sqrt(subTE), label='Substrate Thermo-Elastic', c='xkcd:Chocolate', alpha=0.3)
+ax3.loglog(ff, np.sqrt(StoZ), label='Thermo-Optic', c='xkcd:Purplish Blue')
+ax3.loglog(ff, np.sqrt(SbrZ), label='Brownian', c='xkcd:Tomato')
+ax3.loglog(ff, np.sqrt(subBrown), label='Substrate Brownian', c='xkcd:Dusty Blue')
+ax3.loglog(ff, np.sqrt(subTE), label='Substrate Thermo-Elastic',
+           c='xkcd:Chocolate', alpha=0.3)
 ax3.legend()
 ax3.set_xlim([10, 10e3])
 ax3.set_ylim([8e-24, 2e-20])
 
-ax3.text(80, 11e-21, '# of layers =  {}'.format(len(L)), size='x-small')
-ax3.text(80, 7e-21, 'Thickness = {} um'.format(round(1e6*sum(L),2)), size='x-small')
+ax3.text(80, 11e-21, f'# of layers = {len(L)}', size='x-small')
+ax3.text(80, 7e-21, f'Thickness = {1e6*sum(L):.2f} um', size='x-small')
 ax3.text(50, 4.5e-21,
-         '$x_{{Brown}}$ @ 100 Hz = {noise} zm/$\sqrt{{\mathrm{{Hz}}}}$'.format(noise=round(Larm * np.sqrt(SbrZ100)*1e21,2)),
+         f'$x_{{Brown}}$ @ 100 Hz = {np.sqrt(SbrZ100)*1e21:.2f} zm/$\\sqrt{{\\mathrm{{Hz}}}}$',
          size='x-small')
-
-
-#ax3.grid(which='major', alpha=0.6)
-#ax3.grid(which='minor', alpha=0.4)
-ax3.set_ylabel('Displacement Noise $[\\mathrm{m} / \\sqrt{\\mathrm{Hz}}]$')
+ax3.set_ylabel(r'Displacement Noise $[\mathrm{m} / \sqrt{\mathrm{Hz}}]$')
 ax3.set_xlabel('Frequency [Hz]')
-
-ax3.text(1, 0.7, timestamp_str,
-                 fontsize=8, color='xkcd:Burple', alpha=0.9,
-        rotation='-90', ha='left', va='center',
-        transform=ax3.transAxes)
-
+ax3.text(1, 0.7, timestamp_str, fontsize=8, color='xkcd:Burple', alpha=0.9,
+         rotation='-90', ha='left', va='center', transform=ax3.transAxes)
 fig3.suptitle('a-Si:SiN coating')
-plt.savefig('Figures/' + 'ETM_TN.pdf')
+plt.savefig('Figures/ETM_TN.pdf')
 
-if __debug__:
-    dt = default_timer() - tic
-    print('Took ' + str(round(dt, 1)) + ' sec to make the plots and save them.')
-
+dt = default_timer() - tic
+print(f'Took {dt:.1f} sec to make the plots and save them.')

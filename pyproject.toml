@@ -15,7 +15,7 @@ optimalbragg = "OptimalBragg.cli:main"
 docs = ["sphinx", "sphinx-rtd-theme"]
 
 [tool.setuptools.packages.find]
-include = ["OptimalBragg*", "generic*"]
+include = ["OptimalBragg*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

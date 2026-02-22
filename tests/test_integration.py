@@ -1,37 +1,40 @@
-"""Integration test: short optimization run."""
+"""Integration test: short optimization run using OptimalBragg."""
 import numpy as np
 import pytest
 from scipy.optimize import differential_evolution as devo
-import gwinc
 
-from generic.optimUtils import getMirrorCost, brownianProxy
+from OptimalBragg import Material, qw_stack
+from OptimalBragg.materials import SiO2, TiTa2O5, FusedSilica, air
+from OptimalBragg.costs import getMirrorCost, precompute_misc
+from OptimalBragg.noise import brownian_proxy
 
 
 @pytest.mark.slow
 def test_short_optimization():
     """Run a tiny differential_evolution to verify end-to-end pipeline."""
-    ifo = gwinc.Struct.from_file('SiN_aSi/aSiSiN.yaml')
-    gam = brownianProxy(ifo)
-
     Npairs = 3
+    stack = qw_stack(
+        lam_ref=1064e-9,
+        substrate=Material(FusedSilica),
+        superstrate=Material(air),
+        thin_films={"L": Material(SiO2), "H": Material(TiTa2O5)},
+        pattern="LH" * Npairs,
+    )
+    gam = brownian_proxy(stack)
+
     costs = {
-        'Trans1064':    {'target': 5e-6,    'weight': 5},
-        'Brownian':    {'target': 0.1,     'weight': 2},
-        'Thermooptic': {'target': 1e43,    'weight': 0},
-        'Lsens':       {'target': 1e-7,    'weight': 0},
-        'Esurf':       {'target': 1e-9,    'weight': 0},
-        'Absorption':  {'target': 1e-4,    'weight': 0},
-        'Trans532':    {'target': 1000e-6, 'weight': 0},
-        'TransOPLEV':  {'target': 0.05,    'weight': 0},
-        'Lstdev':      {'target': 0.5,     'weight': 0},
+        'Trans1064': {'target': 5e-6, 'weight': 5},
+        'Brownian': {'target': 20.0, 'weight': 2},
     }
     misc = {
-        'fTO': 100, 'pol': 'te', 'aoi': 0,
+        'pol': 'te', 'aoi': 0,
         'Npairs': Npairs, 'Nfixed': 0, 'Ncopies': 0,
-        'lambdaAUX': 0.756,
+        'lambdaAUX': 0.5,
     }
 
-    n_vars = 2 * Npairs + 1
+    precompute_misc(costs, stack, misc)
+
+    n_vars = 2 * Npairs
     bounds = ((0.05, 0.45),) * n_vars
 
     res = devo(
@@ -42,7 +45,7 @@ def test_short_optimization():
         popsize=5,
         maxiter=10,
         workers=1,
-        args=(costs, ifo, gam, False, misc),
+        args=(costs, stack, gam, False, misc),
         polish=False,
         disp=False,
     )

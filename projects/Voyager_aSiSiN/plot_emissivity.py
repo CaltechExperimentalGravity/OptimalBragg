@@ -2,7 +2,7 @@
 
 import sys, glob, os
 import h5py
-from generic.coatingUtils import *
+from OptimalBragg.layers import multidiel1, op2phys
 
 import numpy as np
 from scipy.interpolate import interp1d

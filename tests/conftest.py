@@ -1,12 +1,5 @@
 import pytest
 import numpy as np
-import gwinc
-
-
-@pytest.fixture
-def ifo_voyager():
-    """Load the Voyager gwinc structure for testing."""
-    return gwinc.Struct.from_file('SiN_aSi/aSiSiN.yaml')
 
 
 @pytest.fixture

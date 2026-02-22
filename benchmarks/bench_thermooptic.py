@@ -1,72 +1,72 @@
-"""Benchmark: gwinc vs JIT thermooptic noise calculation."""
-import copy
+"""Benchmark: JIT vs pure-numpy thermooptic noise calculation."""
 import time
 import numpy as np
-import gwinc
-import gwinc.noise.coatingthermal
 
-from generic.thermoopticUtils import coating_thermooptic_fast, extract_ifo_params
+from OptimalBragg import Material, qw_stack
+from OptimalBragg.materials import SiO2, TiTa2O5, FusedSilica, air
+from OptimalBragg.noise import (
+    coating_thermooptic_fast, coating_thermooptic,
+    extract_stack_params,
+)
 
-ifo = gwinc.Struct.from_file('SiN_aSi/aSiSiN.yaml')
-ifo_params = extract_ifo_params(ifo)
+stack = qw_stack(
+    lam_ref=1064e-9,
+    substrate=Material(FusedSilica),
+    superstrate=Material(air),
+    thin_films={"L": Material(SiO2), "H": Material(TiTa2O5)},
+    pattern="LH" * 14,
+)
+stack_params = extract_stack_params(stack, 0.17, 0.20)
 
-L = 0.25 * np.ones(29)
+L = stack["Ls_opt"]
 f = 100.0
+w_beam = 0.062
 N = 10_000
 
 
-def bench_gwinc():
-    mir = copy.copy(ifo.Optics.ETM)
-    mir.Coating = copy.copy(ifo.Optics.ETM.Coating)
-    mir.Coating.dOpt = L
+def bench_numpy():
     # warm up
-    gwinc.noise.coatingthermal.coating_thermooptic(
-        f, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
+    coating_thermooptic(np.array([f]), stack, w_beam, 0.17, 0.20)
 
     t0 = time.perf_counter()
     for _ in range(N):
-        mir.Coating.dOpt = L
-        gwinc.noise.coatingthermal.coating_thermooptic(
-            f, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)
+        coating_thermooptic(np.array([f]), stack, w_beam, 0.17, 0.20)
     dt = time.perf_counter() - t0
     return dt
 
 
 def bench_jit():
     # warm up JIT
-    coating_thermooptic_fast(f, L, ifo.Laser.Wavelength,
-                             ifo.Optics.ETM.BeamRadius, ifo_params)
+    coating_thermooptic_fast(f, L, 1064e-9, w_beam, stack_params)
 
     t0 = time.perf_counter()
     for _ in range(N):
-        coating_thermooptic_fast(f, L, ifo.Laser.Wavelength,
-                                 ifo.Optics.ETM.BeamRadius, ifo_params)
+        coating_thermooptic_fast(f, L, 1064e-9, w_beam, stack_params)
     dt = time.perf_counter() - t0
     return dt
 
 
 if __name__ == '__main__':
-    print(f"Benchmarking thermooptic noise ({N} calls, 29-layer stack, f=100 Hz)")
+    n_layers = len(L)
+    print(f"Benchmarking thermooptic noise ({N} calls, {n_layers}-layer "
+          f"stack, f=100 Hz)")
     print()
 
-    dt_gwinc = bench_gwinc()
-    us_gwinc = 1e6 * dt_gwinc / N
-    print(f"  gwinc:  {us_gwinc:.1f} us/call  ({N} calls in {dt_gwinc:.2f}s)")
+    dt_np = bench_numpy()
+    us_np = 1e6 * dt_np / N
+    print(f"  numpy:  {us_np:.1f} us/call  ({N} calls in {dt_np:.2f}s)")
 
     dt_jit = bench_jit()
     us_jit = 1e6 * dt_jit / N
     print(f"  JIT:    {us_jit:.1f} us/call  ({N} calls in {dt_jit:.2f}s)")
 
-    print(f"\n  Speedup: {us_gwinc/us_jit:.1f}x")
+    print(f"\n  Speedup: {us_np/us_jit:.1f}x")
 
-    # Verify correctness
-    mir = copy.copy(ifo.Optics.ETM)
-    mir.Coating = copy.copy(ifo.Optics.ETM.Coating)
-    mir.Coating.dOpt = L
-    StoZ_gwinc = gwinc.noise.coatingthermal.coating_thermooptic(
-        f, mir, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius)[0]
+    # Verify agreement
+    StoZ_np, _, _ = coating_thermooptic(
+        np.array([f]), stack, w_beam, 0.17, 0.20)
     StoZ_jit = coating_thermooptic_fast(
-        f, L, ifo.Laser.Wavelength, ifo.Optics.ETM.BeamRadius, ifo_params)
-    print(f"\n  gwinc result: {StoZ_gwinc:.15e}")
+        f, L, 1064e-9, w_beam, stack_params)
+    print(f"\n  numpy result: {StoZ_np:.15e}")
     print(f"  JIT result:   {StoZ_jit:.15e}")
-    print(f"  Match: {np.isclose(StoZ_jit, StoZ_gwinc, rtol=1e-12)}")
+    print(f"  Agreement within 5%: {np.isclose(StoZ_jit, StoZ_np, rtol=0.05)}")

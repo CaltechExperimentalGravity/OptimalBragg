@@ -12,19 +12,33 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 from scipy.optimize import differential_evolution as devo
-from gwinc import noise, Struct
 
-from generic.optimUtils import getMirrorCost, brownianProxy, precompute_misc
-from generic.coatingUtils import importParams, op2phys, fieldDepth, calcAbsorption
+from OptimalBragg import Material, qw_stack, load_materials_yaml
+from OptimalBragg.io import yamlread
+from OptimalBragg.materials import air
+from OptimalBragg.layers import op2phys, fieldDepth
+from OptimalBragg.costs import getMirrorCost, precompute_misc
+from OptimalBragg.noise import brownian_proxy, coating_thermooptic, coating_brownian
 
 targets_532 = [0.02, 0.005, 0.001]  # 2%, 0.5%, 0.1%
 
 
 def run_study():
-    opt_params = importParams('ETM_params.yml')
-    ifo = Struct.from_file(opt_params['misc']['gwincStructFile'])
-    gam = brownianProxy(ifo)
-    lambdaPSL = ifo.Laser.Wavelength
+    opt_params = yamlread('ETM_params.yml')
+    materials = load_materials_yaml(opt_params['misc']['materials_file'])
+    lambdaPSL = materials['laser']['wavelength']
+    Npairs = opt_params['misc']['Npairs']
+    stack = qw_stack(
+        lam_ref=lambdaPSL,
+        substrate=materials['substrate'],
+        superstrate=Material(air),
+        thin_films=materials['thin_films'],
+        pattern='LH' * Npairs,
+    )
+    gam = brownian_proxy(stack)
+    w_beam = materials.get('optics', {}).get('ETM', {}).get('beam_radius', 0.062)
+    r_mirror = 0.17
+    d_mirror = 0.20
 
     results = {}
 
@@ -35,11 +49,10 @@ def run_study():
 
         params = copy.deepcopy(opt_params)
         params['costs']['Trans532']['target'] = t532
-        precompute_misc(params['costs'], ifo, params['misc'])
+        precompute_misc(params['costs'], stack, params['misc'])
 
-        Npairs = params['misc']['Npairs']
-        nLayers = 2 * Npairs + 1
-        minThick = 10e-9 / lambdaPSL
+        nLayers = 2 * Npairs
+        minThick = 10e-9 * stack['ns'][1] / lambdaPSL
         bounds = ((minThick, 0.48),) + ((0.05, 0.48),) * (nLayers - 1)
 
         res = devo(func=getMirrorCost, bounds=bounds,
@@ -50,29 +63,34 @@ def run_study():
                    workers=1, maxiter=2000,
                    atol=params['misc']['atol'],
                    tol=params['misc']['tol'],
-                   args=(params['costs'], ifo, gam, False, params['misc']),
+                   args=(params['costs'], stack, gam, False, params['misc']),
                    polish=True, disp=True)
 
         # Get detailed output (no Ncopies/Nfixed for final eval)
         final_misc = copy.deepcopy(params['misc'])
         final_misc.update({'Ncopies': 0, 'Nfixed': 0})
-        precompute_misc(params['costs'], ifo, final_misc)
-        _, output = getMirrorCost(res.x, params['costs'], ifo, gam, True, final_misc)
+        precompute_misc(params['costs'], stack, final_misc)
+        _, output = getMirrorCost(res.x, params['costs'], stack, gam, True, final_misc)
 
-        # Thermal noise spectrum
+        # Thermal noise — update stack with optimized thicknesses
+        opt_stack = copy.deepcopy(stack)
+        opt_stack['Ls_opt'] = res.x.copy()
+        n = output['n']
+        opt_stack['Ls'] = lambdaPSL * op2phys(res.x, n[1:-1])
+        opt_stack['ns'] = n.copy()
+
         ff = np.logspace(0, 4, 500)
-        mir = ifo.Optics.ETM
-        mir.Coating.dOpt = res.x
-        StoZ, SteZ, StrZ, _ = noise.coatingthermal.coating_thermooptic(
-            ff, mir, lambdaPSL, ifo.Optics.ETM.BeamRadius)
-        SbrZ = noise.coatingthermal.coating_brownian(
-            ff, mir, lambdaPSL, ifo.Optics.ETM.BeamRadius)
+        StoZ, SteZ, StrZ = coating_thermooptic(
+            ff, opt_stack, w_beam, r_mirror, d_mirror)
+        SbrZ = coating_brownian(ff, opt_stack, w_beam)
 
         # Absorption
-        n = output['n']
-        L_phys = lambdaPSL * op2phys(res.x, n[1:-1])
+        L_phys = opt_stack['Ls']
         _, field = fieldDepth(L_phys, n, pol='p', nPts=300, lam=lambdaPSL)
-        absorption = calcAbsorption(field, L_phys, 300, 0.5, 5.0)
+        alpha_low, alpha_high = 0.5, 5.0
+        alphas = np.where(np.arange(len(L_phys)) % 2 == 0, alpha_low, alpha_high)
+        from OptimalBragg.layers import calc_abs
+        absorption = calc_abs(field, L_phys, alphas)
 
         # CTN at 100 Hz
         idx100 = np.argmin(np.abs(ff - 100.0))

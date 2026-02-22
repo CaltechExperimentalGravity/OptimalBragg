@@ -168,10 +168,20 @@ def load_materials_yaml(fname):
             mat_props.update({k: v for k, v in spec.items() if k != "material"})
             thin_films[key] = Material({"Properties": mat_props})
 
+    # Ensure numeric values in laser config are floats (YAML safe_load
+    # treats values like '1064e-9' as strings when there's no decimal point)
+    laser = raw.get("laser", {})
+    for k, v in laser.items():
+        if isinstance(v, str):
+            try:
+                laser[k] = float(v)
+            except ValueError:
+                pass
+
     result = {
         "substrate": substrate,
         "thin_films": thin_films,
-        "laser": raw.get("laser", {}),
+        "laser": laser,
         "optics": raw.get("optics", {}),
     }
     return result

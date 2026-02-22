@@ -13,7 +13,7 @@ dependencies:
   - lmfit
   - pyyaml
   - tqdm
-  - gwinc>=0.6
+  - arviz
   - cython
   - ipython
   - jupyter
@@ -22,5 +22,5 @@ dependencies:
   - astropy
   - pytest
   - sphinx
-  - sphinx_rtd_theme
+  - pydata-sphinx-theme
   - pip

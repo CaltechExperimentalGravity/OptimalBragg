@@ -1,7 +1,7 @@
 """Micro-benchmark for multidiel1 before/after Numba JIT."""
 import numpy as np
 import time
-from generic.coatingUtils import multidiel1
+from OptimalBragg.layers import multidiel1
 
 # Build a realistic 14-bilayer stack
 n = np.array([1.0] + [1.45, 3.5] * 14 + [1.45])
