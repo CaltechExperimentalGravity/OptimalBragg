@@ -28,6 +28,8 @@ test_integration:
 pages:
   stage: deploy
   script:
+    - apt-get update -qq && apt-get install -y -qq graphviz
+    - make -C docs codemap
     - sphinx-build -b html docs/ public/
   artifacts:
     paths:
