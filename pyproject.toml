@@ -3,10 +3,13 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "coatings"
-version = "0.1.0"
+name = "OptimalBragg"
+version = "0.2.0"
 description = "Optical coating optimization for gravitational wave detector mirrors"
 requires-python = ">=3.10"
+
+[project.scripts]
+optimalbragg = "OptimalBragg.cli:main"
 
 [project.optional-dependencies]
 docs = ["sphinx", "sphinx-rtd-theme"]
