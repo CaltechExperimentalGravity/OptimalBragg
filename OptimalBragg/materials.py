@@ -137,6 +137,9 @@ FusedSilica = {
         "ThermalDiffusivity": 1.38,        # = MassKappa, thermal conductivity [W/m/K]
         "Absorption": 0,                   # Substrate bulk absorption handled separately
         "Temp": 295,
+        # Aliases for OptimalBragg noise functions (sub.CP, sub.Kappa)
+        "CP": 739,                         # = MassCM, specific heat [J/kg/K]
+        "Kappa": 1.38,                     # = MassKappa, thermal conductivity [W/m/K]
         # Substrate-specific properties (from gwinc YAML)
         "rho": 2200,                       # = MassDensity [kg/m^3]
         "MassDensity": 2200,
