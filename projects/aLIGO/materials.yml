@@ -1,0 +1,25 @@
+# aLIGO: SiO2/TiTa2O5 coatings at 1064 nm, 295 K, fused silica substrate
+# Source: Arms/aLIGO_SiO2Ta2O5.yaml
+
+substrate:
+  material: FusedSilica
+  overrides:
+    Temp: 295
+    MassRadius: 0.17
+    MassThickness: 0.20
+
+thin_films:
+  L:
+    material: SiO2
+  H:
+    material: TiTa2O5
+
+laser:
+  wavelength: 1064e-9
+  power: 125
+
+optics:
+  ETM:
+    beam_radius: 0.062
+  ITM:
+    beam_radius: 0.055

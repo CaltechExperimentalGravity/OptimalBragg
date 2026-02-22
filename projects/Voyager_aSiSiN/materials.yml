@@ -1,0 +1,25 @@
+# LIGO Voyager: aSi/SiN coatings at 2050 nm, 123 K, crystalline silicon substrate
+# Source: SiN_aSi/aSiSiN.yaml
+
+substrate:
+  material: cSi_123
+  overrides:
+    Temp: 123
+    MassRadius: 0.215
+    MassThickness: 0.55
+
+thin_films:
+  L:
+    material: SiN_123
+  H:
+    material: aSi_123
+
+laser:
+  wavelength: 2050.15e-9
+  power: 125
+
+optics:
+  ETM:
+    beam_radius: 0.06
+  ITM:
+    beam_radius: 0.059

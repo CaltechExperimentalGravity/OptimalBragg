@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 docs = ["sphinx", "sphinx-rtd-theme"]
 
 [tool.setuptools.packages.find]
-include = ["generic*"]
+include = ["OptimalBragg*", "generic*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
