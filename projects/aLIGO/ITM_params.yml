@@ -1,0 +1,69 @@
+#  parameter file for doing cost function minimization for optimal coating design
+# aLIGO ITM: SiO2/Ta2O5 at 1064 nm, 294 K
+
+# This specifies the terms to include in your cost function. To exclude
+# certain costs from the optimization run, simply set weight to 0.0
+costs:
+    # PSL wavelength transmission (1.4%)
+    Trans1064:
+        target: 0.014
+        weight: 5
+    # Brownian noise level (reference: QW stack proxy for 8 bilayers, TiTa2O5)
+    Brownian:
+        target: 9.0
+        weight: 2
+    # Thermo-optic noise level (reference: QW S_TO at 100 Hz, 8 bilayers, TiTa2O5)
+    Thermooptic:
+        target: 3.6e-44
+        weight: 2
+    # Optical thickness sensitivity
+    Lsens:
+        target: 1e-7
+        weight: 0
+    # Surface E-field
+    Esurf:
+        target: 1e-9
+        weight: 0
+    # Integrated absorption
+    Absorption:
+        target: 1e-4
+        weight: 0
+    # AUX transmission (532 nm, 2% target)
+    Trans532:
+        target: 0.02
+        weight: 5
+    # OPLEV transmission
+    TransOPLEV:
+        target: 0.05
+        weight: 0
+    # Optical thickness inhomogeneity
+    Lstdev:
+        target: 0.5
+        weight: 0
+
+# Other parameters used by the code
+misc:
+    # Frequency (Hz) at which to evaluate TO noise
+    fTO: 100
+    # Polarization (use "te" or "tm")
+    pol: 'te'
+    # Angle of incidence (degrees)
+    aoi: 0
+    # Number of bilayers in variable stack
+    Npairs: 8
+    # Number of fixed bilayers at the end of the stack
+    Nfixed: 0
+    # Number of copies of the variable stack
+    Ncopies: 0
+    # Number of particles in the optimizer
+    Nparticles: 500
+    # Absolute Tolerance
+    atol: 1e-10
+    # Relative Tolerance
+    tol: 1e-3
+    # how to initialize the population
+    init_method: 'halton'
+    # AUX wavelength ratio (lambda_AUX / lambda_PSL) -- 532 nm / 1064 nm
+    lambdaAUX: 0.5
+    # Materials config (replaces gwincStructFile)
+    materials_file: 'materials.yml'

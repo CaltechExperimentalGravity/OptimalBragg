@@ -5,101 +5,83 @@ For quick-start instructions, see [README.md](README.md).
 
 ---
 
+## Architecture Overview
+
+![OptimalBragg codemap](docs/codemap.svg)
+
+---
+
 ## 1. Repository Layout
+
+### Target structure (in progress)
 
 ```
 Coatings/
+|-- OptimalBragg/                    # Python package (core library)
+|   |-- __init__.py                  #   Material class, qw_stack(), public API
+|   |-- materials.py                 #   Central materials library with references
+|   |-- io.py                        #   HDF5/YAML I/O, load_materials_yaml()
+|   |-- layers.py                    #   Transfer matrix (Numba JIT), E-field, spectral
+|   |-- costs.py                     #   Cost functions, multiplicative getMirrorCost
+|   |-- noise.py                     #   Thermo-optic (JIT), Brownian (Hong), substrate
+|   |-- optimizer.py                 #   run_optimization() entry point
+|   |-- plot.py                      #   Layers, spectral, noise, corner, starfish
+|   |-- mc.py                        #   emcee MCMC sensitivity analysis
+|   `-- report.py                    #   Sphinx RST + HTML report generation
 |
-|-- generic/                        # Canonical shared libraries (Python + MATLAB)
-|   |-- coatingUtils.py             #   Transfer matrix, E-field, Sellmeier, YAML import
-|   |-- optimUtils.py               #   Cost functions, getMirrorCost evaluator
-|   |-- doMC.py                     #   Monte Carlo sensitivity (canonical)
-|   |-- cornerPlt.py                #   MC corner plots
-|   |-- plotLayers.py               #   Layer structure + E-field visualization
-|   |-- specREFLplot.py             #   Spectral reflectivity plotter
-|   |-- fieldPlot.py                #   E-field depth profile plotter
-|   |-- coatingNoisePlot.py         #   Thermal noise budget plotter
-|   |-- MatlabTools/                #   Legacy MATLAB: multidiel1.m, getMirrorCost.m,
-|   |   |                           #     runSwarm.m, calcEField.m, doSens.m, etc.
-|   |-- thermalNoiseFuncs/          #   MATLAB GWINC thermal noise wrappers
-|   |-- absorption/                 #   MATLAB absorption optimizer
-|   `-- Data/                       #   Legacy .mat output files (Git LFS)
+|-- projects/
+|   |-- aLIGO/                       #   SiO2/TiTa2O5 at 1064 nm, 295 K
+|   |   |-- materials.yml            #     Material properties (references library)
+|   |   |-- ETM_params.yml           #     Cost weights, optimizer settings
+|   |   |-- ITM_params.yml
+|   |   |-- Data/                    #     HDF5 output (gitignored)
+|   |   `-- Figures/                 #     Generated plots (gitignored)
+|   |-- Voyager_aSiSiN/             #   aSi/SiN at 2050 nm, 123 K
+|   |   |-- materials.yml
+|   |   |-- ETM_params.yml
+|   |   |-- ITM_params.yml
+|   |   |-- Data/
+|   |   `-- Figures/
+|   `-- Voyager_Ta2O5/              #   Ta2O5/SiO2 at 2050 nm, 123 K
+|       |-- materials.yml
+|       |-- ETM_params.yml
+|       |-- ITM_params.yml
+|       |-- Data/
+|       `-- Figures/
 |
-|-- SiN_aSi/                        # Active: a-Si / SiN coatings (40m prototype)
-|   |-- mkETM.py                    #   ETM optimizer entry point
-|   |-- mkITM.py                    #   ITM optimizer entry point
-|   |-- doMC.py                     #   Monte Carlo sensitivity analysis
-|   |-- plot_ETM.py                 #   ETM design dashboard
-|   |-- plot_ITM.py                 #   ITM design dashboard
-|   |-- cornerPlt.py                #   MC corner plots
-|   |-- plotlayers.py               #   Layer structure visualization
-|   |-- plot_emissivity.py          #   Thermal emissivity analysis
-|   |-- starfish.py                 #   Starfish plot utility
-|   |-- mkMirror.py                 #   Generic mirror builder (older script)
-|   |-- ETM_params.yml              #   ETM cost targets/weights (new dict format)
-|   |-- ITM_params.yml              #   ITM cost targets/weights (new dict format)
-|   |-- params.yml                  #   Legacy list-format params (not used by mkETM)
-|   |-- aSiSiN.yaml                 #   GWINC material properties (a-Si + SiN @ 123 K)
-|   |-- ETM.yaml                    #   GWINC material properties (ETM variant)
-|   |-- Ta2O5_ETM.yml               #   GWINC material properties (Ta2O5 variant)
-|   |-- Ta2O5_ITM.yml               #   GWINC material properties (Ta2O5 variant)
-|   `-- Data/                       #   HDF5 optimizer output
+|-- generic/                         # Legacy shared libraries (being replaced by OptimalBragg)
+|   |-- coatingUtils.py              #   Transfer matrix, E-field, Sellmeier, YAML import
+|   |-- optimUtils.py                #   Cost functions, getMirrorCost evaluator
+|   `-- thermoopticUtils.py          #   Numba JIT thermo-optic noise
 |
-|-- Ta2O5_Voyager/                  # Active: Ta2O5 / SiO2 coatings (LIGO Voyager)
-|   |-- mkETM.py                    #   ETM optimizer entry point
-|   |-- mkITM.py                    #   ITM optimizer entry point
-|   |-- doMC.py                     #   Monte Carlo sensitivity analysis
-|   |-- plot_ETM.py                 #   ETM design dashboard
-|   |-- plot_ITM.py                 #   ITM design dashboard
-|   |-- cornerPlt.py                #   MC corner plots
-|   |-- plot_emissivity.py          #   Thermal emissivity analysis
-|   |-- starfish.py                 #   Starfish plot utility
-|   |-- ETM_params.yml              #   ETM cost targets/weights (new dict format)
-|   |-- ITM_params.yml              #   ITM cost targets/weights (new dict format)
-|   |-- Ta2O5_ETM.yml               #   GWINC material properties (Ta2O5 + SiO2 @ 123 K)
-|   |-- Ta2O5_ITM.yml               #   GWINC material properties
-|   `-- Data/                       #   HDF5 optimizer output
+|-- Arms/                            # Legacy project dir (migrating to projects/aLIGO/)
+|-- SiN_aSi/                         # Legacy project dir (migrating to projects/Voyager_aSiSiN/)
+|-- Ta2O5_Voyager/                   # Legacy project dir (migrating to projects/Voyager_Ta2O5/)
 |
-|-- aSi_Voyager/                    # Dormant: older a-Si Voyager design
-|   |-- mkMirror.py                 #   Mirror builder (no mkETM/mkITM split)
-|   |-- plotlayers.py
-|   `-- params.yml                  #   Old list-format params
+|-- tests/                           # Pytest test suite
+|   |-- test_materials.py            #   Material class, qw_stack, materials library
+|   |-- test_io.py                   #   HDF5/YAML I/O, load_materials_yaml
+|   |-- conftest.py                  #   Shared fixtures
+|   |-- test_coatingUtils.py         #   Transfer matrix physics tests
+|   |-- test_optimUtils.py           #   Cost function tests
+|   `-- test_integration.py          #   Full optimization integration test
 |
-|-- AlGaAs/                         # Analysis only: GaAs plotting scripts
-|   |-- cornerPlt_AlGaAs.py
-|   |-- hyperPlot.py
-|   `-- plotLayers_AlGaAs.py
+|-- benchmarks/                      # Performance benchmarks
+|-- docs/                            # Sphinx documentation + run reports
+|   |-- codemap.dot                  #   Graphviz source for architecture diagram
+|   |-- codemap.svg                  #   Rendered architecture diagram
+|   `-- runs/                        #   Auto-generated run reports
 |
-|-- Arms/                           # Legacy: MATLAB only (arm cavity coatings)
-|-- PRC/                            # Legacy: MATLAB only (power recycling cavity)
-|-- PRC_new/                        # Legacy: MATLAB only (updated PRC)
-|-- inverseProblem/                 # Legacy: MATLAB only
-|-- optimExp/                       # Legacy: MATLAB only (optimization experiments)
-|-- Barrel Coating/                 # Legacy: barrel coating designs
-|
-|-- tests/                          # Pytest test suite
-|   |-- conftest.py                 #   Shared fixtures (ifo, QW stack, cost dicts)
-|   |-- test_coatingUtils.py       #   Unit tests for physics functions
-|   |-- test_optimUtils.py         #   Unit tests for cost functions
-|   `-- test_integration.py        #   Short optimization integration test
-|
-|-- benchmarks/                     # Performance benchmarks
-|   |-- bench_multidiel1.py        #   Micro-benchmark for multidiel1
-|   `-- RESULTS.md                 #   Profiling results table
-|
-|-- environment.yml                 # Conda environment specification (Python >=3.10, gwinc >=0.6)
-|-- coatingDev.yml                  # Legacy conda environment (Python 3.7.9, gwinc 0.2.2)
-|-- pyproject.toml                  # Package config + pytest settings
-|-- .gitlab-ci.yml                  # GitLab CI pipeline
-|-- README.md                       # Project overview + install instructions
-|-- CODEMAP.md                      # This file
-|-- CLAUDE.md                       # AI assistant instructions
-|-- CHANGELOG                       # Change log
-`-- LICENSE
+|-- environment.yml                  # Conda environment specification
+|-- pyproject.toml                   # Package config + pytest settings
+|-- .gitlab-ci.yml                   # GitLab CI pipeline
+|-- README.md                        # Project overview + install instructions
+|-- CODEMAP.md                       # This file
+`-- CLAUDE.md                        # AI assistant instructions
 ```
 
-**Active projects** use the Python pipeline described below.
-**Legacy directories** contain MATLAB-only code using Particle Swarm Optimization (`runSwarm.m`).
+**Legacy directories** (`Arms/`, `SiN_aSi/`, `Ta2O5_Voyager/`, `generic/`) are being migrated to
+`OptimalBragg/` + `projects/`. They remain functional during the transition.
 
 ---
 
@@ -290,9 +272,10 @@ All costs are computed inside `getMirrorCost`. Each cost term is independently w
 ### Scalar cost aggregation
 
 ```
-scalar_cost = sum_i ( weight_i * cost_i )
+scalar_cost = prod_i ( 1 + weight_i * cost_i )
 ```
 
+Multiplicative cost function: each factor >= 1, so all objectives must be satisfied simultaneously.
 The optimizer minimizes this scalar. After convergence, `polish=True` refines with L-BFGS-B.
 
 ---

@@ -6,6 +6,17 @@ thermal noise, manufacturing tolerance, surface E-field, and absorption constrai
 
 For a detailed architecture reference, see **[CODEMAP.md](CODEMAP.md)**.
 
+## Architecture
+
+![OptimalBragg codemap](docs/codemap.svg)
+
+The `OptimalBragg` package provides all physics, optimization, and visualization.
+Project-specific configurations live in `projects/`, each with:
+- `materials.yml` — material properties referencing the central materials library
+- `ETM_params.yml` / `ITM_params.yml` — cost function weights and optimizer settings
+- `Data/` — HDF5 optimizer and MC output (gitignored)
+- `Figures/` — generated plots (gitignored)
+
 ## How to Install
 
 1. Clone the repository:
@@ -19,20 +30,13 @@ For a detailed architecture reference, see **[CODEMAP.md](CODEMAP.md)**.
    conda activate coatingDev
    pip install -e .
    ```
-   Key dependencies: numpy, scipy, matplotlib, numba (>=0.56), emcee, corner, gwinc (>=0.6), lmfit, h5py, pytest.
-
-3. (Optional) For legacy MATLAB workflows, install the MATLAB engine for Python:
-   ```bash
-   cd $MATLABROOT/extern/engines/python
-   python setup.py install
-   ```
-   Set `GWINCPATH` in your shell (e.g. `conda env config vars set GWINCPATH=<path_to_matgwinc>`).
+   Key dependencies: numpy, scipy, matplotlib, numba (>=0.56), emcee, h5py, pytest.
 
 ## Quick Start
 
 ### Run a coating optimization
 
-From a project directory (e.g. `SiN_aSi/` or `Ta2O5_Voyager/`):
+From a project directory (e.g. `projects/aLIGO/`):
 
 ```bash
 python mkETM.py          # Optimize End Test Mass
@@ -54,29 +58,29 @@ Uses `emcee` (20 walkers, 4D parameter space) to perturb angle of incidence, ref
 ```bash
 python plot_ETM.py       # Design analysis dashboard
 python cornerPlt.py      # MC corner plots from .hdf5
-python plotlayers.py     # Layer structure + E-field
 ```
 
 ## Optimal Objectives
 
 For the mirror coatings, we have many constraints to satisfy:
 
-1. Transmissivity at the primary laser wavelength (e.g. 5 ppm at 2050 nm).
-2. Transmissivity at auxiliary wavelengths (1550 nm, optical lever).
+1. Transmissivity at the primary laser wavelength (e.g. 5 ppm at 1064 nm).
+2. Transmissivity at auxiliary wavelengths (532 nm, optical lever).
 3. Minimize Brownian thermal noise.
 4. Minimize Thermo-Optic noise.
 5. Minimize sensitivity of transmissivity to coating deposition errors.
 6. Minimize E-field at HR surface.
 7. Layer thickness uniformity.
 
-Each objective is a weighted term in a scalar cost function. See [CODEMAP.md](CODEMAP.md) for the full cost function breakdown and architecture details.
+Each objective is a weighted term in a multiplicative cost function: `C = prod(1 + w_i * c_i)`. See [CODEMAP.md](CODEMAP.md) for the full cost function breakdown.
 
 ## Active Projects
 
 | Project | Materials | Primary wavelength | Temperature |
 |---------|-----------|-------------------|-------------|
-| `SiN_aSi/` | a-Si / SiN | 2050 nm | 123 K |
-| `Ta2O5_Voyager/` | Ta2O5 / SiO2 | 2128 nm | 123 K |
+| `projects/aLIGO/` | SiO2 / TiTa2O5 | 1064 nm | 295 K |
+| `projects/Voyager_aSiSiN/` | a-Si / SiN | 2050 nm | 123 K |
+| `projects/Voyager_Ta2O5/` | Ta2O5 / SiO2 | 2050 nm | 123 K |
 
 ## Running Tests
 

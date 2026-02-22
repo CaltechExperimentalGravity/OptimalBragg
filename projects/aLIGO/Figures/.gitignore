@@ -1,0 +1,5 @@
+# Generated figures
+*.pdf
+*.png
+*.svg
+!.gitkeep

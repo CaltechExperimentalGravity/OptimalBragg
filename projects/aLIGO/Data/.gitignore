@@ -1,0 +1,4 @@
+# HDF5 output from optimization and MC runs
+*.hdf5
+*.mat
+!.gitkeep

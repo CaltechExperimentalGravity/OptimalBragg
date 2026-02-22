@@ -1,0 +1,80 @@
+digraph OptimalBragg {
+    rankdir=TB;
+    fontname="Helvetica";
+    node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled"];
+    edge [fontname="Helvetica", fontsize=9];
+
+    // Color scheme
+    // Package modules: blue
+    // Project configs: green
+    // Outputs: orange
+    // External: grey
+
+    subgraph cluster_package {
+        label="OptimalBragg/";
+        style="rounded,dashed";
+        color="#4477AA";
+        fontcolor="#4477AA";
+        fontsize=13;
+
+        init [label="__init__.py\nMaterial, qw_stack()", fillcolor="#D4E6F1"];
+        materials [label="materials.py\nSiO2, TiTa2O5, Ta2O5\naSi_123, SiN_123, cSi_123", fillcolor="#D4E6F1"];
+        io [label="io.py\nh5read, h5write\nload_materials_yaml", fillcolor="#D4E6F1"];
+        layers [label="layers.py\nmultidiel1 (Numba JIT)\nfield_zmag, surfield", fillcolor="#D4E6F1", style="rounded,filled,bold"];
+        costs [label="costs.py\ngetMirrorCost\nprod(1 + w*c)", fillcolor="#D4E6F1"];
+        noise [label="noise.py\nthermooptic (JIT)\nBrownian (Hong)\nsubstrate noise", fillcolor="#D4E6F1", style="rounded,filled,bold"];
+        optimizer [label="optimizer.py\nrun_optimization\ndifferential_evolution", fillcolor="#D4E6F1"];
+        plot [label="plot.py\nlayers, spectral\nnoise, corner, starfish", fillcolor="#D4E6F1"];
+        mc [label="mc.py\nemcee MCMC\nsensitivity analysis", fillcolor="#D4E6F1"];
+        report [label="report.py\nSphinx RST + HTML", fillcolor="#D4E6F1"];
+    }
+
+    subgraph cluster_projects {
+        label="projects/";
+        style="rounded,dashed";
+        color="#228B22";
+        fontcolor="#228B22";
+        fontsize=13;
+
+        aligo [label="aLIGO/\n1064 nm, 295 K\nSiO2 / TiTa2O5", fillcolor="#D5F5E3"];
+        voyager_asissn [label="Voyager_aSiSiN/\n2050 nm, 123 K\naSi / SiN", fillcolor="#D5F5E3"];
+        voyager_ta2o5 [label="Voyager_Ta2O5/\n2050 nm, 123 K\nSiO2 / Ta2O5", fillcolor="#D5F5E3"];
+    }
+
+    subgraph cluster_outputs {
+        label="Outputs";
+        style="rounded,dashed";
+        color="#E67E22";
+        fontcolor="#E67E22";
+        fontsize=13;
+
+        hdf5 [label="Data/*.hdf5\noptimized layers\nMC chains", fillcolor="#FDEBD0"];
+        figures [label="Figures/*.pdf\nlayer structure\nreflectivity, noise", fillcolor="#FDEBD0"];
+        docs [label="docs/runs/\nSphinx HTML reports", fillcolor="#FDEBD0"];
+    }
+
+    // Data flow
+    materials -> init [label="library"];
+    io -> init [label="exports"];
+    init -> layers [label="stack dict"];
+    layers -> costs [label="R, T, E-field"];
+    layers -> noise [label="TMM"];
+    noise -> costs [label="thermal noise"];
+    costs -> optimizer [label="cost(L)"];
+    optimizer -> io [label="save HDF5"];
+    io -> hdf5;
+
+    // Project configs feed optimizer
+    aligo -> optimizer [label="params.yml\nmaterials.yml", style=dashed, color="#228B22"];
+    voyager_asissn -> optimizer [style=dashed, color="#228B22"];
+    voyager_ta2o5 -> optimizer [style=dashed, color="#228B22"];
+
+    // Post-processing
+    hdf5 -> plot [label="load"];
+    hdf5 -> mc [label="load"];
+    mc -> hdf5 [label="MC chains"];
+    plot -> figures;
+    mc -> plot [label="corner data"];
+    plot -> report [label="figures"];
+    report -> docs;
+}
