@@ -1,5 +1,5 @@
-Coatings: Optical Coating Optimization
-======================================
+OptimalBragg: Optical Coating Optimization
+==========================================
 
 Design of high-reflectivity dielectric stack coatings for gravitational wave
 detector mirrors. Optimizes layer thicknesses via
@@ -31,8 +31,15 @@ noise, manufacturing tolerance, and surface E-field constraints.
    :maxdepth: 2
    :caption: API Reference
 
-   api/coatingUtils
-   api/optimUtils
+   api/layers
+   api/costs
+   api/noise
+   api/optimizer
+   api/plot
+   api/mc
+   api/report
+   api/io
+   api/materials
 
 Indices and tables
 ==================

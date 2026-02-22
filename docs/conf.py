@@ -1,8 +1,8 @@
-# Sphinx configuration for Coatings documentation
+# Sphinx configuration for OptimalBragg documentation
 
-project = 'Coatings'
+project = 'OptimalBragg'
 author = 'Caltech Experimental Gravity Group'
-release = '0.1.0'
+release = '0.2.0'
 
 extensions = [
     'sphinx.ext.autodoc',
@@ -25,10 +25,11 @@ autodoc_default_options = {
     'show-inheritance': True,
 }
 
-# Theme
-html_theme = 'sphinx_rtd_theme'
+# Theme — pydata-sphinx-theme supports light/dark mode switching
+html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
     'navigation_depth': 3,
+    'show_toc_level': 2,
 }
 
 # Exclude patterns

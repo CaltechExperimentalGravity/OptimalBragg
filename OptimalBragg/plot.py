@@ -17,10 +17,7 @@ from matplotlib.ticker import FormatStrFormatter
 
 def apply_style():
     """Apply the project plotting style."""
-    if 'gvELOG' in plt.style.available:
-        plt.style.use('gvELOG')
-    else:
-        plt.style.use('bmh')
+    plt.style.use('bmh')
 
     plt.rcParams.update({
         'text.usetex': False,

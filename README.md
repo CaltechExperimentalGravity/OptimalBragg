@@ -1,4 +1,4 @@
-# Design of Mirror Coatings by global optimization of a cost function
+# OptimalBragg: Mirror Coating Design by Global Optimization
 
 Code to optimize HR mirror dielectric stack designs for gravitational wave detector test masses.
 Designs are optimized via `scipy.optimize.differential_evolution`, balancing transmissivity,
@@ -30,17 +30,23 @@ Project-specific configurations live in `projects/`, each with:
    conda activate coatingDev
    pip install -e .
    ```
-   Key dependencies: numpy, scipy, matplotlib, numba (>=0.56), emcee, h5py, pytest.
+   Key dependencies: numpy, scipy, matplotlib, numba (>=0.56), emcee, arviz, h5py, pytest.
 
 ## Quick Start
 
 ### Run a coating optimization
 
-From a project directory (e.g. `projects/aLIGO/`):
+Using the CLI (from repo root):
 
 ```bash
-python mkETM.py          # Optimize End Test Mass
-python mkITM.py          # Optimize Input Test Mass
+optimalbragg optimize projects/aLIGO/ETM_params.yml
+optimalbragg optimize projects/aLIGO/ITM_params.yml
+```
+
+Or from a project directory:
+
+```bash
+cd projects/aLIGO && python mkETM.py
 ```
 
 Output: `Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5`
@@ -48,16 +54,16 @@ Output: `Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5`
 ### Monte Carlo sensitivity analysis
 
 ```bash
-python doMC.py Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5 output_MC.hdf5 5000
+optimalbragg mc Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5 5000
 ```
 
-Uses `emcee` (20 walkers, 4D parameter space) to perturb angle of incidence, refractive indices, and layer thicknesses by 0.5% Gaussian.
+Uses `emcee` (20 walkers, 3D parameter space) to perturb refractive indices and layer thicknesses by 0.5% Gaussian.
 
 ### Visualization
 
 ```bash
-python plot_ETM.py       # Design analysis dashboard
-python cornerPlt.py      # MC corner plots from .hdf5
+optimalbragg plot Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5
+optimalbragg corner Data/ETM/ETM_MC.hdf5
 ```
 
 ## Optimal Objectives
@@ -85,9 +91,10 @@ Each objective is a weighted term in a multiplicative cost function: `C = prod(1
 ## Running Tests
 
 ```bash
-pytest tests/ -v -k "not slow"           # Unit tests (~1 sec)
+pytest tests/ -v -k "not slow"           # Unit tests (~2 sec)
 pytest tests/test_integration.py -m slow  # Integration test (~30 sec)
-python benchmarks/bench_multidiel1.py     # Performance benchmark
+python benchmarks/bench_multidiel1.py     # Transfer matrix benchmark
+python benchmarks/bench_thermooptic.py    # Thermooptic JIT vs numpy
 ```
 
 ## Paper draft

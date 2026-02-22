@@ -18,30 +18,34 @@ Installation
 Running an Optimization
 -----------------------
 
-From the ``SiN_aSi/`` project directory::
+Using the CLI (from the repo root)::
 
-    python mkETM.py    # Optimize End Test Mass
-    python mkITM.py    # Optimize Input Test Mass
+    optimalbragg optimize projects/aLIGO/ETM_params.yml
+
+Or from a project directory::
+
+    cd projects/aLIGO
+    python mkETM.py
 
 Output is saved to ``Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5``.
 
 The optimizer uses ``scipy.optimize.differential_evolution`` with
 ``workers=1`` (IPC overhead exceeds per-eval cost). A typical run with
-17 bilayer pairs and population size 500 takes ~3 minutes.
+18 bilayer pairs and population size 500 takes ~3 minutes.
 
 Configuration
 ^^^^^^^^^^^^^
 
-Each project directory has a ``ETM_params.yml`` (or ``ITM_params.yml``)
-that configures:
+Each project directory has two YAML config files:
 
-- **Cost function weights and targets** -- which objectives are active and
-  how they trade off
-- **Optimizer settings** -- population size, tolerances, initialization method
-- **Physics parameters** -- angle of incidence, polarization, auxiliary
-  wavelength ratio
+- **``ETM_params.yml``** (or ``ITM_params.yml``) configures cost function
+  weights/targets, optimizer settings, and physics parameters.
 
-See ``SiN_aSi/ETM_params.yml`` for a fully commented example.
+- **``materials.yml``** defines material properties, referencing the central
+  ``OptimalBragg.materials`` library with optional per-project overrides.
+
+See ``projects/aLIGO/ETM_params.yml`` and ``projects/aLIGO/materials.yml``
+for fully commented examples.
 
 Reading Results
 ---------------
@@ -54,33 +58,35 @@ The HDF5 output contains:
 - ``diffevo_output/T1064``, ``RPSL`` -- transmission and reflectivity at PSL
 - ``diffevo_output/vectorCost/*`` -- individual cost term values
 - ``trajectory`` -- convergence curve
-- ``gwincStructFile`` -- path to the gwinc material properties file
 
 Visualization::
 
-    python plot_ETM.py      # Design analysis dashboard
-    python plotlayers.py    # Layer structure + E-field profile
+    optimalbragg plot Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5
 
 Monte Carlo Analysis
 --------------------
 
-Perturb material properties and thicknesses to assess manufacturing
+Perturb refractive indices and layer thicknesses to assess manufacturing
 sensitivity::
 
-    python doMC.py Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5 output_MC.hdf5 5000
+    optimalbragg mc Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5 5000
 
-Uses ``emcee`` with 20 walkers in a 4-dimensional parameter space
-(angle of incidence, high-n index, low-n index, thickness), each
-perturbed as 0.5% Gaussian.
+Uses ``emcee`` with 20 walkers in a 3-dimensional parameter space
+(high-n index, low-n index, thickness), each perturbed as 0.5% Gaussian.
+
+Generate corner plots::
+
+    optimalbragg corner Data/ETM/ETM_MC.hdf5
 
 Running Tests
 -------------
 
 ::
 
-    pytest tests/ -v -k "not slow"          # Unit tests (~1 sec)
+    pytest tests/ -v -k "not slow"           # Unit tests (~2 sec)
     pytest tests/test_integration.py -m slow  # Integration test
-    python benchmarks/bench_multidiel1.py     # Performance benchmark
+    python benchmarks/bench_multidiel1.py     # Transfer matrix benchmark
+    python benchmarks/bench_thermooptic.py    # Thermooptic JIT vs numpy
 
 Active Projects
 ---------------
@@ -88,19 +94,7 @@ Active Projects
 ==================  ================  ==================  ===========
 Project             Materials         Primary wavelength  Temperature
 ==================  ================  ==================  ===========
-``Arms/``           SiO2 / Ti:Ta2O5   1064 nm             295 K
-``SiN_aSi/``        a-Si / SiN        2050 nm             123 K
-``Ta2O5_Voyager/``  Ta2O5 / SiO2      2128 nm             123 K
+``projects/aLIGO/``           SiO2 / TiTa2O5   1064 nm             295 K
+``projects/Voyager_aSiSiN/``  a-Si / SiN        2050 nm             123 K
+``projects/Voyager_Ta2O5/``   Ta2O5 / SiO2      2050 nm             123 K
 ==================  ================  ==================  ===========
-
-The ``Arms/`` project targets aLIGO arm cavity mirrors (ETM and ITM)
-with SiO2/Ti:Ta2O5 coatings on fused silica substrates. It includes a
-532 nm auxiliary wavelength constraint for green locking, with
-``lambdaAUX: 0.5`` in the params YAML.
-
-Running aLIGO optimizations::
-
-    cd Arms
-    python mkETM.py    # End Test Mass
-    python mkITM.py    # Input Test Mass
-    python plot_ETM.py # Generate plots + Sphinx run report

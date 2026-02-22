@@ -1,4 +1,4 @@
-# Code Map: Coating Optimization for Gravitational Wave Detectors
+# Code Map: OptimalBragg — Coating Optimization for Gravitational Wave Detectors
 
 Comprehensive architecture reference for the optical coating optimization codebase.
 For quick-start instructions, see [README.md](README.md).
@@ -13,8 +13,6 @@ For quick-start instructions, see [README.md](README.md).
 
 ## 1. Repository Layout
 
-### Target structure (in progress)
-
 ```
 Coatings/
 |-- OptimalBragg/                    # Python package (core library)
@@ -27,50 +25,47 @@ Coatings/
 |   |-- optimizer.py                 #   run_optimization() entry point
 |   |-- plot.py                      #   Layers, spectral, noise, corner, starfish
 |   |-- mc.py                        #   emcee MCMC sensitivity analysis
-|   `-- report.py                    #   Sphinx RST + HTML report generation
+|   |-- report.py                    #   Sphinx RST + HTML report generation
+|   |-- cli.py                       #   CLI entry point (optimalbragg command)
+|   `-- __main__.py                  #   python -m OptimalBragg support
 |
 |-- projects/
 |   |-- aLIGO/                       #   SiO2/TiTa2O5 at 1064 nm, 295 K
 |   |   |-- materials.yml            #     Material properties (references library)
 |   |   |-- ETM_params.yml           #     Cost weights, optimizer settings
 |   |   |-- ITM_params.yml
+|   |   |-- mkETM.py / mkITM.py      #     Thin wrappers calling run_optimization()
 |   |   |-- Data/                    #     HDF5 output (gitignored)
 |   |   `-- Figures/                 #     Generated plots (gitignored)
 |   |-- Voyager_aSiSiN/             #   aSi/SiN at 2050 nm, 123 K
-|   |   |-- materials.yml
-|   |   |-- ETM_params.yml
-|   |   |-- ITM_params.yml
-|   |   |-- Data/
-|   |   `-- Figures/
 |   `-- Voyager_Ta2O5/              #   Ta2O5/SiO2 at 2050 nm, 123 K
-|       |-- materials.yml
-|       |-- ETM_params.yml
-|       |-- ITM_params.yml
-|       |-- Data/
-|       `-- Figures/
-|
-|-- generic/                         # Legacy shared libraries (being replaced by OptimalBragg)
-|   |-- coatingUtils.py              #   Transfer matrix, E-field, Sellmeier, YAML import
-|   |-- optimUtils.py                #   Cost functions, getMirrorCost evaluator
-|   `-- thermoopticUtils.py          #   Numba JIT thermo-optic noise
-|
-|-- Arms/                            # Legacy project dir (migrating to projects/aLIGO/)
-|-- SiN_aSi/                         # Legacy project dir (migrating to projects/Voyager_aSiSiN/)
-|-- Ta2O5_Voyager/                   # Legacy project dir (migrating to projects/Voyager_Ta2O5/)
 |
 |-- tests/                           # Pytest test suite
 |   |-- test_materials.py            #   Material class, qw_stack, materials library
+|   |-- test_layers.py               #   Transfer matrix, E-field, spectral
+|   |-- test_costs.py                #   Cost functions, getMirrorCost
+|   |-- test_noise.py                #   All thermal noise models
+|   |-- test_thermooptic.py          #   JIT vs numpy thermo-optic validation
 |   |-- test_io.py                   #   HDF5/YAML I/O, load_materials_yaml
-|   |-- conftest.py                  #   Shared fixtures
-|   |-- test_coatingUtils.py         #   Transfer matrix physics tests
-|   |-- test_optimUtils.py           #   Cost function tests
-|   `-- test_integration.py          #   Full optimization integration test
+|   |-- test_optimizer.py            #   Stack building, optimization pipeline
+|   |-- test_plot.py                 #   Plotting functions
+|   |-- test_mc.py                   #   Monte Carlo perturbation generation
+|   |-- test_report.py              #   Report quality assessment
+|   |-- test_cli.py                  #   CLI help/argument parsing
+|   |-- test_integration.py          #   Full optimization integration test
+|   `-- conftest.py                  #   Shared fixtures
 |
 |-- benchmarks/                      # Performance benchmarks
+|   |-- bench_multidiel1.py          #   Transfer matrix micro-benchmark
+|   `-- bench_thermooptic.py         #   JIT vs numpy thermooptic comparison
+|
 |-- docs/                            # Sphinx documentation + run reports
+|   |-- conf.py                      #   Sphinx config (pydata theme)
+|   |-- index.rst                    #   Documentation root
+|   |-- api/                         #   Autodoc API reference stubs
+|   |-- runs/                        #   Auto-generated run reports
 |   |-- codemap.dot                  #   Graphviz source for architecture diagram
-|   |-- codemap.svg                  #   Rendered architecture diagram
-|   `-- runs/                        #   Auto-generated run reports
+|   `-- codemap.svg                  #   Rendered architecture diagram
 |
 |-- environment.yml                  # Conda environment specification
 |-- pyproject.toml                   # Package config + pytest settings
@@ -80,141 +75,116 @@ Coatings/
 `-- CLAUDE.md                        # AI assistant instructions
 ```
 
-**Legacy directories** (`Arms/`, `SiN_aSi/`, `Ta2O5_Voyager/`, `generic/`) are being migrated to
-`OptimalBragg/` + `projects/`. They remain functional during the transition.
+**Legacy directories** (`Arms/`, `SiN_aSi/`, `Ta2O5_Voyager/`, `generic/`) contain the original code
+before the OptimalBragg refactor. They are no longer used by the active pipeline.
 
 ---
 
 ## 2. Optimization Pipeline
 
-### Full data flow for a single optimization run
+### Full data flow
 
 ```
-                           CONFIGURATION
-                    +-----------------------+
-                    | ETM_params.yml        |     aSiSiN.yaml (or Ta2O5_ETM.yml)
-                    |   costs:              |     Material properties, substrate,
-                    |     Trans1064:         |     laser wavelength, mirror geometry
-                    |       target / weight |         |
-                    |     Brownian: ...     |         |
-                    |   misc:              |         |
-                    |     Npairs, tol, ...  |         |
-                    +-----------+-----------+         |
-                                |                     |
-                                v                     v
-                    +------------------------------- ---------+
-                    |              mkETM.py                    |
-                    |                                          |
-                    |  1. importParams('ETM_params.yml')       |
-                    |  2. ifo = gwinc.Struct.from_file(...)    |
-                    |  3. gam = brownianProxy(ifo)             |
-                    |  4. bounds = [(0.05, 0.48)] * (2N+1)     |
-                    |                                          |
-                    |  5. scipy.optimize.differential_evolution|
-                    |     +----------------------------------+ |
-                    |     | func = getMirrorCost             | |
-                    |     | strategy = 'best1bin'            | |
-                    |     | mutation = (0.05, 1.5)           | |
-                    |     | popsize = Nparticles             | |
-                    |     | workers = -1 (all cores)         | |
-                    |     | maxiter = 2000                   | |
-                    |     | polish = True (L-BFGS-B)         | |
-                    |     +----------------------------------+ |
-                    |                   |                      |
-                    |                   | calls per candidate  |
-                    |                   v                      |
-                    |     +----------------------------------+ |
-                    |     |       getMirrorCost(L, ...)       | |
-                    |     |  For each cost with weight > 0:  | |
-                    |     |    Trans1064  -> transmissionCost  | |
-                    |     |    Trans532  -> transmissionCost  | |
-                    |     |    TransOPLEV-> transmissionCost  | |
-                    |     |    Brownian  -> brownianCost      | |
-                    |     |    Thermooptic->thermoopticCost   | |
-                    |     |    Lsens     -> sensitivityCost   | |
-                    |     |    Esurf     -> surfEfieldCost    | |
-                    |     |    Lstdev    -> stdevLCost        | |
-                    |     |    Absorption-> (not implemented) | |
-                    |     |                                   | |
-                    |     |  scalar = sum(weight_i * cost_i)  | |
-                    |     +----------------------------------+ |
-                    |                                          |
-                    |  6. Save to HDF5                         |
-                    +------------------+-----------------------+
-                                       |
-                                       v
-                      Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5
-                      +------------------------------------+
-                      | trajectory     (convergence curve) |
-                      | vec_evol       (parameter history) |
-                      | diffevo_output/                    |
-                      |   L            (optical thickness) |
-                      |   n            (refractive indices)|
-                      |   scalarCost                       |
-                      |   T1064, RPSL, T532, RAUX, ...     |
-                      |   vectorCost/{Trans1064, ...}       |
-                      +------------------------------------+
-                                       |
-                    +------------------+------------------+
-                    |                                     |
-                    v                                     v
-          +------------------+                +-----------------------+
-          | plot_ETM.py      |                | doMC.py               |
-          | Design dashboard:|                | Monte Carlo analysis: |
-          |  - Layer profile |                |  20 walkers, 4D,     |
-          |  - Spectral R(l) |                |  0.5% Gaussian       |
-          |  - Cost summary  |                |  perturbations       |
-          +------------------+                +-----------+-----------+
-                                                          |
-                                                          v
-                                              MC_output.hdf5
-                                                          |
-                                                          v
-                                              +-----------------------+
-                                              | cornerPlt.py          |
-                                              | Corner plots:         |
-                                              |  T_PSL vs T_AUX vs   |
-                                              |  surface field, etc.  |
-                                              +-----------------------+
+                         CONFIGURATION
+              +------------------------+     +--------------------+
+              | ETM_params.yml         |     | materials.yml      |
+              |   costs:               |     |   substrate: SiO2  |
+              |     Trans1064:         |     |   thin_films:      |
+              |       target / weight  |     |     L: SiO2        |
+              |     Brownian: ...      |     |     H: TiTa2O5     |
+              |   misc:               |     |   laser:           |
+              |     Npairs, tol, ...   |     |     wavelength     |
+              +----------+-------------+     +--------+-----------+
+                         |                            |
+                         v                            v
+              +----------------------------------------------+
+              |         run_optimization(params_yaml)         |
+              |                                                |
+              |  1. yamlread(params_yaml)                      |
+              |  2. load_materials_yaml(materials_file)         |
+              |  3. qw_stack(lam_ref, substrate, thin_films)    |
+              |  4. gam = brownian_proxy(stack)                 |
+              |  5. precompute_misc(costs, stack, misc)         |
+              |                                                |
+              |  6. scipy.optimize.differential_evolution       |
+              |     +----------------------------------------+ |
+              |     | func = getMirrorCost                   | |
+              |     | strategy = 'best1bin'                  | |
+              |     | workers = 1                            | |
+              |     | maxiter = 2000                         | |
+              |     | polish = True (L-BFGS-B)               | |
+              |     +----------------------------------------+ |
+              |                   |                            |
+              |                   | calls per candidate        |
+              |                   v                            |
+              |     +----------------------------------------+ |
+              |     |       getMirrorCost(L, ...)             | |
+              |     |  For each cost with weight > 0:        | |
+              |     |    Trans1064  -> transmissionCost        | |
+              |     |    Trans532   -> transmissionCost        | |
+              |     |    Brownian   -> brownianCost            | |
+              |     |    Thermooptic-> thermoopticCost         | |
+              |     |    Absorption -> absorptionCost          | |
+              |     |    Lsens      -> sensitivityCost         | |
+              |     |    Esurf      -> surfEfieldCost          | |
+              |     |    Lstdev     -> stdevLCost              | |
+              |     |                                         | |
+              |     |  scalar = prod(1 + weight_i * cost_i)   | |
+              |     +----------------------------------------+ |
+              |                                                |
+              |  7. Save to HDF5                               |
+              +---------------------+--------------------------+
+                                    |
+                                    v
+                   Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5
+                                    |
+                 +------------------+------------------+
+                 |                                     |
+                 v                                     v
+       +------------------+               +-----------------------+
+       | optimalbragg plot |               | optimalbragg mc       |
+       | Design dashboard: |               | Monte Carlo analysis: |
+       |  - Layer profile  |               |  20 walkers, 3D,     |
+       |  - Spectral R(l)  |               |  0.5% Gaussian       |
+       |  - Noise budget   |               |  perturbations       |
+       |  - Starfish       |               |  (n_H, n_L, dL)      |
+       +------------------+               +-----------+-----------+
+                                                       |
+                                                       v
+                                            MC_output.hdf5
+                                                       |
+                                                       v
+                                           +-----------------------+
+                                           | optimalbragg corner   |
+                                           | ArviZ corner plots:   |
+                                           |  T_PSL vs T_AUX vs   |
+                                           |  surface field, etc.  |
+                                           +-----------------------+
 ```
 
 ### Key internal call: `getMirrorCost`
 
 ```
-getMirrorCost(L, costs, ifo, gam, verbose, misc)
+getMirrorCost(L, costs, stack, gam, verbose, misc)
     |
     |-- Extend L with Ncopies and Nfixed bilayers
-    |-- Build refractive index array n = [1, nL, nH, nL, nH, ..., nSub]
+    |-- Build refractive index array n from stack dict
+    |
+    |-- Consolidated multidiel1 call (all wavelengths at once)
     |
     |-- For each cost term with weight > 0:
     |
     |   Trans1064 -----> transmissionCost(target, n, L, lamb=1.0)
-    |                       \-> multidiel1(n, L, lamb, theta, pol)
+    |   Trans532 ------> transmissionCost(target, n, L, lamb=lambdaAUX)
+    |   TransOPLEV ----> transmissionCost(target, n, L, lamb=lambdaOPLEV)
+    |   Brownian ------> brownianCost(target, L, gam)
+    |   Thermooptic ---> thermoopticCost(target, fTO, L, stack, ...)
+    |   Absorption ----> absorptionCost(target, n, L, stack, ...)
+    |   Lsens ---------> sensitivityCost(target, n, L) at PSL and AUX
+    |   Esurf ---------> surfEfieldCost(target, n, L)
+    |   Lstdev --------> stdevLCost(target, L)
     |
-    |   Trans532 -----> transmissionCost(target, n, L, lamb=1550/2050)
-    |                       \-> multidiel1(...)
-    |
-    |   TransOPLEV ---> transmissionCost(target, n, L, lamb=0.297)
-    |                       \-> multidiel1(...)
-    |
-    |   Brownian -----> brownianCost(target, L, gam)
-    |                       (proxy: zLow + gam * zHigh)
-    |
-    |   Thermooptic --> thermoopticCost(target, fTO, L, ifo)
-    |                       \-> gwinc.noise.coatingthermal.coating_thermooptic(...)
-    |
-    |   Lsens --------> sensitivityCost(target, n, L) at PSL and AUX
-    |                       \-> transmissionCost(target, n, 1.01*L)
-    |                           (quadrature sum of both wavelengths)
-    |
-    |   Esurf --------> surfEfieldCost(target, n, L)
-    |                       \-> multidiel1(...)
-    |                       (formula: 50 * arcsinh(|1+r|^2))
-    |
-    |   Lstdev -------> stdevLCost(target, L)
-    |                       (mean/std ratio penalty)
-    |
-    |-- scalar_cost = sum( weight_i * cost_i )
+    |-- scalar_cost = prod( 1 + weight_i * cost_i )
     |-- return scalar_cost  (or also verbose dict)
 ```
 
@@ -222,34 +192,62 @@ getMirrorCost(L, costs, ifo, gam, verbose, misc)
 
 ## 3. Core Library Function Map
 
-### `coatingUtils.py` (generic/)
+### `OptimalBragg/layers.py`
 
-| Function | Signature | Purpose | Called by |
-|----------|-----------|---------|----------|
-| `multidiel1` | `(n, L, lamb, theta=0, pol='te')` | Transfer matrix reflectivity of dielectric stack | `transmissionCost`, `sensitivityCost`, `surfEfieldCost`, `specREFL`, `doMC.py` |
-| `op2phys` | `(L, n)` | Convert optical thickness to physical thickness | `doMC.py`, plotting scripts |
-| `lnprob` | `(x, mu, icov)` | Log-probability for Gaussian (MC sampling) | `doMC.py` (emcee sampler) |
-| `surfaceField` | `(gamm, Ei=27.46)` | Surface E-field from amplitude reflectivity | `doMC.py` |
-| `specREFL` | `(layers, dispFileName, lambda_0, lam, aoi, pol)` | Spectral reflectivity with dispersion | Plotting scripts |
-| `fieldDepth` | `(L, n, lam=1064e-9, theta=0, pol='s', nPts=30)` | E-field squared vs depth (Arnon & Baumeister 1980) | `plotlayers.py`, `calcAbsorption` (indirectly) |
-| `importParams` | `(paramFile)` | Load YAML config file | `mkETM.py`, `mkITM.py`, `getMirrorCost` (generic only) |
-| `calcAbsorption` | `(Esq, L, nPts, alphaOdd, alphaEven)` | Integrated absorption from E-field profile [ppm] | Analysis scripts |
-| `sellmeier` | `(B, C, lam=1064e-9)` | Refractive index from Sellmeier coefficients | Dispersion analysis scripts |
+| Function | Purpose | Performance |
+|----------|---------|-------------|
+| `multidiel1(n, L, lamb, theta, pol)` | Transfer matrix reflectivity of dielectric stack | Numba JIT, ~7 us/call |
+| `multilayer_diel(ns, Ls, lamb, aoi, pol)` | Wrapper converting physical to optical thicknesses | |
+| `field_zmag(ns, Ls, lam, ...)` | E-field depth profile (Arnon & Baumeister) | |
+| `surfield(rr, Ei, normalized)` | Surface E-field from reflectivity | |
+| `calc_abs(Esq, Ls, alphas)` | Integrated absorption from E-field profile | |
+| `op2phys(L, n)` | Optical to physical thickness conversion | |
+| `fieldDepth(L, n, ...)` | E-field squared vs depth | |
+| `sellmeier(B, C, lam)` | Refractive index from Sellmeier coefficients | |
+| `amp_refl(wavelengths, stack)` | Spectral amplitude reflectivity | |
+| `refl(wavelengths, stack)` | Spectral power reflectivity | |
+| `trans(wavelengths, stack)` | Spectral transmission | |
 
-### `optimUtils.py` (generic/)
+### `OptimalBragg/costs.py`
 
-| Function | Signature | Purpose | Called by |
-|----------|-----------|---------|----------|
-| `transmissionCost` | `(target, n, L, lamb=1, theta=0, pol='te')` | Transmission cost: `\|target - T\|^2 / target^2` | `getMirrorCost` |
-| `sensitivityCost` | `(target, n, L, lamb=1, theta=0, pol='te')` | Sensitivity to 1% thickness perturbation | `getMirrorCost` |
-| `surfEfieldCost` | `(target, n, L, lamb=1, theta=0, pol='te')` | Surface E-field cost: `50 * arcsinh(\|1+r\|^2)` | `getMirrorCost` |
-| `stdevLCost` | `(target, L)` | Thickness uniformity penalty (mean/std ratio) | `getMirrorCost` |
-| `brownianProxy` | `(ifo)` | Pre-compute Brownian noise prefactor gamma | `mkETM.py`, `mkITM.py` |
-| `brownianCost` | `(target, L, gam)` | Brownian noise proxy: `target * (zLow + gam * zHigh)` | `getMirrorCost` |
-| `thermoopticCost` | `(target, fTarget, L, ifo)` | Thermo-optic noise via pygwinc | `getMirrorCost` |
-| `getMirrorCost` | `(L, costs, ifo, gam, verbose=False, misc={})` | Master cost evaluator; weighted sum of all sub-costs | `devo()` in `mkETM.py`/`mkITM.py` |
+| Function | Purpose |
+|----------|---------|
+| `transmissionCost(target, n, L, lamb, theta, pol)` | `\|target - T\|^2 / target^2` |
+| `brownianCost(target, L, gam)` | Proxy: `target * (zLow + gam * zHigh)` |
+| `thermoopticCost(target, fTarget, L, stack, ...)` | Thermo-optic via JIT `coating_thermooptic_fast` |
+| `absorptionCost(target, n, L, stack, ...)` | Integrated coating absorption |
+| `sensitivityCost(target, n, L, ...)` | 1% thickness perturbation sensitivity |
+| `surfEfieldCost(target, n, L, ...)` | `50 * arcsinh(\|1+r\|^2)` |
+| `stdevLCost(target, L)` | Thickness uniformity (mean/std ratio) |
+| `precompute_misc(costs, stack, misc)` | Cache invariant computations |
+| `getMirrorCost(L, costs, stack, gam, verbose, misc)` | Master cost evaluator |
 
-**Note:** All projects import directly from `generic/` using the dict-style `getMirrorCost` signature. The `multidiel1` inner loop is Numba JIT-compiled for performance.
+### `OptimalBragg/noise.py`
+
+| Function | Physics | Performance |
+|----------|---------|-------------|
+| `coating_thermooptic_fast(f, L, lam, w, params)` | Thermo-optic PSD (single freq) | Numba JIT |
+| `coating_thermooptic(ff, stack, w, r, d)` | Thermo-optic PSD (vectorized) | Pure numpy |
+| `coating_brownian(f, stack, w)` | Hong et al. PRD 87, 082001 (2013) | |
+| `substrate_brownian(f, stack, w)` | Substrate Brownian noise | |
+| `substrate_thermoelastic(f, stack, w)` | Substrate thermoelastic noise | |
+| `substrate_thermorefractive(f, stack, w)` | Substrate thermorefractive noise | |
+| `brownian_proxy(stack)` | Pre-compute Brownian proxy gamma | |
+
+### `OptimalBragg/materials.py`
+
+Materials with full reference citations:
+
+| Material | n | Use case |
+|----------|---|----------|
+| `SiO2` | 1.45 | Low-n coating, room temp |
+| `TiTa2O5` | 2.06 | High-n coating (aLIGO), room temp |
+| `Ta2O5` | 2.0 | High-n coating, room temp |
+| `FusedSilica` | 1.45 | Substrate, room temp |
+| `cSi_123` | 3.39 | Silicon substrate, 123 K |
+| `aSi_123` | 3.65 | High-n coating (Voyager), 123 K |
+| `SiN_123` | 2.17 | Low-n coating (Voyager), 123 K |
+| `air` | 1.0 | Superstrate |
 
 ---
 
@@ -257,17 +255,17 @@ getMirrorCost(L, costs, ifo, gam, verbose, misc)
 
 All costs are computed inside `getMirrorCost`. Each cost term is independently weighted; set `weight: 0` to disable.
 
-| Cost key | Physics | Formula / Method | Computed by |
-|----------|---------|-----------------|-------------|
-| **Trans1064** | Transmission at primary laser wavelength | `\|target - T\|^2 / target^2` where `T = 1 - \|r\|^2` at `lamb=1.0` | `transmissionCost` -> `multidiel1` |
-| **Trans532** | Transmission at auxiliary wavelength | Same formula at `lamb = 1550/2050` (SiN_aSi) or `lamb = 1418.8/2128.2` (Ta2O5) | `transmissionCost` -> `multidiel1` |
-| **TransOPLEV** | Transmission at optical lever wavelength | Same formula at `lamb = 0.297` (~608 nm) | `transmissionCost` -> `multidiel1` |
-| **Brownian** | Coating Brownian thermal noise | Proxy: `target * (sum_low + gam * sum_high)` per E0900068 p.4 | `brownianCost` |
-| **Thermooptic** | Thermo-optic noise (thermoelastic + thermorefractive) | `target * S_TO(f)` via pygwinc `coating_thermooptic` | `thermoopticCost` -> `gwinc` |
-| **Lsens** | Sensitivity of T to 1% layer thickness error | Quadrature sum of PSL and AUX sensitivities: `sqrt(s_PSL^2 + s_AUX^2)` | `sensitivityCost` -> `transmissionCost` |
-| **Esurf** | Surface electric field at HR face | `50 * arcsinh(\|1 + r\|^2)` | `surfEfieldCost` -> `multidiel1` |
-| **Lstdev** | Layer thickness uniformity | `\|target - mean(L)/std(L)\|^2 / target^2` | `stdevLCost` |
-| **Absorption** | Integrated coating absorption | **Not implemented** in optimizer (placeholder; `calcAbsorption` exists in `coatingUtils` for post-analysis) | -- |
+| Cost key | Physics | Formula / Method |
+|----------|---------|-----------------|
+| **Trans1064** | Transmission at primary laser wavelength | `\|target - T\|^2 / target^2` |
+| **Trans532** | Transmission at auxiliary wavelength | Same formula at `lamb = lambdaAUX` |
+| **TransOPLEV** | Transmission at optical lever wavelength | Same formula at OPLEV ratio |
+| **Brownian** | Coating Brownian thermal noise | Proxy: `target * (sum_low + gam * sum_high)` per E0900068 |
+| **Thermooptic** | Thermo-optic noise | `target * S_TO(f)` via Numba JIT |
+| **Absorption** | Integrated coating absorption | E-field profile integration |
+| **Lsens** | Sensitivity of T to layer thickness error | Quadrature sum of PSL and AUX |
+| **Esurf** | Surface electric field at HR face | `50 * arcsinh(\|1+r\|^2)` |
+| **Lstdev** | Layer thickness uniformity | `\|target - mean(L)/std(L)\|^2 / target^2` |
 
 ### Scalar cost aggregation
 
@@ -280,111 +278,72 @@ The optimizer minimizes this scalar. After convergence, `polish=True` refines wi
 
 ---
 
-## 5. Project Comparison
+## 5. Active Projects
 
-| | **SiN_aSi** | **Ta2O5_Voyager** | **aSi_Voyager** |
+| | **aLIGO** | **Voyager aSiSiN** | **Voyager Ta2O5** |
 |---|---|---|---|
-| **Status** | Active | Active | Dormant |
-| **High-n material** | a-Si (n=3.65) | Ta2O5 (n=2.083) | a-Si |
-| **Low-n material** | SiN (n=2.17) | SiO2 (n=1.435) | -- |
-| **Primary wavelength** | 2050.15 nm | 2128.2 nm | -- |
-| **Auxiliary wavelength** | 1550 nm | 1418.8 nm | -- |
-| **Temperature** | 123 K | 123 K | -- |
-| **ETM layer pairs** | 14 | 22 | 9 |
-| **ITM layer pairs** | 19 | 19 | -- |
-| **ETM popsize** | 200 | 10 | 20 |
-| **ITM popsize** | 12 | 12 | -- |
-| **ETM init method** | halton | latinhypercube | -- |
-| **Config format** | New (dict-style) | New (dict-style) | Old (list-style) |
-| **GWINC struct file** | aSiSiN.yaml | Ta2O5_ETM.yml / Ta2O5_ITM.yml | aSiModel.yaml |
-| **Entry points** | mkETM.py, mkITM.py | mkETM.py, mkITM.py | mkMirror.py |
-| **Output format** | HDF5 | HDF5 | .mat (legacy) |
-| **Has doMC.py** | Yes | Yes | No |
+| **Directory** | `projects/aLIGO/` | `projects/Voyager_aSiSiN/` | `projects/Voyager_Ta2O5/` |
+| **High-n material** | TiTa2O5 (n=2.06) | a-Si (n=3.65) | Ta2O5 (n=2.0) |
+| **Low-n material** | SiO2 (n=1.45) | SiN (n=2.17) | SiO2 (n=1.435) |
+| **Primary wavelength** | 1064 nm | 2050 nm | 2050 nm |
+| **Temperature** | 295 K | 123 K | 123 K |
+| **Substrate** | Fused silica | c-Si | c-Si |
 
 ---
 
 ## 6. Config Format Reference
 
-### New dict-style format (`ETM_params.yml`, `ITM_params.yml`)
-
-Used by all active projects. Loaded by `importParams()`, passed directly to `getMirrorCost`.
+### `ETM_params.yml` (cost function and optimizer settings)
 
 ```yaml
-# Cost function terms: each key maps to {target, weight}
-# Set weight: 0 to disable a term
 costs:
-    Trans1064:                # Transmission at primary laser wavelength
-        target: 5e-6         # Target value (5 ppm)
-        weight: 5            # Relative weight in scalar cost
-    Brownian:                # Brownian thermal noise proxy
-        target: 0.1
+    Trans1064:
+        target: 5e-6
+        weight: 15
+    Brownian:
+        target: 20.0
         weight: 2
-    Thermooptic:             # Thermo-optic noise
-        target: 1e43         # Large target = small cost contribution
+    Thermooptic:
+        target: 1.6e-42
         weight: 2
-    Lsens:                   # Layer thickness sensitivity
-        target: 1e-7
-        weight: 0            # Disabled
-    Esurf:                   # Surface E-field
-        target: 1e-9
-        weight: 0
-    Absorption:              # Integrated absorption (NOT IMPLEMENTED)
-        target: 1e-4
-        weight: 0
-    Trans532:                # Transmission at auxiliary wavelength
-        target: 1000e-6
-        weight: 0
-    TransOPLEV:              # Transmission at optical lever wavelength
-        target: 0.05
-        weight: 0
-    Lstdev:                  # Layer thickness uniformity
-        target: 0.5
-        weight: 0
+    # ... other terms with weight: 0 to disable
 
-# Miscellaneous optimizer and physics parameters
 misc:
-    fTO: 100                 # Frequency for TO noise evaluation [Hz]
-    pol: 'te'                # Polarization ('te' = s-pol, 'tm' = p-pol)
-    aoi: 0                   # Angle of incidence [degrees]
-    Npairs: 14               # Number of bilayer pairs to optimize
-    Nfixed: 0                # Fixed bilayers appended after variable stack
-    Ncopies: 0               # Copies of variable stack to append
-    Nparticles: 200          # Population size for differential evolution
-    atol: 3e-9               # Absolute tolerance for convergence
-    tol: 1e-2                # Relative tolerance for convergence
-    init_method: 'halton'    # Population initialization ('halton' or 'latinhypercube')
-    gwincStructFile: 'aSiSiN.yaml'  # Path to GWINC material properties
+    Npairs: 18
+    Nparticles: 500
+    atol: 1e-10
+    tol: 1e-3
+    init_method: halton
+    lambdaAUX: 0.5
+    materials_file: materials.yml
 ```
 
-### Old list-style format (`params.yml` in aSi_Voyager)
-
-Legacy format. **Not used by active `mkETM.py`/`mkITM.py` scripts.**
+### `materials.yml` (material properties)
 
 ```yaml
-costs:    [Trans, coatBr, coatTO, sensL, surfE]
-targets:  [5e-6, 1, 1e+42, 1e-2, 0]
-weights:  [0.3, 1, 1e-9, 0.03, 1]
-Npairs:   9
-Nparticles: 20
-fTO:      100
-aoi:      0
-pol:      'te'
-gwincStructFile: aSiModel.m
+substrate:
+  material: FusedSilica        # from OptimalBragg.materials library
+  overrides:
+    Temp: 295
+    MassRadius: 0.17
+    MassThickness: 0.20
+
+thin_films:
+  L:
+    material: SiO2
+  H:
+    material: TiTa2O5
+
+laser:
+  wavelength: 1064e-9
+  power: 125
+
+optics:
+  ETM:
+    beam_radius: 0.062
+  ITM:
+    beam_radius: 0.055
 ```
 
----
-
-## 7. Known Architecture Issues
-
-1. **Absorption cost not implemented** -- The `Absorption` key is accepted in the config but does nothing in the optimizer. The underlying `calcAbsorption` function exists in `coatingUtils` for post-analysis only.
-
-2. **`specREFL` hardcodes Ta2O5/SiO2 dispersion** -- The function loads dispersion data from a `.mat` file keyed to `'SiO2'` and `'Ta2O5'`, making it unusable for SiN/a-Si materials without modification.
-
-### Resolved Issues (refactor/speed-and-robustness branch)
-
-- ~~`generic_local/` duplication~~ -- Eliminated. All projects import from canonical `generic/`.
-- ~~Old vs new `getMirrorCost` signature~~ -- Unified to dict-style API.
-- ~~Hardcoded AUX wavelength ratios~~ -- Now configurable via `lambdaAUX` in params YAML.
-- ~~`doMC.py` reads `.mat` files~~ -- Updated to read HDF5 output.
-- ~~No `__init__.py`~~ -- `generic/__init__.py` added; proper package structure with `pyproject.toml`.
-- ~~README describes only MATLAB workflows~~ -- Updated with Python pipeline docs.
+The `load_materials_yaml()` function resolves material names against the library,
+applies overrides, and returns Material objects ready for `qw_stack()`.
