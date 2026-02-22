@@ -1,0 +1,449 @@
+"""Cost functions for coating optimization.
+
+Uses a multiplicative scalar cost ``C = prod(1 + w_i * c_i)`` where
+each factor ``c_i`` is O(1).  Every factor is >= 1, so no single term
+can zero the product — the optimizer cannot sacrifice one objective
+for another, unlike an additive weighted sum.
+
+Two APIs:
+
+- **Individual cost functions** (``transmissionCost``, ``brownianCost``,
+  etc.) — each returns a single scalar cost, useful for analysis.
+- **Master evaluator** :func:`getMirrorCost` — the hot-path function
+  called by ``differential_evolution``.  Uses consolidated ``multidiel1``
+  calls and pre-computed caches for speed.
+
+All functions work with a stack dict (from :func:`OptimalBragg.qw_stack`)
+and optical thicknesses.  No gwinc dependency.
+"""
+
+import numpy as np
+
+from OptimalBragg.layers import multidiel1, field_zmag, calc_abs, op2phys
+from OptimalBragg.noise import (
+    coating_thermooptic_fast,
+    extract_stack_params,
+    brownian_proxy,
+)
+
+
+# ── Normalization decorator ──────────────────────────────────────────
+
+def norm(norm_arg):
+    """Decorator to apply a normalization to a cost function's return value.
+
+    Supported norms: ``"l1"`` (identity), ``"l2"`` (square),
+    ``"arcsinh"`` (smooth compression of large values).
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            ci = func(*args, **kwargs)
+            if norm_arg == "l2":
+                return ci ** 2
+            elif norm_arg == "arcsinh":
+                return np.arcsinh(ci)
+            return ci  # l1
+        wrapper.__name__ = func.__name__
+        wrapper.__doc__ = func.__doc__
+        return wrapper
+    return decorator
+
+
+# ── Individual cost functions ────────────────────────────────────────
+
+def transmissionCost(target, n, L, lamb=1, theta=0, pol='te'):
+    """Transmission cost: ``|target - T|^2 / target^2``.
+
+    Parameters
+    ----------
+    target : float
+        Target power transmission.
+    n : array_like
+        Refractive indices [incident, layers..., substrate].
+    L : array_like
+        Optical thicknesses (fraction of design wavelength).
+    lamb : float or array_like
+        Normalized wavelength(s). Default 1.
+    theta : float
+        Angle of incidence [degrees]. Default 0.
+    pol : str
+        Polarization. Default ``'te'``.
+
+    Returns
+    -------
+    cost : float
+        Normalized squared error.
+    T : float or ndarray
+        Power transmission.
+    """
+    r, _ = multidiel1(n, L, lamb, theta, pol)
+    T = 1 - np.abs(r) ** 2
+    return (np.abs((target - T) / target) ** 2)[0], T
+
+
+def sensitivityCost(target, n, L, lamb=1, theta=0, pol='te'):
+    """Layer thickness sensitivity: transmission cost at 1.01 * L."""
+    return transmissionCost(target, n, 1.01 * L, lamb, theta, pol)[0]
+
+
+def surfEfieldCost(target, n, L, lamb=1, theta=0, pol='te'):
+    """Surface E-field cost: ``50 * arcsinh(|1 + r|^2)``."""
+    r, _ = multidiel1(n, L, lamb, theta, pol)
+    return (50 * np.arcsinh(np.abs(1 + r) ** 2))[0]
+
+
+def stdevLCost(target, L):
+    """Layer thickness uniformity: penalizes mean/std deviation from target."""
+    if np.std(np.array(L)):
+        relative_stdev = np.mean(np.array(L)) / np.std(np.array(L))
+    else:
+        relative_stdev = 0.0
+    return np.abs((target - relative_stdev) / target) ** 2
+
+
+def brownianCost(target, L, gam):
+    """Brownian noise proxy cost (LIGO-E0900068).
+
+    Parameters
+    ----------
+    target : float
+        Reference Brownian proxy value (e.g. QW stack).
+    L : array_like
+        Optical thicknesses.
+    gam : float or dict
+        Brownian proxy factor.  If dict, uses the first value
+        (for binary stacks with a single high-n material).
+
+    Returns
+    -------
+    float
+        Normalized proxy: ``SBrZ / target``.
+    """
+    if isinstance(gam, dict):
+        gam_val = next(iter(gam.values()))
+    else:
+        gam_val = gam
+    zLow = np.sum(L[::2])
+    zHigh = np.sum(L[1::2])
+    SBrZ = zLow + gam_val * zHigh
+    return SBrZ / target
+
+
+def thermoopticCost(target, fTarget, L, stack, stack_params=None,
+                    w_beam=None):
+    """Thermo-optic noise cost (JIT-compiled).
+
+    Parameters
+    ----------
+    target : float
+        Reference S_TO value for normalization.
+    fTarget : float
+        Frequency [Hz].
+    L : array_like
+        Optical thicknesses.
+    stack : dict
+        Stack dict.
+    stack_params : tuple, optional
+        Pre-computed from :func:`extract_stack_params`.
+    w_beam : float, optional
+        Beam radius [m].  Required if *stack_params* is None.
+
+    Returns
+    -------
+    float
+        Normalized TO noise: ``S_TO / target``.
+    """
+    wavelength = stack["lam_ref"]
+    if stack_params is None:
+        raise ValueError("stack_params required (from extract_stack_params)")
+    if w_beam is None:
+        raise ValueError("w_beam required")
+    StoZ = coating_thermooptic_fast(fTarget, L, wavelength, w_beam,
+                                    stack_params)
+    return StoZ / target
+
+
+# ── Pre-computation cache ────────────────────────────────────────────
+
+def precompute_misc(costs, stack, misc):
+    """Pre-compute cached values for the getMirrorCost hot loop.
+
+    Call once before ``differential_evolution`` to populate *misc*
+    with values that are constant across all evaluations.
+
+    Parameters
+    ----------
+    costs : dict
+        Cost specifications (same as for :func:`getMirrorCost`).
+    stack : dict
+        Stack dict.
+    misc : dict
+        Updated in-place with cache keys.
+
+    Returns
+    -------
+    dict
+        The updated *misc* dict.
+    """
+    Ncopies = misc.get('Ncopies', 0)
+    Nfixed = misc.get('Nfixed', 0)
+
+    # Build refractive index array from stack, extending for copies/fixed
+    n_base = stack["ns"]  # [superstrate, layer1, ..., layerN, substrate]
+    n_layers_only = n_base[1:-1]  # just the coating layers
+
+    if Ncopies > 0 or Nfixed > 0:
+        n_low = stack["thin_films"]["L"].Index
+        n_high = stack["thin_films"]["H"].Index
+        extra = []
+        if Ncopies > 0:
+            extra.append(np.tile(n_layers_only[:-2], Ncopies))
+        if Nfixed > 0:
+            extra.append(np.tile(n_layers_only[-2:], Nfixed))
+        n_layers_ext = np.concatenate([n_layers_only] + extra)
+        n = np.empty(len(n_layers_ext) + 2)
+        n[0] = n_base[0]
+        n[1:-1] = n_layers_ext
+        n[-1] = n_base[-1]
+    else:
+        n = n_base
+
+    misc['_ifo_n'] = np.asarray(n, dtype=float)
+
+    # Active costs (nonzero weight)
+    active = frozenset(c for c, s in costs.items() if s['weight'])
+    misc['_active_costs'] = active
+
+    # AUX wavelength ratio
+    lambdaAUX = misc.get('lambdaAUX', 1550 / 2050)
+    misc['_lambdaAUX'] = lambdaAUX
+
+    # Wavelength array and map for consolidated multidiel1 call
+    wl_list, wl_map = [], {}
+    if 'Trans1064' in active or 'Esurf' in active:
+        wl_map['PSL'] = len(wl_list)
+        wl_list.append(1.0)
+    if 'Trans532' in active:
+        wl_map['AUX'] = len(wl_list)
+        wl_list.append(lambdaAUX)
+    if 'TransOPLEV' in active:
+        wl_map['OPL'] = len(wl_list)
+        wl_list.append(0.297)
+    misc['_wl_array'] = np.array(wl_list) if wl_list else None
+    misc['_wl_map'] = wl_map
+
+    # Sensitivity wavelengths
+    if 'Lsens' in active:
+        misc['_sens_wl'] = np.array([1.0, lambdaAUX])
+
+    # Pre-extract stack params for thermooptic JIT
+    if 'Thermooptic' in active:
+        r_mirror = misc.get('r_mirror', 0.17)
+        d_mirror = misc.get('d_mirror', 0.20)
+        misc['_stack_params'] = extract_stack_params(
+            stack, r_mirror, d_mirror
+        )
+
+    return misc
+
+
+# ── Master cost evaluator ────────────────────────────────────────────
+
+def getMirrorCost(L, costs, stack, gam, verbose=False, misc={}):
+    """Master cost function for coating optimization.
+
+    Evaluates a multiplicative product of sub-costs:
+    ``C = prod(1 + w_i * c_i)`` where each ``c_i`` is O(1).
+
+    Uses consolidated ``multidiel1`` calls: one call with all active
+    wavelengths for transmission/E-field costs, and one call with
+    perturbed thicknesses for sensitivity cost.
+
+    Parameters
+    ----------
+    L : array_like
+        Optical thicknesses of the candidate dielectric stack.
+    costs : dict
+        Cost specifications. Each key maps to
+        ``{'target': float, 'weight': float}``.  Supported keys:
+        ``Trans1064``, ``Trans532``, ``TransOPLEV``, ``Brownian``,
+        ``Thermooptic``, ``Lsens``, ``Esurf``, ``Lstdev``, ``Absorption``.
+    stack : dict
+        Stack dict from :func:`OptimalBragg.qw_stack`.
+    gam : float or dict
+        Brownian noise proxy factor from :func:`brownian_proxy`.
+    verbose : bool, optional
+        If True, return ``(scalar_cost, output_dict)``.
+    misc : dict, optional
+        Additional parameters and pre-computed cache.
+
+    Returns
+    -------
+    scalar_cost : float
+        Multiplicative product of all active cost terms.
+    output : dict
+        Only returned when ``verbose=True``.
+    """
+    # Extend L with copies/fixed layers
+    if misc.get('Ncopies', 0) > 0:
+        copiedLayers = np.tile(L[:-2].copy(), misc['Ncopies'])
+        L = np.append(L, copiedLayers)
+
+    if misc.get('Nfixed', 0) > 0:
+        fixedLayers = np.tile(L[-2:].copy(), misc['Nfixed'])
+        L = np.append(L, fixedLayers)
+
+    # Use pre-computed n array or build it
+    n = misc.get('_ifo_n')
+    if n is None:
+        n_low = stack["thin_films"]["L"].Index
+        n_high = stack["thin_films"]["H"].Index
+        n_sub = stack["sub"].Index
+        doublet = np.tile(np.array([n_low, n_high]),
+                          int(np.floor(len(L) / 2)))
+        if len(doublet) != len(L):
+            doublet = np.append(doublet, doublet[0])
+        n = np.append(1, doublet)
+        n = np.append(n, n_sub)
+
+    active = misc.get('_active_costs')
+    if active is None:
+        active = {c for c, s in costs.items() if s['weight']}
+
+    lambdaAUX = misc.get('_lambdaAUX')
+    if lambdaAUX is None:
+        lambdaAUX = misc.get('lambdaAUX', 1550 / 2050)
+
+    vector_cost, output = {}, {}
+    aoi, pol = misc.get('aoi', 0), misc.get('pol', 'te')
+
+    # --- Consolidated multidiel1 call for main wavelengths ---
+    wl_arr = misc.get('_wl_array')
+    wl_map = misc.get('_wl_map')
+    if wl_map is None:
+        wl_list, wl_map = [], {}
+        if 'Trans1064' in active or 'Esurf' in active:
+            wl_map['PSL'] = len(wl_list)
+            wl_list.append(1.0)
+        if 'Trans532' in active:
+            wl_map['AUX'] = len(wl_list)
+            wl_list.append(lambdaAUX)
+        if 'TransOPLEV' in active:
+            wl_map['OPL'] = len(wl_list)
+            wl_list.append(0.297)
+        wl_arr = np.array(wl_list) if wl_list else None
+
+    if wl_arr is not None and len(wl_arr) > 0:
+        r_main, _ = multidiel1(n, L, wl_arr, aoi, pol)
+        T_main = 1 - np.abs(r_main) ** 2
+
+    # Extract per-wavelength results
+    if 'Trans1064' in active:
+        idx = wl_map['PSL']
+        T1064 = T_main[idx]
+        vector_cost['Trans1064'] = np.abs(
+            (costs['Trans1064']['target'] - T1064)
+            / costs['Trans1064']['target']
+        ) ** 2
+        if verbose:
+            output['T1064'] = T1064
+            output['R1064'] = 1 - T1064
+
+    if 'Trans532' in active:
+        idx = wl_map['AUX']
+        T532 = T_main[idx]
+        vector_cost['Trans532'] = np.abs(
+            (costs['Trans532']['target'] - T532)
+            / costs['Trans532']['target']
+        ) ** 2
+        if verbose:
+            output['T532'] = T532
+            output['R532'] = 1 - T532
+
+    if 'TransOPLEV' in active:
+        idx = wl_map['OPL']
+        TOPL = T_main[idx]
+        vector_cost['TransOPLEV'] = np.abs(
+            (costs['TransOPLEV']['target'] - TOPL)
+            / costs['TransOPLEV']['target']
+        ) ** 2
+        if verbose:
+            output['TOPL'] = TOPL
+
+    if 'Esurf' in active:
+        idx = wl_map['PSL']
+        vector_cost['Esurf'] = 50 * np.arcsinh(
+            np.abs(1 + r_main[idx]) ** 2
+        )
+
+    # --- Brownian (no multidiel1 needed) ---
+    if 'Brownian' in active:
+        gam_val = next(iter(gam.values())) if isinstance(gam, dict) else gam
+        vector_cost['Brownian'] = (
+            L[::2].sum() + gam_val * L[1::2].sum()
+        ) / costs['Brownian']['target']
+
+    # --- Thermooptic (JIT-compiled) ---
+    if 'Thermooptic' in active:
+        stack_params = misc.get('_stack_params')
+        if stack_params is None:
+            r_mirror = misc.get('r_mirror', 0.17)
+            d_mirror = misc.get('d_mirror', 0.20)
+            stack_params = extract_stack_params(stack, r_mirror, d_mirror)
+        w_beam = misc.get('w_beam', 0.062)
+        StoZ = coating_thermooptic_fast(
+            misc.get('fTO', 100.0), L, stack["lam_ref"], w_beam,
+            stack_params,
+        )
+        vector_cost['Thermooptic'] = StoZ / costs['Thermooptic']['target']
+
+    # --- Absorption (E-field profile, slow) ---
+    if 'Absorption' in active:
+        wavelength = stack["lam_ref"]
+        L_phys = wavelength * op2phys(L, n[1:-1])
+        nPts = 4
+        _, Esq = field_zmag(
+            n, L_phys, lam=wavelength,
+            aoi=np.radians(aoi) if aoi else 0,
+            pol='s' if pol == 'te' else 'p', n_pts=nPts,
+        )
+        alphas = stack["alphas"]
+        absorp = calc_abs(Esq, L_phys, alphas)
+        target_abs = costs['Absorption']['target']
+        vector_cost['Absorption'] = np.abs(
+            (target_abs - absorp) / target_abs
+        )
+
+    # --- Layer thickness std dev ---
+    if 'Lstdev' in active:
+        vector_cost['Lstdev'] = stdevLCost(costs['Lstdev']['target'], L)
+
+    # --- Sensitivity (perturbed L) ---
+    if 'Lsens' in active:
+        L_pert = 1.01 * L
+        sens_wl = misc.get('_sens_wl')
+        if sens_wl is None:
+            sens_wl = np.array([1.0, lambdaAUX])
+        r_pert, _ = multidiel1(n, L_pert, sens_wl, aoi, pol)
+        T_pert = 1 - np.abs(r_pert) ** 2
+        target_sens = costs['Lsens']['target']
+        sensPSL = np.abs((target_sens - T_pert[0]) / target_sens) ** 2
+        sensAUX = np.abs((target_sens - T_pert[1]) / target_sens) ** 2
+        vector_cost['Lsens'] = np.sqrt(sensPSL ** 2 + sensAUX ** 2)
+
+    # Multiplicative product: C = prod(1 + w * c_i)
+    scalar_cost = 1.0
+    for cost_name, cost_val in vector_cost.items():
+        w = costs[cost_name]['weight']
+        scalar_cost *= (1 + w * cost_val)
+
+    if verbose:
+        for cost_name in vector_cost:
+            print(cost_name + f' cost = {vector_cost[cost_name]:.4f}')
+        output['n'] = n
+        output['L'] = L
+        output['scalarCost'] = scalar_cost
+        output['vectorCost'] = vector_cost
+        return scalar_cost, output
+    else:
+        return scalar_cost
