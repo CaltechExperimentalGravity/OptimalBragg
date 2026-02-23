@@ -5,6 +5,7 @@ will take the most recent coating design HDF5 and make plots of the
 E-field within the dielectric layer structure for aLIGO SiO2/Ta2O5."""
 
 import sys, glob, os
+import subprocess
 import h5py
 
 from gwinc import noise, Struct
@@ -27,10 +28,11 @@ os.makedirs(fpath, exist_ok=True)
 
 savePlots = True
 
-if len(sys.argv) == 1:
+_positional = [a for a in sys.argv[1:] if not a.startswith('--')]
+if not _positional:
     fname = max(glob.iglob(spath + "*Layers*.hdf5"), key=os.path.getctime)
 else:
-    fname = str(sys.argv[1])
+    fname = str(_positional[0])
 
 
 def h5read(targets):
@@ -373,12 +375,68 @@ def main(layers=True, trans=True, noise=True):
     opt_params = importParams("ITM_params.yml")
     ifo = Struct.from_file(opt_params["misc"]["gwincStructFile"])
     opt_params['_wavelength'] = ifo.Laser.Wavelength
+
+    # Check for existing MC data
+    mc_path = spath + 'ITM_MC.hdf5'
+    mc_exists = os.path.isfile(mc_path)
+    if mc_exists:
+        corner_path = fpath + 'ITM_nominal_cornerPlt.svg'
+        if os.path.isfile(corner_path):
+            fig_paths['corner'] = 'Figures/ITM/ITM_nominal_cornerPlt.svg'
+
     _, rst_path = generate_run_rst(fname, 'ITM', fig_paths, opt_params,
-                                   project_dir='Arms')
+                                   project_dir='Arms',
+                                   mc_hdf5_path=mc_path if mc_exists else None)
     print(f"Run report: {rst_path}")
+
+    # Launch MC in background (unless --no-mc flag)
+    if '--no-mc' not in sys.argv:
+        print("Launching MC in background (5000 samples)...")
+        subprocess.Popen(
+            [sys.executable, __file__, fname, '--mc-bg'],
+            cwd=os.getcwd(),
+            stdout=open(spath + 'mc_bg.log', 'w'),
+            stderr=subprocess.STDOUT,
+        )
+
+
+def _run_mc_background(layers_hdf5):
+    """Background job: run MC, generate corner plot, update report."""
+    mc_path = spath + 'ITM_MC.hdf5'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # 1. Run doMC_ITM as subprocess
+    subprocess.run(
+        [sys.executable, os.path.join(script_dir, 'doMC_ITM.py'),
+         layers_hdf5, mc_path, '5000'],
+        check=True, cwd=os.getcwd(),
+    )
+
+    # 2. Generate corner plot
+    from cornerPlt import make_corner
+    make_corner(mc_path, mirror_type='ITM')
+
+    # 3. Regenerate report with MC data
+    ts = layers_hdf5[-16:-5]
+    fig_paths = {
+        'layers': f'Figures/ITM/ITM_Layers_{ts}.svg',
+        'reflectivity': f'Figures/ITM/ITM_R{ts}.svg',
+        'starfish': f'Figures/ITM/ITM_SF{ts}.png',
+        'thermal_noise': f'Figures/ITM/ITM_TN_{ts}.svg',
+        'corner': 'Figures/ITM/ITM_nominal_cornerPlt.svg',
+    }
+    opt_params = importParams("ITM_params.yml")
+    ifo = Struct.from_file(opt_params["misc"]["gwincStructFile"])
+    opt_params['_wavelength'] = ifo.Laser.Wavelength
+    _, rst_path = generate_run_rst(layers_hdf5, 'ITM', fig_paths, opt_params,
+                                   project_dir='Arms', mc_hdf5_path=mc_path)
+    print(f"MC complete. Updated report: {rst_path}")
 
 
 if __name__ == "__main__":
-    if __debug__:
-        print("Make plots...")
-    main(layers=True, trans=True, noise=False)
+    if '--mc-bg' in sys.argv:
+        _run_mc_background(sys.argv[1])
+    else:
+        if __debug__:
+            print("Make plots...")
+        main(layers=True, trans=True, noise=False)

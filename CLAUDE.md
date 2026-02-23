@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Behavioral Rules
+
+These rules override all defaults. They exist because of real failures. Do not rationalize around them.
+
+1. **When the user says "look at X" — read X immediately.** Do not regenerate, recalculate, or re-derive. Open the file they pointed to and read it. The user is telling you where the evidence is.
+
+2. **Verify outputs before claiming success.** After any pipeline step (optimize, plot, MC, corner, report), examine the actual outputs: render plots to PNG and look at them, read the .rst report, check for NaN/missing traces/broken labels. Never say "done" based on exit code alone.
+
+3. **Do not argue with the user about what they observe.** If the user says a plot is broken or a value is wrong, it IS broken. Read what they point you to. Do not run new calculations to "prove" it's fine.
+
+4. **"This repo" means `/Users/rana/Desktop/Dropbox/GIT/40m/Coatings`.** Not `~/.claude/`, not `/tmp/`. Instruction files live here: `CLAUDE.md`, `CODEMAP.md`, `README.md`.
+
+5. **Update THIS FILE when you learn a new rule.** Context compaction will erase conversation history. The only durable memory is in repo files. When a mistake reveals a new pattern, add it to the relevant section of this CLAUDE.md so future sessions inherit the lesson.
+
+## Critical Units Convention
+
+- `stack['Ls']` = physical layer thickness in **metres** (SI). Set by `qw_stack()` as `(lam_ref / 4) / n`.
+- `stack['Ls_opt']` = optical thickness as **fraction of lambda** (dimensionless, ~0.25 for QW).
+- `op2phys(L_opt, n)` returns `L_opt / n` — still a **fraction**, NOT metres. Multiply by `wavelength` to get metres.
+- Always check units when writing code that touches `stack['Ls']`. A 1e6 error here silently corrupts thermal noise.
+
 ## Project Overview
 
 Optical coating optimization for gravitational wave detector mirrors. The `OptimalBragg` package designs high-reflectivity dielectric stacks by globally optimizing a multiplicative cost function that balances transmissivity, thermal noise, manufacturing tolerance, and surface E-field constraints.
@@ -33,6 +54,12 @@ Output: `Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5`
 **Or from a project directory:**
 ```bash
 cd projects/aLIGO && python mkETM.py
+```
+
+**Sweep Npairs to find optimal layer count:**
+```bash
+optimalbragg sweep projects/aLIGO/ETM_params.yml
+optimalbragg sweep projects/aLIGO/ETM_params.yml --min-pairs 16 --max-pairs 24
 ```
 
 **Monte Carlo sensitivity analysis:**

@@ -6,6 +6,7 @@ index of all run reports.
 """
 import os
 import re
+import subprocess
 import h5py
 import numpy as np
 from datetime import datetime
@@ -77,7 +78,7 @@ def _format_target(target, metric_name):
 
 
 def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
-                     project_dir='Arms'):
+                     project_dir='Arms', mc_hdf5_path=None):
     """Generate a .rst file for one optimization run.
 
     Parameters
@@ -93,6 +94,9 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
         Optimization parameters (from importParams).
     project_dir : str
         Project directory name ('Arms' or 'SiN_aSi').
+    mc_hdf5_path : str, optional
+        Path to Monte Carlo output HDF5 (with ``MCout`` dataset).
+        If provided, MC statistics and corner plot are included.
 
     Returns
     -------
@@ -286,6 +290,72 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
             '',
         ])
 
+    # Monte Carlo sensitivity section
+    mc_labels = [
+        ('T1064_ppm', r':math:`T_{1064}` [ppm]'),
+        ('T532_pct', r':math:`T_{532}` [%]'),
+        ('S_TO', r':math:`S_\mathrm{TO}` [:math:`\times 10^{-21}` m/:math:`\sqrt{\mathrm{Hz}}`]'),
+        ('S_Br', r':math:`S_\mathrm{Br}` [:math:`\times 10^{-21}` m/:math:`\sqrt{\mathrm{Hz}}`]'),
+        ('E_surf', r':math:`E_\mathrm{surface}` [V/m]'),
+    ]
+
+    if mc_hdf5_path and os.path.isfile(mc_hdf5_path):
+        lines.extend([
+            'Monte Carlo Sensitivity',
+            '-----------------------',
+            '',
+        ])
+        try:
+            with h5py.File(mc_hdf5_path, 'r') as fmc:
+                mc_samples = np.array(fmc['MCout'][:])
+            n_obs, n_mc = mc_samples.shape
+            lines.extend([
+                f'Ensemble of {n_mc} Monte Carlo samples with 0.5% Gaussian perturbations',
+                f'on angle of incidence, refractive indices, and layer thicknesses.',
+                '',
+                '.. list-table:: MC Statistics (median, 5th-95th percentile)',
+                '   :header-rows: 1',
+                '   :widths: 40 20 20 20',
+                '',
+                '   * - Observable',
+                '     - Median',
+                '     - 5th %ile',
+                '     - 95th %ile',
+            ])
+            for i in range(min(n_obs, len(mc_labels))):
+                row = mc_samples[i]
+                med = np.median(row)
+                lo = np.percentile(row, 5)
+                hi = np.percentile(row, 95)
+                _, label = mc_labels[i]
+                lines.extend([
+                    f'   * - {label}',
+                    f'     - {med:.4g}',
+                    f'     - {lo:.4g}',
+                    f'     - {hi:.4g}',
+                ])
+            lines.append('')
+        except Exception:
+            lines.extend(['*Could not read MC data.*', ''])
+
+        if 'corner' in fig_paths:
+            lines.extend([
+                f'.. image:: {rel_prefix}/{fig_paths["corner"]}',
+                '   :width: 100%',
+                '',
+                'Corner plot showing pairwise correlations and marginal distributions',
+                'from the Monte Carlo sensitivity analysis.',
+                '',
+            ])
+    else:
+        lines.extend([
+            'Monte Carlo Sensitivity',
+            '-----------------------',
+            '',
+            '*Monte Carlo analysis pending. Re-run report generation after MC completes.*',
+            '',
+        ])
+
     rst_content = '\n'.join(lines) + '\n'
 
     # Write the .rst file (always relative to project root)
@@ -295,8 +365,9 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
     with open(rst_path, 'w') as f:
         f.write(rst_content)
 
-    # Regenerate the index
+    # Regenerate the index and rebuild HTML
     regenerate_runs_index(os.path.join(_PROJECT_ROOT, 'docs', 'runs'))
+    build_html()
 
     return rst_content, rst_path
 
@@ -356,3 +427,29 @@ def regenerate_runs_index(runs_dir):
     index_path = os.path.join(runs_dir, 'index.rst')
     with open(index_path, 'w') as f:
         f.write('\n'.join(lines) + '\n')
+
+
+def build_html():
+    """Run ``make html`` in the docs/ directory to rebuild Sphinx pages.
+
+    Failures are printed but do not raise — report .rst is still useful
+    even if the HTML build fails (e.g. missing Sphinx install).
+    """
+    docs_dir = os.path.join(_PROJECT_ROOT, 'docs')
+    if not os.path.isfile(os.path.join(docs_dir, 'Makefile')):
+        return
+    try:
+        result = subprocess.run(
+            ['make', 'html'],
+            cwd=docs_dir,
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0:
+            print(f"Sphinx HTML built: {docs_dir}/_build/html/")
+        else:
+            print(f"Sphinx build warning (exit {result.returncode}): "
+                  f"{result.stderr[-200:] if result.stderr else 'no details'}")
+    except FileNotFoundError:
+        print("Sphinx build skipped: 'make' not found")
+    except subprocess.TimeoutExpired:
+        print("Sphinx build skipped: timed out after 120s")

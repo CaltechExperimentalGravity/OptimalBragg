@@ -31,67 +31,60 @@ def h5read(fname, group, targets):
     return data
 
 
+def _h5_write_value(group, key, value):
+    """Write a single value into an HDF5 group.
+
+    Scalars (int, float, str) are written as scalar datasets so they
+    can be read back with ``group[key]``.  Material objects are stored
+    as sub-groups with their properties as attrs.
+    """
+    from OptimalBragg import Material
+
+    if isinstance(value, Material):
+        g = group.create_group(value.Name)
+        g.attrs.create("key", key)
+        for mk, mv in value.__dict__.items():
+            g.attrs.create(mk, mv)
+    elif isinstance(value, dict):
+        g = group.create_group(key)
+        for kk, vv in value.items():
+            _h5_write_value(g, kk, vv)
+    else:
+        group.create_dataset(key, data=value)
+
+
 def h5write(fname, h5_dict):
     """Helper function to write hdf5 files with
     coating designs, optimization, results, etc.
 
     Args:
         fname (str): Path to h5file
-        h5_dict (dict): Dictionary of depth <= 3.
+        h5_dict (dict): Dictionary of arbitrary depth.
             Material objects are serialized as HDF5 groups
             with their attributes stored as HDF5 attrs.
     """
-    from OptimalBragg import Material
-
     with h5py.File(fname, "w") as f:
         for k, v in h5_dict.items():
-            if isinstance(v, dict):
-                f.create_group(k)
-                for kk, vv in v.items():
-                    if isinstance(vv, dict):
-                        f[k].create_group(kk)
-                        for kkk, vvv in vv.items():
-                            if (
-                                isinstance(vvv, int)
-                                or isinstance(vvv, float)
-                                or isinstance(vvv, str)
-                            ):
-                                f[k][kk].attrs.create(kkk, vvv)
-                            elif isinstance(vvv, Material):
-                                f[k][kk].create_group(vvv.Name)
-                                f[k][kk][vvv.Name].attrs.create("key", kkk)
-                                for mk, mv in vvv.__dict__.items():
-                                    f[k][kk][vvv.Name].attrs.create(mk, mv)
-                            else:
-                                f[k][kk].create_dataset(kkk, data=vvv)
-                    elif isinstance(vv, Material):
-                        f[k].create_group(vv.Name)
-                        f[k][vv.Name].attrs.create("key", kk)
-                        for mk, mv in vv.__dict__.items():
-                            f[k][vv.Name].attrs.create(mk, mv)
-                    else:
-                        if (
-                            isinstance(vv, int)
-                            or isinstance(vv, float)
-                            or isinstance(vv, str)
-                        ):
-                            f[k].attrs.create(kk, vv)
-                        else:
-                            f[k].create_dataset(kk, data=vv)
-            elif isinstance(v, Material):
-                f.create_group(v.Name)
-                f[v.Name].attrs.create("key", k)
-                for mk, mv in v.__dict__.items():
-                    f[v.Name].attrs.create(mk, mv)
-            else:
-                if (
-                    isinstance(v, int)
-                    or isinstance(v, float)
-                    or isinstance(v, str)
-                ):
-                    f.attrs.create(k, v)
-                else:
-                    f.create_dataset(k, data=v)
+            _h5_write_value(f, k, v)
+
+
+def _coerce_numerics(obj):
+    """Recursively convert string values that look like numbers to floats.
+
+    YAML safe_load treats values like ``5e-6`` or ``1064e-9`` (no decimal
+    point) as strings.  This function walks a nested dict/list and converts
+    any such strings to ``float``.
+    """
+    if isinstance(obj, dict):
+        return {k: _coerce_numerics(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_coerce_numerics(v) for v in obj]
+    if isinstance(obj, str):
+        try:
+            return float(obj)
+        except ValueError:
+            return obj
+    return obj
 
 
 def yamlread(fname):
@@ -106,7 +99,7 @@ def yamlread(fname):
     """
     with open(fname, "r") as f:
         params = yaml.safe_load(f)
-    return params
+    return _coerce_numerics(params)
 
 
 def load_materials_yaml(fname):
@@ -168,20 +161,10 @@ def load_materials_yaml(fname):
             mat_props.update({k: v for k, v in spec.items() if k != "material"})
             thin_films[key] = Material({"Properties": mat_props})
 
-    # Ensure numeric values in laser config are floats (YAML safe_load
-    # treats values like '1064e-9' as strings when there's no decimal point)
-    laser = raw.get("laser", {})
-    for k, v in laser.items():
-        if isinstance(v, str):
-            try:
-                laser[k] = float(v)
-            except ValueError:
-                pass
-
     result = {
         "substrate": substrate,
         "thin_films": thin_films,
-        "laser": laser,
+        "laser": raw.get("laser", {}),
         "optics": raw.get("optics", {}),
     }
     return result

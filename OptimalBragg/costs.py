@@ -87,9 +87,15 @@ def sensitivityCost(target, n, L, lamb=1, theta=0, pol='te'):
 
 
 def surfEfieldCost(target, n, L, lamb=1, theta=0, pol='te'):
-    """Surface E-field cost: ``50 * arcsinh(|1 + r|^2)``."""
+    """Surface E-field threshold penalty.
+
+    Returns 0 when ``|1+r|^2 <= target``, quadratic penalty above.
+    For high reflectivity coatings with HL pattern (high-n on top),
+    ``|1+r|^2`` is naturally near zero.
+    """
     r, _ = multidiel1(n, L, lamb, theta, pol)
-    return (50 * np.arcsinh(np.abs(1 + r) ** 2))[0]
+    Esurf_sq = np.abs(1 + r[0]) ** 2
+    return max(0.0, Esurf_sq / target - 1.0) ** 2
 
 
 def stdevLCost(target, L):
@@ -102,12 +108,15 @@ def stdevLCost(target, L):
 
 
 def brownianCost(target, L, gam):
-    """Brownian noise proxy cost (LIGO-E0900068).
+    """Brownian noise threshold penalty (LIGO-E0900068).
+
+    Returns 0 when noise proxy is at or below *target*, and a quadratic
+    penalty ``(SBrZ/target - 1)^2`` when above.
 
     Parameters
     ----------
     target : float
-        Reference Brownian proxy value (e.g. QW stack).
+        Brownian proxy budget (e.g. QW stack reference).
     L : array_like
         Optical thicknesses.
     gam : float or dict
@@ -117,7 +126,7 @@ def brownianCost(target, L, gam):
     Returns
     -------
     float
-        Normalized proxy: ``SBrZ / target``.
+        Threshold penalty: ``max(0, SBrZ/target - 1)^2``.
     """
     if isinstance(gam, dict):
         gam_val = next(iter(gam.values()))
@@ -126,17 +135,19 @@ def brownianCost(target, L, gam):
     zLow = np.sum(L[::2])
     zHigh = np.sum(L[1::2])
     SBrZ = zLow + gam_val * zHigh
-    return SBrZ / target
+    return max(0.0, SBrZ / target - 1.0) ** 2
 
 
 def thermoopticCost(target, fTarget, L, stack, stack_params=None,
                     w_beam=None):
-    """Thermo-optic noise cost (JIT-compiled).
+    """Thermo-optic noise threshold penalty (JIT-compiled).
+
+    Returns 0 when S_TO is at or below *target*, quadratic above.
 
     Parameters
     ----------
     target : float
-        Reference S_TO value for normalization.
+        S_TO budget for normalization.
     fTarget : float
         Frequency [Hz].
     L : array_like
@@ -160,7 +171,7 @@ def thermoopticCost(target, fTarget, L, stack, stack_params=None,
         raise ValueError("w_beam required")
     StoZ = coating_thermooptic_fast(fTarget, L, wavelength, w_beam,
                                     stack_params)
-    return StoZ / target
+    return max(0.0, StoZ / target - 1.0) ** 2
 
 
 # ── Pre-computation cache ────────────────────────────────────────────
@@ -372,18 +383,23 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc={}):
 
     if 'Esurf' in active:
         idx = wl_map['PSL']
-        vector_cost['Esurf'] = 50 * np.arcsinh(
-            np.abs(1 + r_main[idx]) ** 2
-        )
+        Esurf_sq = np.abs(1 + r_main[idx]) ** 2
+        target_Esurf = costs['Esurf']['target']
+        excess = Esurf_sq / target_Esurf - 1.0
+        vector_cost['Esurf'] = max(0.0, excess) ** 2
+        if verbose:
+            output['Esurf'] = Esurf_sq
 
     # --- Brownian (no multidiel1 needed) ---
+    # Threshold penalty: zero at/below target, quadratic above.
     if 'Brownian' in active:
         gam_val = next(iter(gam.values())) if isinstance(gam, dict) else gam
-        vector_cost['Brownian'] = (
-            L[::2].sum() + gam_val * L[1::2].sum()
-        ) / costs['Brownian']['target']
+        SBrZ = (L[::2].sum() + gam_val * L[1::2].sum())
+        excess = SBrZ / costs['Brownian']['target'] - 1.0
+        vector_cost['Brownian'] = max(0.0, excess) ** 2
 
     # --- Thermooptic (JIT-compiled) ---
+    # Threshold penalty: zero at/below target, quadratic above.
     if 'Thermooptic' in active:
         stack_params = misc.get('_stack_params')
         if stack_params is None:
@@ -395,7 +411,8 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc={}):
             misc.get('fTO', 100.0), L, stack["lam_ref"], w_beam,
             stack_params,
         )
-        vector_cost['Thermooptic'] = StoZ / costs['Thermooptic']['target']
+        excess = StoZ / costs['Thermooptic']['target'] - 1.0
+        vector_cost['Thermooptic'] = max(0.0, excess) ** 2
 
     # --- Absorption (E-field profile, slow) ---
     if 'Absorption' in active:

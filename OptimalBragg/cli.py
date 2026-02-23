@@ -75,7 +75,7 @@ def cmd_plot(args):
     fig_dir = params_dir / 'Figures' / optic
     os.makedirs(fig_dir, exist_ok=True)
 
-    ts = Path(hdf5_path).stem[-11:]  # YYMMDD_HHMMSS
+    ts = Path(hdf5_path).stem[-13:]  # YYMMDD_HHMMSS
 
     apply_style()
 
@@ -102,15 +102,16 @@ def cmd_plot(args):
                 except KeyError:
                     pass
 
-    sf_path = str(fig_dir / f'{optic}_SF{ts}.png')
+    sf_path = str(fig_dir / f'{optic}_SF{ts}.svg')
     if stats:
         plot_starfish(stats, scale=10, save_path=sf_path,
                       title=f'{optic}: {len(L_opt)} layers')
-        print(f"  Saved: {optic}_SF{ts}.png")
+        print(f"  Saved: {optic}_SF{ts}.svg")
 
     # Spectral reflectivity
+    lambda_aux = opt_params['misc'].get('lambdaAUX', 0.5)
     plot_spectral(n, L_opt, wavelength, T1064=T1064,
-                  starfish_path=sf_path if stats else None,
+                  lambda_aux=lambda_aux,
                   save_path=str(fig_dir / f'{optic}_R{ts}.svg'))
     print(f"  Saved: {optic}_R{ts}.svg")
 
@@ -119,13 +120,15 @@ def cmd_plot(args):
     from OptimalBragg.materials import air
     from OptimalBragg.noise import brownian_proxy
 
-    Npairs = misc.get('Npairs', len(L_opt) // 2)
+    hwcap = misc.get('hwcap', '')
+    Npairs = misc.get('Npairs', (len(L_opt) - len(hwcap)) // 2)
     stack = qw_stack(
         lam_ref=wavelength,
         substrate=materials['substrate'],
         superstrate=Material(air),
         thin_films=materials['thin_films'],
         pattern='LH' * Npairs,
+        hwcap=hwcap,
     )
     # Override with optimized thicknesses
     stack['Ls_opt'] = L_opt.copy()
@@ -157,6 +160,22 @@ def cmd_mc(args):
     result = run_mc(args.hdf5, n_samples=args.n_samples)
     save_mc(result, args.output)
     print(f"Saved {args.n_samples} MC samples to {args.output}")
+
+
+def cmd_sweep(args):
+    """Sweep Npairs to find minimum that hits all targets."""
+    from OptimalBragg.optimizer import sweep_nlayers
+
+    n_range = None
+    if args.min_pairs is not None and args.max_pairs is not None:
+        n_range = (args.min_pairs, args.max_pairs)
+
+    sweep_nlayers(
+        args.params,
+        n_range=n_range,
+        save=not args.no_save,
+        optic=args.optic,
+    )
 
 
 def cmd_corner(args):
@@ -212,6 +231,17 @@ def main():
     p_mc.add_argument('output', help='Output HDF5 path')
     p_mc.add_argument('n_samples', type=int, help='Number of MC samples')
     p_mc.set_defaults(func=cmd_mc)
+
+    # sweep
+    p_sweep = subparsers.add_parser('sweep',
+                                     help='Sweep Npairs to find optimal layer count')
+    p_sweep.add_argument('params', help='Path to cost/optimizer YAML')
+    p_sweep.add_argument('--optic', help='Optic name (ETM or ITM)')
+    p_sweep.add_argument('--min-pairs', type=int, help='Min bilayer count')
+    p_sweep.add_argument('--max-pairs', type=int, help='Max bilayer count')
+    p_sweep.add_argument('--no-save', action='store_true',
+                         help='Skip HDF5 output')
+    p_sweep.set_defaults(func=cmd_sweep)
 
     # corner
     p_corner = subparsers.add_parser('corner', help='Corner plot from MC')

@@ -26,7 +26,7 @@ from OptimalBragg.costs import getMirrorCost, precompute_misc
 from OptimalBragg.noise import brownian_proxy
 
 
-def _build_stack(materials, Npairs, optic=None):
+def _build_stack(materials, Npairs, optic=None, hwcap=""):
     """Build a QW stack from loaded materials config.
 
     Parameters
@@ -38,6 +38,10 @@ def _build_stack(materials, Npairs, optic=None):
     optic : str, optional
         Optic name (e.g. ``'ETM'``, ``'ITM'``) to look up beam radius
         in ``materials["optics"]``.
+    hwcap : str, optional
+        Half-wave cap layer(s) at the superstrate (surface) side.
+        ``'L'`` adds a half-wave SiO2 cap for environmental stability
+        and low surface E-field.  Default ``""`` (no cap).
 
     Returns
     -------
@@ -58,6 +62,7 @@ def _build_stack(materials, Npairs, optic=None):
         superstrate=superstrate,
         thin_films=thin_films,
         pattern="LH" * Npairs,
+        hwcap=hwcap,
     )
 
     # Attach beam radius and mirror geometry from materials config
@@ -111,7 +116,8 @@ def run_optimization(params_path, save=True, optic=None):
     materials = load_materials_yaml(str(mat_file))
 
     Npairs = misc["Npairs"]
-    stack = _build_stack(materials, Npairs, optic=optic)
+    hwcap = misc.get("hwcap", "")
+    stack = _build_stack(materials, Npairs, optic=optic, hwcap=hwcap)
 
     # Attach mirror geometry from materials overrides to misc
     sub_overrides = {}
@@ -128,14 +134,15 @@ def run_optimization(params_path, save=True, optic=None):
     # Brownian noise proxy
     gam = brownian_proxy(stack)
 
-    # Set up bounds
-    n_layers = 2 * Npairs
+    # Set up bounds — includes cap layers + bilayer stack
+    n_layers = len(stack["Ls_opt"])  # 2*Npairs + len(hwcap)
     wavelength = materials["laser"]["wavelength"]
     min_thick = 10e-9 * stack["ns"][1] / wavelength  # ~20 nm cap
     bounds = ((min_thick, 0.48),) + ((0.05, 0.48),) * (n_layers - 1)
 
-    print(f"Optimizing {optic or 'coating'}: {Npairs} bilayers, "
-          f"{len(bounds)} free layers")
+    cap_str = f" + {hwcap} cap" if hwcap else ""
+    print(f"Optimizing {optic or 'coating'}: {Npairs} bilayers{cap_str}, "
+          f"{n_layers} free layers")
 
     tic = default_timer()
 
@@ -150,17 +157,22 @@ def run_optimization(params_path, save=True, optic=None):
         conv_mon.append(1 / convergence if convergence else 0)
         return False
 
+    # Convert Nparticles (total population) to popsize (multiplier).
+    # scipy DE: total population = popsize * n_vars.
+    n_particles = misc.get("Nparticles", 15 * len(bounds))
+    popsize = max(15, n_particles // len(bounds))
+
     # Global optimization (workers=1: IPC overhead dwarfs per-eval cost)
     res = differential_evolution(
         func=getMirrorCost,
         bounds=bounds,
         updating="deferred",
         strategy="best1bin",
-        mutation=(0.05, 1.5),
-        popsize=misc.get("Nparticles", 500),
+        mutation=(0.5, 1.5),
+        popsize=popsize,
         init=misc.get("init_method", "halton"),
         workers=1,
-        maxiter=2000,
+        maxiter=10000,
         atol=misc.get("atol", 1e-10),
         tol=misc.get("tol", 1e-3),
         args=(costs, stack, gam, False, misc),
@@ -248,6 +260,161 @@ def _save_hdf5(result, params_path, params_dir):
     h5write(str(fname), h5_dict)
     print(f"\nSaved: {fname}")
     return str(fname)
+
+
+def _qw_min_npairs(n_H, n_L, n_sub, n_sup, T_target):
+    """Minimum bilayer count for a QW stack to reach *T_target*.
+
+    For (LH)^N on substrate, the high-reflectivity approximation is:
+    ``T ≈ 4 n_sup / (n_sub * (n_H / n_L)^{2N})``
+
+    Returns the smallest integer N such that T_QW(N) <= T_target.
+    """
+    # T = 4 * n_sup / (n_sub * (n_H/n_L)^(2N))
+    # (n_H/n_L)^(2N) = 4 * n_sup / (T * n_sub)
+    # N = ln(4 * n_sup / (T * n_sub)) / (2 * ln(n_H / n_L))
+    rhs = 4 * n_sup / (T_target * n_sub)
+    if rhs <= 1.0:
+        return 1  # even 1 bilayer suffices
+    N = np.log(rhs) / (2 * np.log(n_H / n_L))
+    return int(np.ceil(N))
+
+
+def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
+    """Sweep Npairs to find the minimum that hits all targets.
+
+    Parameters
+    ----------
+    params_path : str or Path
+        Path to cost/optimizer YAML.
+    n_range : tuple of (int, int), optional
+        (min_pairs, max_pairs) to sweep.  If None, uses QW theory
+        to estimate a physics-based minimum and sweeps up to +6.
+    save : bool, optional
+        Whether to save HDF5 for each run.  Default True.
+    optic : str, optional
+        Optic name (``'ETM'`` or ``'ITM'``).
+
+    Returns
+    -------
+    list of dict
+        One entry per Npairs with keys ``Npairs``, ``cost``,
+        ``T1064``, ``T532``, ``result``.
+    """
+    params_path = Path(params_path)
+    params_dir = params_path.parent
+
+    if optic is None:
+        stem = params_path.stem.upper()
+        if "ETM" in stem:
+            optic = "ETM"
+        elif "ITM" in stem:
+            optic = "ITM"
+
+    # Load configs to get material indices and T targets
+    opt_params = yamlread(str(params_path))
+    costs = opt_params["costs"]
+    misc = opt_params["misc"]
+
+    mat_file = params_dir / misc["materials_file"]
+    materials = load_materials_yaml(str(mat_file))
+
+    n_H = materials["thin_films"]["H"].Index
+    n_L = materials["thin_films"]["L"].Index
+    n_sub = materials["substrate"].Index
+    n_sup = 1.0  # vacuum
+
+    if n_range is None:
+        # Find the tightest T target to set minimum Npairs
+        t_targets = []
+        if costs.get("Trans1064", {}).get("weight", 0):
+            t_targets.append(costs["Trans1064"]["target"])
+        if costs.get("Trans532", {}).get("weight", 0):
+            # AUX target is at a different wavelength — QW theory
+            # only applies at the design wavelength, so use PSL target
+            pass
+        if not t_targets:
+            raise ValueError("No transmission targets with nonzero weight")
+
+        t_min = min(t_targets)
+        n_start = _qw_min_npairs(n_H, n_L, n_sub, n_sup, t_min)
+        n_range = (n_start, n_start + 6)
+
+    print(f"\n{'='*60}")
+    print(f"Nlayers sweep: Npairs = {n_range[0]}..{n_range[1]}")
+    print(f"n_H={n_H:.3f}, n_L={n_L:.3f}, ratio={n_L/n_H:.4f}")
+    print(f"{'='*60}\n")
+
+    results = []
+    original_npairs = misc["Npairs"]
+
+    for N in range(n_range[0], n_range[1] + 1):
+        print(f"\n--- Npairs = {N} ({2*N} layers) ---")
+
+        # Temporarily override Npairs in the YAML dict
+        opt_params["misc"]["Npairs"] = N
+        # Write temp YAML
+        import yaml
+        tmp_yaml = params_dir / f"_sweep_tmp_{optic}.yml"
+        with open(tmp_yaml, "w") as f:
+            yaml.dump(opt_params, f, default_flow_style=False)
+
+        try:
+            result = run_optimization(
+                tmp_yaml, save=save, optic=optic
+            )
+            entry = {
+                "Npairs": N,
+                "cost": result["scalar_cost"],
+                "T1064": result["output"].get("T1064"),
+                "T532": result["output"].get("T532"),
+                "result": result,
+            }
+        except Exception as e:
+            print(f"  FAILED: {e}")
+            entry = {"Npairs": N, "cost": np.inf,
+                     "T1064": None, "T532": None, "result": None}
+
+        results.append(entry)
+        if entry["T1064"] is not None:
+            print(f"  cost={entry['cost']:.6f}  "
+                  f"T1064={entry['T1064']:.6e}  "
+                  f"T532={entry['T532']:.6e}"
+                  if entry["T532"] is not None else
+                  f"  cost={entry['cost']:.6f}  "
+                  f"T1064={entry['T1064']:.6e}")
+
+    # Cleanup temp file
+    if tmp_yaml.exists():
+        tmp_yaml.unlink()
+
+    # Restore original
+    opt_params["misc"]["Npairs"] = original_npairs
+
+    # Print summary table
+    print(f"\n{'='*60}")
+    print(f"{'Npairs':>6} | {'Layers':>6} | {'Cost':>10} | "
+          f"{'T1064':>12} | {'T532':>12}")
+    print(f"{'-'*6}-+-{'-'*6}-+-{'-'*10}-+-{'-'*12}-+-{'-'*12}")
+
+    t1064_tgt = costs.get("Trans1064", {}).get("target")
+    t532_tgt = costs.get("Trans532", {}).get("target")
+
+    best_n, best_cost = None, np.inf
+    for r in results:
+        t1064_str = f"{r['T1064']:.4e}" if r["T1064"] is not None else "N/A"
+        t532_str = f"{r['T532']:.4e}" if r["T532"] is not None else "N/A"
+        if r["cost"] < best_cost:
+            best_cost = r["cost"]
+            best_n = r["Npairs"]
+        print(f"{r['Npairs']:>6} | {2*r['Npairs']:>6} | "
+              f"{r['cost']:>10.6f} | {t1064_str:>12} | {t532_str:>12}")
+
+    print(f"\nTargets:  T1064={t1064_tgt}  T532={t532_tgt}")
+    if best_n:
+        print(f"Best:     Npairs={best_n} (cost={best_cost:.6f})")
+
+    return results
 
 
 if __name__ == "__main__":

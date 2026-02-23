@@ -700,10 +700,16 @@ def coating_brownian(f, stack, w_beam, power=None, mass=None):
 
     # Epsilon function (Eq. 25)
     Ep1 = (nN + CPE) * dLogRho_dPhik[:-1]
+    # Guard against r[i]=0 (same-index interfaces, e.g. SiO2 cap next to SiO2 layer):
+    # physically, zero Fresnel coefficient means no contribution from that interface.
+    r_safe = r[:-1].copy()
+    zero_mask = r_safe == 0
+    r_safe[zero_mask] = 1.0  # dummy to avoid division by zero
     Ep2 = CPE * (
-        dLogRho_dPhik[:-1] * (1 - r[:-1] ** 2) / (2 * r[:-1])
-        - dLogRho_dPhik[1:] * (1 + r[:-1] ** 2) / (2 * r[:-1])
+        dLogRho_dPhik[:-1] * (1 - r_safe ** 2) / (2 * r_safe)
+        - dLogRho_dPhik[1:] * (1 + r_safe ** 2) / (2 * r_safe)
     )
+    Ep2[zero_mask] = 0.0  # zero contribution from same-index interfaces
     Ep3 = (1 - r[:-1] ** 2) * CPE * dLogRho_dRk[:-1]
 
     Ip1 = 1 - Ep1.imag / 2

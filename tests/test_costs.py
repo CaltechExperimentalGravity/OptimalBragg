@@ -104,35 +104,43 @@ class TestStdevLCost:
 
 
 class TestBrownianCost:
-    def test_returns_positive(self):
+    def test_zero_below_budget(self):
+        from OptimalBragg.costs import brownianCost
+        L = np.array([0.25, 0.25] * 5)
+        cost = brownianCost(100.0, L, 1.5)  # well under budget
+        assert cost == 0.0
+
+    def test_positive_above_budget(self):
         from OptimalBragg.costs import brownianCost
         L = np.array([0.25, 0.25] * 18)
-        cost = brownianCost(20.0, L, 1.5)
+        cost = brownianCost(1.0, L, 1.5)  # tight budget
         assert cost > 0
 
     def test_proportional_to_thickness(self):
         from OptimalBragg.costs import brownianCost
+        # Both above budget so we can compare
         L1 = np.array([0.25, 0.25] * 10)
         L2 = np.array([0.25, 0.25] * 20)
-        c1 = brownianCost(20.0, L1, 1.5)
-        c2 = brownianCost(20.0, L2, 1.5)
+        c1 = brownianCost(1.0, L1, 1.5)
+        c2 = brownianCost(1.0, L2, 1.5)
         assert c2 > c1
 
     def test_accepts_dict_gam(self):
         from OptimalBragg.costs import brownianCost
         L = np.array([0.25, 0.25] * 10)
         gam_dict = {"H": 1.5}
-        cost = brownianCost(20.0, L, gam_dict)
+        cost = brownianCost(1.0, L, gam_dict)  # tight budget
         assert cost > 0
 
 
 class TestThermoopticCost:
-    def test_returns_positive(self, aLIGO_stack):
+    def test_positive_above_budget(self, aLIGO_stack):
         from OptimalBragg.costs import thermoopticCost
         from OptimalBragg.noise import extract_stack_params
         params = extract_stack_params(aLIGO_stack, 0.17, 0.20)
         L = aLIGO_stack["Ls_opt"]
-        cost = thermoopticCost(1e-42, 100.0, L, aLIGO_stack,
+        # Very tight target to ensure above budget
+        cost = thermoopticCost(1e-50, 100.0, L, aLIGO_stack,
                                stack_params=params, w_beam=0.062)
         assert cost > 0
 

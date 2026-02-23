@@ -72,12 +72,12 @@ def plot_layers(n, L_opt, wavelength, name_high='H', name_low='L',
     -------
     fig : matplotlib.figure.Figure
     """
-    from OptimalBragg.layers import op2phys, fieldDepth, multidiel1, calc_abs
+    from OptimalBragg.layers import op2phys, field_zmag, multidiel1, calc_abs
 
     L_phys = wavelength * op2phys(L_opt, n[1:-1])
 
     # E-field profile
-    Z, field = fieldDepth(L_phys, n, pol='p', nPts=300, lam=wavelength)
+    Z, field = field_zmag(n, L_phys, lam=wavelength, pol='p', n_pts=300)
 
     # Absorption estimate
     alpha_low, alpha_high = 0.5, 5.0
@@ -128,7 +128,7 @@ def plot_layers(n, L_opt, wavelength, name_high='H', name_low='L',
 # ── Spectral reflectivity ────────────────────────────────────────────
 
 def plot_spectral(n, L_opt, wavelength, T1064=None, T532=None,
-                  starfish_path=None, save_path=None):
+                  lambda_aux=None, save_path=None):
     """Plot spectral transmission/reflectivity.
 
     Parameters
@@ -141,8 +141,9 @@ def plot_spectral(n, L_opt, wavelength, T1064=None, T532=None,
         Design wavelength [m].
     T1064, T532 : float, optional
         Transmission values to annotate.
-    starfish_path : str, optional
-        Path to starfish PNG to embed as inset.
+    lambda_aux : float, optional
+        AUX wavelength ratio (e.g. 0.5 for 532 nm / 1064 nm).
+        If given, the plot range extends to cover the AUX wavelength.
     save_path : str, optional
         If given, save figure.
 
@@ -152,32 +153,34 @@ def plot_spectral(n, L_opt, wavelength, T1064=None, T532=None,
     """
     from OptimalBragg.layers import multidiel1
 
-    wavelengths = np.linspace(0.75, 1.25, 512)
+    # Extend range to cover AUX wavelength if provided
+    lo = 0.75
+    if lambda_aux and lambda_aux < lo:
+        lo = lambda_aux * 0.9
+    wavelengths = np.linspace(lo, 1.25, 512)
     rr, _ = multidiel1(n, L_opt, wavelengths)
     RR = np.abs(rr) ** 2
     TT = 1 - RR
 
     fig, ax = plt.subplots(1, 1)
-    ax.semilogy(1e6 * wavelengths * wavelength, TT, lw=1.5,
+    wl_um = 1e6 * wavelengths * wavelength
+    ax.semilogy(wl_um, TT, lw=1.5,
                 label='Transmissivity', c='xkcd:Red')
-    ax.semilogy(1e6 * wavelengths * wavelength, RR, lw=1.5,
+    ax.semilogy(wl_um, RR, lw=1.5,
                 label='Reflectivity', c='xkcd:electric blue', alpha=0.7)
 
     if T1064 and T1064 > 0:
-        ax.vlines(1e6 * wavelength, T1064, 1.0, linestyle='--', color='blue',
-                  label=f'T={T1064*1e6:.2f} ppm @ {1e6*wavelength:.3f} um')
+        ax.axvline(1e6 * wavelength, ls='--', color='blue', alpha=0.5,
+                   label=f'T={T1064*1e6:.2f} ppm @ {1e6*wavelength:.3f} um')
+
+    if lambda_aux:
+        ax.axvline(1e6 * lambda_aux * wavelength, ls=':', color='green',
+                   alpha=0.6,
+                   label=f'AUX @ {1e6*lambda_aux*wavelength:.3f} um')
 
     ax.set_xlabel(R"Wavelength [$\mu \mathrm{m}$]")
     ax.set_ylabel(R"T or R")
     ax.set_ylim((5e-8, 1.0))
-
-    # Starfish inset
-    if starfish_path and os.path.isfile(starfish_path):
-        im = plt.imread(starfish_path)
-        newax = fig.add_axes([0.55, 0.1, 0.4, 0.4], anchor='NE')
-        newax.imshow(im)
-        newax.axis('off')
-
     ax.legend(loc='lower left')
 
     if save_path:
@@ -364,9 +367,21 @@ def plot_corner(mc_samples, mirror_type='ETM', save_path=None):
         print(f"Clipped {n_clipped} outliers "
               f"({100*n_clipped/n_samples:.1f}%)")
 
+    # Filter out degenerate dimensions (zero variance)
+    keep = []
+    for i in range(n_obs):
+        if np.std(samples_clean[i]) > 1e-15 * np.abs(np.mean(samples_clean[i])):
+            keep.append(i)
+        else:
+            print(f"Skipping degenerate dimension {i} "
+                  f"({CORNER_VAR_NAMES[i]}): zero variance")
+    samples_clean = samples_clean[keep]
+    used_names = [CORNER_VAR_NAMES[i] for i in keep]
+    used_labels = [CORNER_LABELS[i] for i in keep]
+    n_plot = len(keep)
+
     # Build ArviZ InferenceData
-    names = CORNER_VAR_NAMES[:n_obs]
-    posterior = {name: samples_clean[i] for i, name in enumerate(names)}
+    posterior = {name: samples_clean[i] for i, name in enumerate(used_names)}
     idata = az.from_dict(posterior=posterior)
 
     apply_style()
@@ -383,16 +398,16 @@ def plot_corner(mc_samples, mirror_type='ETM', save_path=None):
     )
 
     fig = plt.gcf()
-    labels = CORNER_LABELS[:n_obs]
+    labels = used_labels
     axes = fig.get_axes()
 
     # Bottom row x-labels, left column y-labels
-    for j in range(n_obs):
-        idx = (n_obs - 1) * n_obs + j
+    for j in range(n_plot):
+        idx = (n_plot - 1) * n_plot + j
         if idx < len(axes):
             axes[idx].set_xlabel(labels[j], fontsize=14, fontweight='bold')
-    for i in range(n_obs):
-        idx = i * n_obs
+    for i in range(n_plot):
+        idx = i * n_plot
         if idx < len(axes):
             axes[idx].set_ylabel(labels[i], fontsize=14, fontweight='bold')
 

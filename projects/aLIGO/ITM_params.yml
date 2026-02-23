@@ -8,9 +8,9 @@ costs:
     Trans1064:
         target: 0.014
         weight: 5
-    # Brownian noise level (reference: QW stack proxy for 8 bilayers, TiTa2O5)
+    # Brownian noise level (QW proxy for 9 bilayers ~6.1, optimizer needs ~10)
     Brownian:
-        target: 9.0
+        target: 11.0
         weight: 2
     # Thermo-optic noise level (reference: QW S_TO at 100 Hz, 8 bilayers, TiTa2O5)
     Thermooptic:
@@ -20,10 +20,10 @@ costs:
     Lsens:
         target: 1e-7
         weight: 0
-    # Surface E-field
+    # Surface E-field intensity |1+r|^2 budget (half-wave SiO2 cap gives ~0)
     Esurf:
-        target: 1e-9
-        weight: 0
+        target: 0.01
+        weight: 2
     # Integrated absorption
     Absorption:
         target: 1e-4
@@ -50,17 +50,20 @@ misc:
     # Angle of incidence (degrees)
     aoi: 0
     # Number of bilayers in variable stack
-    Npairs: 8
+    Npairs: 10
     # Number of fixed bilayers at the end of the stack
     Nfixed: 0
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer
-    Nparticles: 500
+    Nparticles: 3000
     # Absolute Tolerance
-    atol: 1e-10
+    atol: 1e-12
     # Relative Tolerance
-    tol: 1e-3
+    tol: 1e-6
+    # Half-wave cap layers at the superstrate (surface) side
+    # 'L' = SiO2 cap for environmental stability + low surface E-field
+    hwcap: 'L'
     # how to initialize the population
     init_method: 'halton'
     # AUX wavelength ratio (lambda_AUX / lambda_PSL) -- 532 nm / 1064 nm

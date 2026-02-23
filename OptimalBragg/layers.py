@@ -322,10 +322,10 @@ def field_zmag(ns, Ls, lam, aoi=0, pol='s', n_pts=30):
             Z += dL
             z_prof[ii * n_pts + jj] = Z
             Mtotz = delta_h(beta_i(a_i, n_i, dL), q_i(n_i, a_i)) @ Mtotz
-            E_prof[ii * n_pts + jj] = corr * (
+            E_prof[ii * n_pts + jj] = np.real(corr * (
                 np.abs(Mtotz[0, 0]) ** 2
                 + np.abs(q_sub * Mtotz[0, 1] / 1j) ** 2
-            )
+            ))
 
     return z_prof, E_prof / Epeak_0
 

@@ -214,7 +214,7 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
         lines.append('')
 
     # Plot sections
-    rel_prefix = f'../../../{project_dir}'
+    rel_prefix = '../../..'
 
     if 'layers' in fig_paths:
         lines.extend([
@@ -224,11 +224,11 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
             '   :width: 100%', '',
         ])
 
-    if 'reflectivity' in fig_paths:
+    if 'spectral' in fig_paths:
         lines.extend([
             'Spectral Reflectivity',
             '---------------------', '',
-            f'.. image:: {rel_prefix}/{fig_paths["reflectivity"]}',
+            f'.. image:: {rel_prefix}/{fig_paths["spectral"]}',
             '   :width: 100%', '',
         ])
 

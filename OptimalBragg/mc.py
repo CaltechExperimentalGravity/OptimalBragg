@@ -27,7 +27,7 @@ import tqdm
 from OptimalBragg.layers import multidiel1, op2phys
 
 
-def _generate_perturbations(n_samples, n_dim=3, n_walkers=64,
+def _generate_perturbations(n_samples, n_dim=3, n_walkers=128,
                             width=0.005):
     """Generate Gaussian perturbation samples using emcee.
 
@@ -62,11 +62,11 @@ def _generate_perturbations(n_samples, n_dim=3, n_walkers=64,
                                     args=[means, icov])
 
     # Burn-in
-    pos, _, _ = sampler.run_mcmc(p0, 1000, progress=False)
+    pos, _, _ = sampler.run_mcmc(p0, 2000, progress=False)
     sampler.reset()
 
     # Production
-    n_steps = max(n_samples // n_walkers + 1, 100)
+    n_steps = max(n_samples // n_walkers + 1, 200)
     sampler.run_mcmc(pos, n_steps, progress=False)
 
     return sampler.get_chain(flat=True)[:n_samples, :]
@@ -109,20 +109,40 @@ def run_mc(layers_hdf5, n_samples=5000, lambda_aux=0.5,
         n_out = np.array(f['diffevo_output/n'])
         L_opt = np.array(f['diffevo_output/L'])
 
-    L_phys = op2phys(L_opt, n_out[1:-1])
+    L_phys_frac = op2phys(L_opt, n_out[1:-1])  # physical thickness as fraction of lambda
+
+    # Build reference stack (for material properties and wavelength)
+    _ref_stack = _build_mc_stack(n_out, L_phys_frac, layers_hdf5)
+    _wavelength = _ref_stack['lam_ref']
+
+    # Convert to SI metres for Brownian noise
+    L_phys_m = L_phys_frac * _wavelength
+
+    from OptimalBragg.noise import coating_thermooptic_fast, extract_stack_params
+    _stack_params = extract_stack_params(_ref_stack, r_mirror, d_mirror)
 
     # Generate perturbation samples (3D: high-n, low-n, thickness)
     perturbs = _generate_perturbations(n_samples, n_dim=3)
     perturb_factors = 1 + perturbs  # (n_samples, 3)
 
     # Pre-build perturbed arrays
-    # n_out layout: [superstrate, L, H, L, H, ..., substrate]
-    # Even indices (1,3,5,...) = low-n, Odd indices (2,4,6,...) = high-n
-    n_all = np.tile(n_out, (n_samples, 1))
-    n_all[:, 1:-1:2] *= perturb_factors[:, 1:2]   # low-n perturbation
-    n_all[:, 2::2] *= perturb_factors[:, 0:1]      # high-n perturbation
+    # Identify low-n and high-n layers from the refractive indices.
+    # The threshold is the geometric mean of the two film indices.
+    n_layers_only = n_out[1:-1]
+    n_thresh = np.sqrt(n_layers_only.min() * n_layers_only.max())
+    low_mask = np.zeros(len(n_out), dtype=bool)
+    high_mask = np.zeros(len(n_out), dtype=bool)
+    for ii in range(1, len(n_out) - 1):
+        if n_out[ii] < n_thresh:
+            low_mask[ii] = True
+        else:
+            high_mask[ii] = True
 
-    L_all = L_phys[None, :] * perturb_factors[:, 2:3]  # thickness
+    n_all = np.tile(n_out, (n_samples, 1))
+    n_all[:, low_mask] *= perturb_factors[:, 1:2]   # low-n perturbation
+    n_all[:, high_mask] *= perturb_factors[:, 0:1]   # high-n perturbation
+
+    L_m_all = L_phys_m[None, :] * perturb_factors[:, 2:3]  # metres
 
     # Allocate output arrays
     Tp_IR = np.empty(n_samples)
@@ -133,8 +153,8 @@ def run_mc(layers_hdf5, n_samples=5000, lambda_aux=0.5,
 
     for jj in tqdm.tqdm(range(n_samples), desc='MC samples'):
         n_j = n_all[jj]
-        L_j = L_all[jj]
-        L_opt_j = L_j * n_j[1:-1]  # physical → optical
+        L_m_j = L_m_all[jj]                       # physical thickness [m]
+        L_opt_j = L_m_j * n_j[1:-1] / _wavelength  # optical thickness [frac of lambda]
 
         # Transmission at PSL wavelength
         r_psl, _ = multidiel1(n_j, L_opt_j, 1.0)
@@ -147,33 +167,16 @@ def run_mc(layers_hdf5, n_samples=5000, lambda_aux=0.5,
         r_aux, _ = multidiel1(n_j, L_opt_j, lambda_aux)
         Tp_AUX[jj] = 1 - np.abs(r_aux) ** 2
 
-        # Thermal noise — build a temporary stack dict
-        # We need a minimal stack for the noise functions
-        # For speed, use the JIT thermo-optic directly
-        from OptimalBragg.noise import (
-            coating_thermooptic_fast, extract_stack_params,
-        )
-        # Build minimal stack for this perturbed sample
-        # (Only needed for extract_stack_params on first iteration;
-        #  after that we can reuse the params structure)
-        if jj == 0:
-            # Build a reference stack for extract_stack_params
-            # We need substrate/material properties — read from the
-            # original stack. For MC we only perturb n and L, not
-            # material thermal properties.
-            from OptimalBragg.io import yamlread
-            _ref_stack = _build_mc_stack(n_out, L_phys, layers_hdf5)
-            _stack_params = extract_stack_params(
-                _ref_stack, r_mirror, d_mirror)
-            _wavelength = _ref_stack['lam_ref']
-
         # Thermo-optic noise (JIT)
         for fi, f_val in enumerate(freq):
             TOnoise[jj, fi] = coating_thermooptic_fast(
                 f_val, L_opt_j, _wavelength, w_beam, _stack_params)
 
-        # Brownian noise
-        SbrZ = coating_brownian(freq, _ref_stack, w_beam)
+        # Brownian noise — use perturbed stack
+        _perturbed_stack = dict(_ref_stack)
+        _perturbed_stack['Ls'] = L_m_j.copy()      # metres
+        _perturbed_stack['ns'] = n_j.copy()
+        SbrZ = coating_brownian(freq, _perturbed_stack, w_beam)
         Brnoise[jj] = SbrZ
 
     # Package output in same format as legacy doMC.py
@@ -227,18 +230,20 @@ def _build_mc_stack(n_out, L_phys, layers_hdf5):
         if mat_file.exists():
             materials = load_materials_yaml(str(mat_file))
             from OptimalBragg.materials import air
+            hwcap = params['misc'].get('hwcap', '')
             n_layers = len(L_phys)
-            Npairs = n_layers // 2
+            Npairs = (n_layers - len(hwcap)) // 2
             stack = qw_stack(
                 lam_ref=materials['laser']['wavelength'],
                 substrate=materials['substrate'],
                 superstrate=Material(air),
                 thin_films=materials['thin_films'],
                 pattern='LH' * Npairs,
+                hwcap=hwcap,
             )
             # Override with the actual optimized thicknesses
-            stack['Ls'] = L_phys.copy()
-            stack['Ls_opt'] = L_phys * n_out[1:-1] / stack['lam_ref']
+            stack['Ls'] = L_phys * stack['lam_ref']   # fraction → meters
+            stack['Ls_opt'] = L_phys * n_out[1:-1]    # physical fraction × n = optical fraction
             stack['ns'] = n_out.copy()
             return stack
 
@@ -253,8 +258,8 @@ def _build_mc_stack(n_out, L_phys, layers_hdf5):
         thin_films={'L': Material(SiO2), 'H': Material(TiTa2O5)},
         pattern='LH' * Npairs,
     )
-    stack['Ls'] = L_phys.copy()
-    stack['Ls_opt'] = L_phys * n_out[1:-1] / stack['lam_ref']
+    stack['Ls'] = L_phys * stack['lam_ref']   # fraction → meters
+    stack['Ls_opt'] = L_phys * n_out[1:-1]    # physical fraction × n = optical fraction
     stack['ns'] = n_out.copy()
     return stack
 
