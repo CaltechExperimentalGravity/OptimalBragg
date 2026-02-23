@@ -260,7 +260,7 @@ def precompute_misc(costs, stack, misc):
 
 # ── Master cost evaluator ────────────────────────────────────────────
 
-def getMirrorCost(L, costs, stack, gam, verbose=False, misc={}):
+def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
     """Master cost function for coating optimization.
 
     Evaluates a multiplicative product of sub-costs:
@@ -295,6 +295,9 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc={}):
     output : dict
         Only returned when ``verbose=True``.
     """
+    if misc is None:
+        misc = {}
+
     # Extend L with copies/fixed layers
     if misc.get('Ncopies', 0) > 0:
         copiedLayers = np.tile(L[:-2].copy(), misc['Ncopies'])
@@ -425,7 +428,7 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc={}):
             pol='s' if pol == 'te' else 'p', n_pts=nPts,
         )
         alphas = stack["alphas"]
-        absorp = calc_abs(Esq, L_phys, alphas)
+        absorp = calc_abs(Esq, L_phys, alphas, n_pts=nPts)
         target_abs = costs['Absorption']['target']
         vector_cost['Absorption'] = np.abs(
             (target_abs - absorp) / target_abs

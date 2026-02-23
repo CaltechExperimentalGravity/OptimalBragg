@@ -332,28 +332,32 @@ def field_zmag(ns, Ls, lam, aoi=0, pol='s', n_pts=30):
 
 # ── Absorption ───────────────────────────────────────────────────────────
 
-def calc_abs(Esq, Ls, alphas):
+def calc_abs(Esq, Ls, alphas, n_pts=None):
     """Integrated absorption from an E-field profile.
 
     Parameters
     ----------
     Esq : ndarray
-        |E|^2 inside each layer (from :func:`field_zmag`).
+        |E|^2 inside each layer (from :func:`field_zmag`),
+        ordered as ``n_layers * n_pts`` samples.
     Ls : array_like
         Physical thicknesses [m].
     alphas : array_like
         Absorption coefficients [1/m].
+    n_pts : int, optional
+        Samples per layer.  Default: ``len(Esq) // len(Ls)``.
 
     Returns
     -------
     float
         Integrated stack absorption [W/W].
     """
+    if n_pts is None:
+        n_pts = len(Esq) // len(Ls)
     absorp = 0.0
-    for alpha_i, Li in zip(alphas, Ls):
-        absorp += 2 * np.trapz(
-            Esq * alpha_i * np.ones_like(Esq), dx=Li / len(Esq)
-        )
+    for i, (alpha_i, Li) in enumerate(zip(alphas, Ls)):
+        E_layer = Esq[i * n_pts : (i + 1) * n_pts]
+        absorp += 2 * np.trapz(E_layer * alpha_i, dx=Li / n_pts)
     return absorp
 
 

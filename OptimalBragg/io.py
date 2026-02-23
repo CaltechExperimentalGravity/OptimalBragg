@@ -26,7 +26,12 @@ def h5read(fname, group, targets):
         for target in targets:
             try:
                 data[target] = np.array(f[group][target])
-            except:
+            except KeyError:
+                import warnings
+                warnings.warn(
+                    f"HDF5 dataset '{target}' not found in group '{group}', "
+                    "defaulting to 0.0"
+                )
                 data[target] = 0.0
     return data
 

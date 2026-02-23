@@ -229,10 +229,8 @@ SiN_123 = {
         "Name": "SiN",
         "Y": 270.0e9,                      # See [0, 1]
         "Sigma": 0.25,                     # See [0]
-        "CV": 230,                         # See [2, 3] — NOTE: appears to be per-mass
-                                            # [J/kg/K], not volumetric. Retained for
-                                            # backward compatibility; multiply by
-                                            # rho (~3170) for volumetric if needed.
+        "CV": 0.729e6,                     # Volumetric [J/m^3/K] = 230 J/kg/K * 3170 kg/m^3
+                                            # See [2, 3]
         "Alpha": 2.6e-6,                   # See [4]
         "ThermalDiffusivity": 0.27,        # Thermal conductivity [W/m/K], See [2]
         "Phi": 0.8e-4,                     # See [0, 1]
@@ -300,35 +298,3 @@ Ta2O5_123 = {
         5: "https://refractiveindex.org",
     },
 }
-
-
-# =====================================================================
-#  Sellmeier dispersion (incomplete — placeholder)
-# =====================================================================
-
-def n_SiO2(lam):
-    """Sellmeier equation for fused silica.
-
-    Reference: https://slac.stanford.edu/grp/arb/tn/arbvol5/ARDB436.pdf
-
-    Parameters
-    ----------
-    lam : float
-        Wavelength in microns.
-
-    Returns
-    -------
-    float
-        Refractive index.
-    """
-
-    def sellmeier(A=1, Bs=[0], Cs=[0]):
-        n_squared = A
-        for B, C in zip(Bs, Cs):
-            n_squared += B / (lam**2 - C)
-        return n_squared
-
-    pass
-    # return sqrt(
-    #     sellmeier(1.3107237, [0.7935797, 0.9237144], [1.0959659e-2, 1080])
-    # )

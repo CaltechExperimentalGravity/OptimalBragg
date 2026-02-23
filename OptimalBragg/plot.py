@@ -82,8 +82,8 @@ def plot_layers(n, L_opt, wavelength, name_high='H', name_low='L',
     # Absorption estimate
     alpha_low, alpha_high = 0.5, 5.0
     alphas = np.where(np.arange(len(L_phys)) % 2 == 0, alpha_low, alpha_high)
-    intAbs = calc_abs(field[:len(L_phys) * 300 + 1],
-                      L_phys, alphas) if hasattr(calc_abs, '__call__') else 0
+    intAbs = calc_abs(field[:len(L_phys) * 300],
+                      L_phys, alphas, n_pts=300) if hasattr(calc_abs, '__call__') else 0
 
     layers = np.cumsum(1e6 * L_phys)
     layers = np.append(0, layers)

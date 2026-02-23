@@ -207,21 +207,28 @@ def _build_mc_stack(n_out, L_phys, layers_hdf5):
     from OptimalBragg import qw_stack, Material, load_materials_yaml
     from OptimalBragg.io import yamlread
     from pathlib import Path
-    import os
+    import warnings
 
-    # Try to find materials config from the HDF5 metadata
-    hdf5_dir = Path(layers_hdf5).parent
-
-    # Walk up to find a params YAML
+    # 1. Try reading params_file stored in the HDF5 by the optimizer
     params_path = None
-    for candidate in [
-        hdf5_dir.parent.parent / 'ETM_params.yml',
-        hdf5_dir.parent.parent / 'ITM_params.yml',
-        hdf5_dir / '../../ETM_params.yml',
-    ]:
-        if candidate.exists():
-            params_path = candidate
-            break
+    with h5py.File(layers_hdf5, 'r') as f:
+        if 'params_file' in f:
+            raw = np.array(f['params_file'])
+            pf_str = raw.item().decode('utf-8') if isinstance(raw.item(), bytes) else str(raw.item())
+            candidate = Path(pf_str)
+            if candidate.exists():
+                params_path = candidate
+
+    # 2. Fall back to directory walking
+    if params_path is None:
+        hdf5_dir = Path(layers_hdf5).parent
+        for candidate in [
+            hdf5_dir.parent.parent / 'ETM_params.yml',
+            hdf5_dir.parent.parent / 'ITM_params.yml',
+        ]:
+            if candidate.exists():
+                params_path = candidate
+                break
 
     if params_path is not None:
         params = yamlread(str(params_path))
@@ -247,7 +254,12 @@ def _build_mc_stack(n_out, L_phys, layers_hdf5):
             stack['ns'] = n_out.copy()
             return stack
 
-    # Fallback: build from the n/L arrays with default materials
+    # Fallback: build from the n/L arrays with default aLIGO materials
+    warnings.warn(
+        f"No params YAML found for {layers_hdf5}; falling back to "
+        "aLIGO defaults (1064 nm, SiO2/TiTa2O5). This is WRONG for Voyager.",
+        stacklevel=2,
+    )
     from OptimalBragg.materials import SiO2, TiTa2O5, FusedSilica, air
     n_layers = len(L_phys)
     Npairs = n_layers // 2
