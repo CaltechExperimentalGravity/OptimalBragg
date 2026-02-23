@@ -36,6 +36,15 @@ octave-workspace
 # Sphinx build output
 docs/_build/
 
+# Auto-generated run reports (regenerated from HDF5 data)
+docs/runs/ETM/*.rst
+docs/runs/ITM/*.rst
+!docs/runs/index.rst
+
+# Generated figures
+**/Figures/ETM/
+**/Figures/ITM/
+
 # Python cache
 __pycache__/
 *.egg-info/
