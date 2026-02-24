@@ -72,7 +72,7 @@ def _generate_perturbations(n_samples, n_dim=3, n_walkers=128,
     return sampler.get_chain(flat=True)[:n_samples, :]
 
 
-def run_mc(layers_hdf5, n_samples=5000, lambda_aux=0.5,
+def run_mc(layers_hdf5, n_samples=5000, lambda2=0.5,
            w_beam=0.062, r_mirror=0.17, d_mirror=0.20,
            freq=None):
     """Run Monte Carlo sensitivity analysis on an optimized coating.
@@ -84,8 +84,8 @@ def run_mc(layers_hdf5, n_samples=5000, lambda_aux=0.5,
         and ``diffevo_output/L``).
     n_samples : int
         Number of MC samples.
-    lambda_aux : float
-        AUX wavelength ratio (lambda_AUX / lambda_PSL).
+    lambda2 : float
+        Second wavelength ratio (lambda_2 / lambda_design).
     w_beam : float
         Beam radius [m].
     r_mirror, d_mirror : float
@@ -164,7 +164,7 @@ def run_mc(layers_hdf5, n_samples=5000, lambda_aux=0.5,
         surfField[jj] = np.abs(1 + r_psl[0]) ** 2
 
         # Transmission at AUX wavelength
-        r_aux, _ = multidiel1(n_j, L_opt_j, lambda_aux)
+        r_aux, _ = multidiel1(n_j, L_opt_j, lambda2)
         Tp_AUX[jj] = 1 - np.abs(r_aux) ** 2
 
         # Thermo-optic noise (JIT)

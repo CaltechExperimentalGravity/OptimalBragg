@@ -45,9 +45,9 @@ def run_pipeline(optic):
     dt_opt = time.perf_counter() - t0
     print(f"  Optimization complete in {dt_opt:.1f}s")
     print(f"  Final cost: {result['scalar_cost']:.6f}")
-    print(f"  T_1064: {result['output']['T1064']*1e6:.2f} ppm")
-    if 'T532' in result['output']:
-        print(f"  T_532:  {result['output']['T532']*100:.2f}%")
+    print(f"  T_1: {result['output']['T1']*1e6:.2f} ppm")
+    if 'T2' in result['output']:
+        print(f"  T_2:  {result['output']['T2']*100:.2f}%")
 
     # Find the HDF5 file just created
     data_dir = Path(PROJECT) / 'Data' / optic
@@ -75,10 +75,10 @@ def run_pipeline(optic):
 
     from OptimalBragg.io import yamlread
     opt_params = yamlread(params_yml)
-    lambda_aux = opt_params['misc'].get('lambdaAUX', 0.5)
+    lambda2 = opt_params['misc'].get('lambda2', 0.5)
 
     from OptimalBragg.mc import run_mc, save_mc
-    mc_result = run_mc(hdf5_path, n_samples=2000, lambda_aux=lambda_aux)
+    mc_result = run_mc(hdf5_path, n_samples=2000, lambda2=lambda2)
     save_mc(mc_result, mc_output)
 
     dt_mc = time.perf_counter() - t0

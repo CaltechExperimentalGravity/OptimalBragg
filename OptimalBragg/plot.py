@@ -127,8 +127,8 @@ def plot_layers(n, L_opt, wavelength, name_high='H', name_low='L',
 
 # ── Spectral reflectivity ────────────────────────────────────────────
 
-def plot_spectral(n, L_opt, wavelength, T1064=None, T532=None,
-                  lambda_aux=None, save_path=None):
+def plot_spectral(n, L_opt, wavelength, T1=None,
+                  lambda2=None, lambda3=None, save_path=None):
     """Plot spectral transmission/reflectivity.
 
     Parameters
@@ -139,11 +139,12 @@ def plot_spectral(n, L_opt, wavelength, T1064=None, T532=None,
         Optical thicknesses.
     wavelength : float
         Design wavelength [m].
-    T1064, T532 : float, optional
-        Transmission values to annotate.
-    lambda_aux : float, optional
-        AUX wavelength ratio (e.g. 0.5 for 532 nm / 1064 nm).
-        If given, the plot range extends to cover the AUX wavelength.
+    T1 : float, optional
+        Design-wavelength transmission to annotate.
+    lambda2 : float, optional
+        Second wavelength ratio (e.g. 0.5 for 532 nm / 1064 nm).
+    lambda3 : float, optional
+        Third wavelength ratio (e.g. 0.297 or 1.9268).
     save_path : str, optional
         If given, save figure.
 
@@ -153,11 +154,19 @@ def plot_spectral(n, L_opt, wavelength, T1064=None, T532=None,
     """
     from OptimalBragg.layers import multidiel1
 
-    # Extend range to cover AUX wavelength if provided
-    lo = 0.75
-    if lambda_aux and lambda_aux < lo:
-        lo = lambda_aux * 0.9
-    wavelengths = np.linspace(lo, 1.25, 512)
+    # Determine range to cover all wavelengths of interest
+    ratios = [1.0]
+    if lambda2:
+        ratios.append(lambda2)
+    if lambda3:
+        ratios.append(lambda3)
+    lo = min(ratios) * 0.8
+    hi = max(ratios) * 1.2
+    # Ensure minimum useful range around design wavelength
+    lo = min(lo, 0.75)
+    hi = max(hi, 1.25)
+
+    wavelengths = np.linspace(lo, hi, 1024)
     rr, _ = multidiel1(n, L_opt, wavelengths)
     RR = np.abs(rr) ** 2
     TT = 1 - RR
@@ -169,14 +178,22 @@ def plot_spectral(n, L_opt, wavelength, T1064=None, T532=None,
     ax.semilogy(wl_um, RR, lw=1.5,
                 label='Reflectivity', c='xkcd:electric blue', alpha=0.7)
 
-    if T1064 and T1064 > 0:
+    wl1_nm = wavelength * 1e9
+    if T1 and T1 > 0:
         ax.axvline(1e6 * wavelength, ls='--', color='blue', alpha=0.5,
-                   label=f'T={T1064*1e6:.2f} ppm @ {1e6*wavelength:.3f} um')
+                   label=f'T={T1*1e6:.2f} ppm @ {wl1_nm:.0f} nm')
 
-    if lambda_aux:
-        ax.axvline(1e6 * lambda_aux * wavelength, ls=':', color='green',
+    if lambda2:
+        wl2_nm = lambda2 * wavelength * 1e9
+        ax.axvline(1e6 * lambda2 * wavelength, ls=':', color='green',
                    alpha=0.6,
-                   label=f'AUX @ {1e6*lambda_aux*wavelength:.3f} um')
+                   label=f'{wl2_nm:.0f} nm')
+
+    if lambda3:
+        wl3_nm = lambda3 * wavelength * 1e9
+        ax.axvline(1e6 * lambda3 * wavelength, ls=':', color='orange',
+                   alpha=0.6,
+                   label=f'{wl3_nm:.0f} nm')
 
     ax.set_xlabel(R"Wavelength [$\mu \mathrm{m}$]")
     ax.set_ylabel(R"T or R")
@@ -317,14 +334,14 @@ def plot_starfish(scalar_costs, scale=None, save_path=None, title=''):
 
 # Observable labels matching MCout row order
 CORNER_LABELS = [
-    r'$T_{1064}$ [ppm]',
-    r'$T_{532}$ [%]',
+    r'$T_{\lambda_1}$ [ppm]',
+    r'$T_{\lambda_2}$ [%]',
     r'$S_\mathrm{TO}$ [$\times 10^{-21}$ m/$\sqrt{\mathrm{Hz}}$]',
     r'$S_\mathrm{Br}$ [$\times 10^{-21}$ m/$\sqrt{\mathrm{Hz}}$]',
     r'$E_\mathrm{surface}$ [V/m]',
 ]
 
-CORNER_VAR_NAMES = ['T1064_ppm', 'T532_pct', 'S_TO', 'S_Br', 'E_surf']
+CORNER_VAR_NAMES = ['T1_ppm', 'T2_pct', 'S_TO', 'S_Br', 'E_surf']
 
 
 def sigma_clip(samples, nsigma=3):

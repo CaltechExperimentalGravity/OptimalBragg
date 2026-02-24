@@ -4,8 +4,8 @@
 # This specifies the terms to include in your cost function. To exclude
 # certain costs from the optimization run, simply set weight to 0.0
 costs:
-    # PSL transmission
-    Trans1064:
+    # Design wavelength transmission
+    Trans1:
         target: 0.002
         weight: 3e3
     # Brownian noise level
@@ -28,12 +28,12 @@ costs:
     Absorption:
         target: 1e-4
         weight: 0.0
-    # AUX transmission
-    Trans532:
+    # Second wavelength transmission
+    Trans2:
         target: 50e-6
         weight: 3e0
-    # OPLEV transmission
-    TransOPLEV:
+    # Third wavelength transmission
+    Trans3:
         target: 0.05
         weight: 1e-2
     # Optical thickness inhomogeneity
@@ -63,7 +63,7 @@ misc:
     tol: 1e-2
     # how to initialize the population
     init_method: 'halton'
-    # AUX wavelength ratio (lambda_AUX / lambda_PSL)
-    lambdaAUX: 0.756
+    # Second wavelength ratio (lambda_2 / lambda_design)
+    lambda2: 0.756
     # Materials config (replaces gwincStructFile)
     materials_file: 'materials.yml'

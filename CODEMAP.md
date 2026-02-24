@@ -89,7 +89,7 @@ before the OptimalBragg refactor. They are no longer used by the active pipeline
               +------------------------+     +--------------------+
               | ETM_params.yml         |     | materials.yml      |
               |   costs:               |     |   substrate: SiO2  |
-              |     Trans1064:         |     |   thin_films:      |
+              |     Trans1:            |     |   thin_films:      |
               |       target / weight  |     |     L: SiO2        |
               |     Brownian: ...      |     |     H: TiTa2O5     |
               |   misc:               |     |   laser:           |
@@ -120,8 +120,8 @@ before the OptimalBragg refactor. They are no longer used by the active pipeline
               |     +----------------------------------------+ |
               |     |       getMirrorCost(L, ...)             | |
               |     |  For each cost with weight > 0:        | |
-              |     |    Trans1064  -> transmissionCost        | |
-              |     |    Trans532   -> transmissionCost        | |
+              |     |    Trans1     -> transmissionCost        | |
+              |     |    Trans2     -> transmissionCost        | |
               |     |    Brownian   -> brownianCost            | |
               |     |    Thermooptic-> thermoopticCost         | |
               |     |    Absorption -> absorptionCost          | |
@@ -174,9 +174,9 @@ getMirrorCost(L, costs, stack, gam, verbose, misc)
     |
     |-- For each cost term with weight > 0:
     |
-    |   Trans1064 -----> transmissionCost(target, n, L, lamb=1.0)
-    |   Trans532 ------> transmissionCost(target, n, L, lamb=lambdaAUX)
-    |   TransOPLEV ----> transmissionCost(target, n, L, lamb=lambdaOPLEV)
+    |   Trans1 -------> transmissionCost(target, n, L, lamb=1.0)
+    |   Trans2 -------> transmissionCost(target, n, L, lamb=lambda2)
+    |   Trans3 -------> transmissionCost(target, n, L, lamb=lambda3)
     |   Brownian ------> brownianCost(target, L, gam)
     |   Thermooptic ---> thermoopticCost(target, fTO, L, stack, ...)
     |   Absorption ----> absorptionCost(target, n, L, stack, ...)
@@ -257,9 +257,9 @@ All costs are computed inside `getMirrorCost`. Each cost term is independently w
 
 | Cost key | Physics | Formula / Method |
 |----------|---------|-----------------|
-| **Trans1064** | Transmission at primary laser wavelength | `\|target - T\|^2 / target^2` |
-| **Trans532** | Transmission at auxiliary wavelength | Same formula at `lamb = lambdaAUX` |
-| **TransOPLEV** | Transmission at optical lever wavelength | Same formula at OPLEV ratio |
+| **Trans1** | Transmission at design wavelength | `\|target - T\|^2 / target^2` |
+| **Trans2** | Transmission at second wavelength | Same formula at `lamb = lambda2` |
+| **Trans3** | Transmission at third wavelength | Same formula at `lamb = lambda3` |
 | **Brownian** | Coating Brownian thermal noise | Proxy: `target * (sum_low + gam * sum_high)` per E0900068 |
 | **Thermooptic** | Thermo-optic noise | `target * S_TO(f)` via Numba JIT |
 | **Absorption** | Integrated coating absorption | E-field profile integration |
@@ -297,7 +297,7 @@ The optimizer minimizes this scalar. After convergence, `polish=True` refines wi
 
 ```yaml
 costs:
-    Trans1064:
+    Trans1:
         target: 5e-6
         weight: 15
     Brownian:
@@ -314,7 +314,7 @@ misc:
     atol: 1e-10
     tol: 1e-3
     init_method: halton
-    lambdaAUX: 0.5
+    lambda2: 0.5
     materials_file: materials.yml
 ```
 

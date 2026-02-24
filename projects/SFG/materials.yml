@@ -1,0 +1,23 @@
+# SFG cavity mirror: SiO2/Ta2O5 coatings at 1064 nm, 295 K, fused silica substrate
+# HR at 1064 nm, AR at 2050 nm and ~700 nm (SFG output)
+
+substrate:
+  material: FusedSilica
+  overrides:
+    Temp: 295
+    MassRadius: 0.17
+    MassThickness: 0.20
+
+thin_films:
+  L:
+    material: SiO2
+  H:
+    material: Ta2O5
+
+laser:
+  wavelength: 1064e-9
+  power: 1
+
+optics:
+  SFG:
+    beam_radius: 0.002

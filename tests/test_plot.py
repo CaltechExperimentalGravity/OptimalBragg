@@ -23,7 +23,7 @@ def aLIGO_stack():
 class TestPlotStarfish:
     def test_returns_figure(self):
         from OptimalBragg.plot import plot_starfish
-        costs = {'Trans1064': 3.2, 'Brownian': 1.5, 'TO': 2.1}
+        costs = {'Trans1': 3.2, 'Brownian': 1.5, 'TO': 2.1}
         fig = plot_starfish(costs)
         assert fig is not None
         import matplotlib.pyplot as plt

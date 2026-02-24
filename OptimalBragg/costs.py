@@ -225,27 +225,30 @@ def precompute_misc(costs, stack, misc):
     active = frozenset(c for c, s in costs.items() if s['weight'])
     misc['_active_costs'] = active
 
-    # AUX wavelength ratio
-    lambdaAUX = misc.get('lambdaAUX', 1550 / 2050)
-    misc['_lambdaAUX'] = lambdaAUX
+    # Wavelength ratios (generic names)
+    lambda2 = misc.get('lambda2', 1550 / 2050)
+    misc['_lambda2'] = lambda2
+
+    lambda3 = misc.get('lambda3', 0.297)
+    misc['_lambda3'] = lambda3
 
     # Wavelength array and map for consolidated multidiel1 call
     wl_list, wl_map = [], {}
-    if 'Trans1064' in active or 'Esurf' in active:
+    if 'Trans1' in active or 'Esurf' in active:
         wl_map['PSL'] = len(wl_list)
         wl_list.append(1.0)
-    if 'Trans532' in active:
+    if 'Trans2' in active:
         wl_map['AUX'] = len(wl_list)
-        wl_list.append(lambdaAUX)
-    if 'TransOPLEV' in active:
+        wl_list.append(lambda2)
+    if 'Trans3' in active:
         wl_map['OPL'] = len(wl_list)
-        wl_list.append(0.297)
+        wl_list.append(lambda3)
     misc['_wl_array'] = np.array(wl_list) if wl_list else None
     misc['_wl_map'] = wl_map
 
     # Sensitivity wavelengths
     if 'Lsens' in active:
-        misc['_sens_wl'] = np.array([1.0, lambdaAUX])
+        misc['_sens_wl'] = np.array([1.0, lambda2])
 
     # Pre-extract stack params for thermooptic JIT
     if 'Thermooptic' in active:
@@ -277,8 +280,9 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
     costs : dict
         Cost specifications. Each key maps to
         ``{'target': float, 'weight': float}``.  Supported keys:
-        ``Trans1064``, ``Trans532``, ``TransOPLEV``, ``Brownian``,
-        ``Thermooptic``, ``Lsens``, ``Esurf``, ``Lstdev``, ``Absorption``.
+        ``Trans1``, ``Trans2``, ``Trans3``, ``Brownian``,
+        ``Thermooptic``, ``Lsens``, ``Sensitivity``, ``Esurf``,
+        ``Lstdev``, ``Absorption``.
     stack : dict
         Stack dict from :func:`OptimalBragg.qw_stack`.
     gam : float or dict
@@ -324,9 +328,13 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
     if active is None:
         active = {c for c, s in costs.items() if s['weight']}
 
-    lambdaAUX = misc.get('_lambdaAUX')
-    if lambdaAUX is None:
-        lambdaAUX = misc.get('lambdaAUX', 1550 / 2050)
+    lambda2 = misc.get('_lambda2')
+    if lambda2 is None:
+        lambda2 = misc.get('lambda2', 1550 / 2050)
+
+    lambda3 = misc.get('_lambda3')
+    if lambda3 is None:
+        lambda3 = misc.get('lambda3', 0.297)
 
     vector_cost, output = {}, {}
     aoi, pol = misc.get('aoi', 0), misc.get('pol', 'te')
@@ -336,15 +344,15 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
     wl_map = misc.get('_wl_map')
     if wl_map is None:
         wl_list, wl_map = [], {}
-        if 'Trans1064' in active or 'Esurf' in active:
+        if 'Trans1' in active or 'Esurf' in active:
             wl_map['PSL'] = len(wl_list)
             wl_list.append(1.0)
-        if 'Trans532' in active:
+        if 'Trans2' in active:
             wl_map['AUX'] = len(wl_list)
-            wl_list.append(lambdaAUX)
-        if 'TransOPLEV' in active:
+            wl_list.append(lambda2)
+        if 'Trans3' in active:
             wl_map['OPL'] = len(wl_list)
-            wl_list.append(0.297)
+            wl_list.append(lambda3)
         wl_arr = np.array(wl_list) if wl_list else None
 
     if wl_arr is not None and len(wl_arr) > 0:
@@ -352,37 +360,37 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
         T_main = 1 - np.abs(r_main) ** 2
 
     # Extract per-wavelength results
-    if 'Trans1064' in active:
+    if 'Trans1' in active:
         idx = wl_map['PSL']
-        T1064 = T_main[idx]
-        vector_cost['Trans1064'] = np.abs(
-            (costs['Trans1064']['target'] - T1064)
-            / costs['Trans1064']['target']
+        T1 = T_main[idx]
+        vector_cost['Trans1'] = np.abs(
+            (costs['Trans1']['target'] - T1)
+            / costs['Trans1']['target']
         ) ** 2
         if verbose:
-            output['T1064'] = T1064
-            output['R1064'] = 1 - T1064
+            output['T1'] = T1
+            output['R1'] = 1 - T1
 
-    if 'Trans532' in active:
+    if 'Trans2' in active:
         idx = wl_map['AUX']
-        T532 = T_main[idx]
-        vector_cost['Trans532'] = np.abs(
-            (costs['Trans532']['target'] - T532)
-            / costs['Trans532']['target']
+        T2 = T_main[idx]
+        vector_cost['Trans2'] = np.abs(
+            (costs['Trans2']['target'] - T2)
+            / costs['Trans2']['target']
         ) ** 2
         if verbose:
-            output['T532'] = T532
-            output['R532'] = 1 - T532
+            output['T2'] = T2
+            output['R2'] = 1 - T2
 
-    if 'TransOPLEV' in active:
+    if 'Trans3' in active:
         idx = wl_map['OPL']
-        TOPL = T_main[idx]
-        vector_cost['TransOPLEV'] = np.abs(
-            (costs['TransOPLEV']['target'] - TOPL)
-            / costs['TransOPLEV']['target']
+        T3 = T_main[idx]
+        vector_cost['Trans3'] = np.abs(
+            (costs['Trans3']['target'] - T3)
+            / costs['Trans3']['target']
         ) ** 2
         if verbose:
-            output['TOPL'] = TOPL
+            output['T3'] = T3
 
     if 'Esurf' in active:
         idx = wl_map['PSL']
@@ -443,13 +451,62 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
         L_pert = 1.01 * L
         sens_wl = misc.get('_sens_wl')
         if sens_wl is None:
-            sens_wl = np.array([1.0, lambdaAUX])
+            sens_wl = np.array([1.0, lambda2])
         r_pert, _ = multidiel1(n, L_pert, sens_wl, aoi, pol)
         T_pert = 1 - np.abs(r_pert) ** 2
         target_sens = costs['Lsens']['target']
         sensPSL = np.abs((target_sens - T_pert[0]) / target_sens) ** 2
         sensAUX = np.abs((target_sens - T_pert[1]) / target_sens) ** 2
         vector_cost['Lsens'] = np.sqrt(sensPSL ** 2 + sensAUX ** 2)
+
+    # --- Sensitivity: per-layer curvature (d²T/dL²) penalty ---
+    # Fragile designs sit at narrow T peaks where dT/dL ≈ 0 but
+    # d²T/dL² is large and negative — small perturbations cause T
+    # to fall off a cliff.  We penalize the mean squared curvature
+    # across all layers and active transmission targets.
+    if 'Sensitivity' in active:
+        eps = 5e-3  # perturbation in optical thickness units
+        # Collect active transmission targets and their nominal T values
+        sens_targets = []  # (cost_name, wavelength_ratio)
+        sens_T_nom = []    # nominal T at each wavelength
+        if 'Trans1' in active:
+            sens_targets.append(('Trans1', 1.0))
+            sens_T_nom.append(T1)
+        if 'Trans2' in active:
+            sens_targets.append(('Trans2', lambda2))
+            sens_T_nom.append(T2)
+        if 'Trans3' in active:
+            sens_targets.append(('Trans3', lambda3))
+            sens_T_nom.append(T3)
+
+        if sens_targets:
+            wl_sens = np.array([s[1] for s in sens_targets])
+            T_nom_arr = np.array(sens_T_nom)
+            N_layers = len(L)
+            curv_sq_sum = 0.0
+
+            for j in range(N_layers):
+                Lp = L.copy()
+                Lp[j] += eps
+                Lm = L.copy()
+                Lm[j] = max(L[j] - eps, 0.01)
+                eps_m = L[j] - Lm[j]
+                rp, _ = multidiel1(n, Lp, wl_sens, aoi, pol)
+                rm, _ = multidiel1(n, Lm, wl_sens, aoi, pol)
+                Tp = 1 - np.abs(rp) ** 2
+                Tm = 1 - np.abs(rm) ** 2
+                d2TdL2 = (Tp + Tm - 2 * T_nom_arr) / (eps * eps_m)
+                curv_sq_sum += np.sum(d2TdL2 ** 2)
+
+            n_terms = N_layers * len(sens_targets)
+            mean_curv_sq = curv_sq_sum / n_terms
+            # Threshold penalty: zero at or below target, quadratic above.
+            # Target is the curvature budget (mean squared d²T/dL²).
+            target_curv = costs['Sensitivity']['target']
+            excess = mean_curv_sq / target_curv - 1.0
+            vector_cost['Sensitivity'] = max(0.0, excess) ** 2
+        else:
+            vector_cost['Sensitivity'] = 0.0
 
     # Multiplicative product: C = prod(1 + w * c_i)
     scalar_cost = 1.0

@@ -48,7 +48,7 @@ def run_study():
         print(f"{'='*60}")
 
         params = copy.deepcopy(opt_params)
-        params['costs']['Trans532']['target'] = t532
+        params['costs']['Trans2']['target'] = t532
         precompute_misc(params['costs'], stack, params['misc'])
 
         nLayers = 2 * Npairs
@@ -99,7 +99,7 @@ def run_study():
 
         results[t532] = {
             'L_opt': res.x, 'n': n, 'cost': res.fun,
-            'T1064': output['T1064'], 'T532': output['T532'],
+            'T1064': output['T1'], 'T532': output['T2'],
             'ff': ff, 'StoZ': StoZ, 'SbrZ': SbrZ,
             'SteZ': SteZ, 'StrZ': StrZ,
             'absorption': absorption,
@@ -118,8 +118,8 @@ def print_summary(results):
     print(f"{'-'*72}")
     for t532 in targets_532:
         r = results[t532]
-        print(f"{t532*100:>12.1f}%  {r['T1064']*1e6:>13.2f}  "
-              f"{r['T532']*100:>12.2f}%  "
+        print(f"{t532*100:>12.1f}%  {r['T1']*1e6:>13.2f}  "
+              f"{r['T2']*100:>12.2f}%  "
               f"{r['CTN_100']/1e-22:>10.2f}e-22  "
               f"{r['Br_100']/1e-22:>10.2f}e-22  "
               f"{r['absorption']:>10.1f}")
@@ -163,7 +163,7 @@ def make_plots(results):
     x = np.arange(len(labels))
     width = 0.35
 
-    T1064 = [results[t]['T1064'] * 1e6 for t in targets_532]
+    T1064 = [results[t]['T1'] * 1e6 for t in targets_532]
     absorp = [results[t]['absorption'] for t in targets_532]
 
     ax2a = axes[1]
@@ -209,10 +209,10 @@ def save_hdf5(results):
     fname = 'Data/ETM/greenFinesse_results.hdf5'
     with h5py.File(fname, 'w') as f:
         for t532, r in results.items():
-            g = f.create_group(f'T532_{t532}')
+            g = f.create_group(f'T2_{t532}')
             g['L_opt'] = r['L_opt']
-            g['T1064'] = r['T1064']
-            g['T532'] = r['T532']
+            g['T1'] = r['T1']
+            g['T2'] = r['T2']
             g['absorption'] = r['absorption']
             g['StoZ'] = r['StoZ']
             g['SbrZ'] = r['SbrZ']

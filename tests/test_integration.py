@@ -26,13 +26,13 @@ def test_short_optimization():
     gam = brownian_proxy(stack)
 
     costs = {
-        'Trans1064': {'target': 5e-6, 'weight': 5},
+        'Trans1': {'target': 5e-6, 'weight': 5},
         'Brownian': {'target': 20.0, 'weight': 2},
     }
     misc = {
         'pol': 'te', 'aoi': 0,
         'Npairs': Npairs, 'Nfixed': 0, 'Ncopies': 0,
-        'lambdaAUX': 0.5,
+        'lambda2': 0.5,
     }
 
     precompute_misc(costs, stack, misc)
@@ -63,7 +63,7 @@ def test_full_pipeline_hdf5_plot_mc_report():
     """End-to-end: optimize → HDF5 → read back → plot → MC → corner → RST.
 
     Verifies:
-    - HDF5 has T1064, vectorCost/* as readable datasets (not just attrs)
+    - HDF5 has T1, vectorCost/* as readable datasets (not just attrs)
     - All 4 figure files created on disk
     - MC output is readable
     - RST has all required sections
@@ -90,13 +90,13 @@ def test_full_pipeline_hdf5_plot_mc_report():
     gam = brownian_proxy(stack)
 
     costs = {
-        'Trans1064': {'target': 5e-6, 'weight': 5},
+        'Trans1': {'target': 5e-6, 'weight': 5},
         'Brownian': {'target': 20.0, 'weight': 2},
     }
     misc = {
         'pol': 'te', 'aoi': 0,
         'Npairs': Npairs, 'Nfixed': 0, 'Ncopies': 0,
-        'lambdaAUX': 0.5,
+        'lambda2': 0.5,
     }
     precompute_misc(costs, stack, misc)
 
@@ -148,9 +148,9 @@ def test_full_pipeline_hdf5_plot_mc_report():
 
         # ── 3. Read back HDF5 and verify datasets ──
         with h5py.File(hdf5_path, 'r') as f:
-            # T1064 must be a readable dataset, not just an attr
-            T1064 = float(np.array(f['diffevo_output/T1064']))
-            assert np.isfinite(T1064)
+            # T1 must be a readable dataset, not just an attr
+            T1 = float(np.array(f['diffevo_output/T1']))
+            assert np.isfinite(T1)
 
             # vectorCost entries must be datasets
             for cost_name in vector_cost:
@@ -193,8 +193,8 @@ def test_full_pipeline_hdf5_plot_mc_report():
         assert os.path.isfile(sf_path), "Starfish SVG not created"
 
         spectral_path = os.path.join(fig_dir, f'{optic}_R{ts}.svg')
-        plot_spectral(n, L, wavelength, T1064=T1064,
-                      lambda_aux=0.5, save_path=spectral_path)
+        plot_spectral(n, L, wavelength, T1=T1,
+                      lambda2=0.5, save_path=spectral_path)
         assert os.path.isfile(spectral_path)
 
         tn_path = os.path.join(fig_dir, f'{optic}_TN_{ts}.svg')
@@ -210,7 +210,7 @@ def test_full_pipeline_hdf5_plot_mc_report():
         # ── 5. MC (tiny sample) ──
         from OptimalBragg.mc import run_mc, save_mc
         mc_output = os.path.join(tmpdir, f'{optic}_MC.hdf5')
-        mc_result = run_mc(hdf5_path, n_samples=50, lambda_aux=0.5)
+        mc_result = run_mc(hdf5_path, n_samples=50, lambda2=0.5)
         save_mc(mc_result, mc_output)
 
         with h5py.File(mc_output, 'r') as f:
@@ -245,7 +245,7 @@ def test_full_pipeline_hdf5_plot_mc_report():
 
             params = {
                 'costs': {
-                    'Trans1064': {'target': 5e-6, 'weight': 5},
+                    'Trans1': {'target': 5e-6, 'weight': 5},
                     'Brownian': {'target': 20.0, 'weight': 2},
                 },
                 '_wavelength': wavelength,
@@ -264,7 +264,7 @@ def test_full_pipeline_hdf5_plot_mc_report():
 
         # Verify RST content
         assert 'Design Summary' in rst_content
-        assert 'Trans1064' in rst_content
+        assert 'T @ 1064 nm' in rst_content
         assert 'Layer Structure' in rst_content
         assert 'Spectral Reflectivity' in rst_content
         assert 'Thermal Noise' in rst_content

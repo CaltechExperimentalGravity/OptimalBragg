@@ -261,7 +261,7 @@ def _save_hdf5(result, params_path, params_dir):
     elif "ITM" in stem:
         optic_dir = "ITM"
     else:
-        optic_dir = "output"
+        optic_dir = params_path.stem.split('_')[0]
 
     spath = params_dir / "Data" / optic_dir
     os.makedirs(spath, exist_ok=True)
@@ -325,7 +325,7 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
     -------
     list of dict
         One entry per Npairs with keys ``Npairs``, ``cost``,
-        ``T1064``, ``T532``, ``result``.
+        ``T1``, ``T2``, ``result``.
     """
     params_path = Path(params_path)
     params_dir = params_path.parent
@@ -353,9 +353,9 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
     if n_range is None:
         # Find the tightest T target to set minimum Npairs
         t_targets = []
-        if costs.get("Trans1064", {}).get("weight", 0):
-            t_targets.append(costs["Trans1064"]["target"])
-        if costs.get("Trans532", {}).get("weight", 0):
+        if costs.get("Trans1", {}).get("weight", 0):
+            t_targets.append(costs["Trans1"]["target"])
+        if costs.get("Trans2", {}).get("weight", 0):
             # AUX target is at a different wavelength — QW theory
             # only applies at the design wavelength, so use PSL target
             pass
@@ -392,23 +392,23 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
             entry = {
                 "Npairs": N,
                 "cost": result["scalar_cost"],
-                "T1064": result["output"].get("T1064"),
-                "T532": result["output"].get("T532"),
+                "T1": result["output"].get("T1"),
+                "T2": result["output"].get("T2"),
                 "result": result,
             }
         except Exception as e:
             print(f"  FAILED: {e}")
             entry = {"Npairs": N, "cost": np.inf,
-                     "T1064": None, "T532": None, "result": None}
+                     "T1": None, "T2": None, "result": None}
 
         results.append(entry)
-        if entry["T1064"] is not None:
+        if entry["T1"] is not None:
             print(f"  cost={entry['cost']:.6f}  "
-                  f"T1064={entry['T1064']:.6e}  "
-                  f"T532={entry['T532']:.6e}"
-                  if entry["T532"] is not None else
+                  f"T1={entry['T1']:.6e}  "
+                  f"T2={entry['T2']:.6e}"
+                  if entry["T2"] is not None else
                   f"  cost={entry['cost']:.6f}  "
-                  f"T1064={entry['T1064']:.6e}")
+                  f"T1={entry['T1']:.6e}")
 
     # Cleanup temp file
     if tmp_yaml.exists():
@@ -420,23 +420,23 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
     # Print summary table
     print(f"\n{'='*60}")
     print(f"{'Npairs':>6} | {'Layers':>6} | {'Cost':>10} | "
-          f"{'T1064':>12} | {'T532':>12}")
+          f"{'T1':>12} | {'T2':>12}")
     print(f"{'-'*6}-+-{'-'*6}-+-{'-'*10}-+-{'-'*12}-+-{'-'*12}")
 
-    t1064_tgt = costs.get("Trans1064", {}).get("target")
-    t532_tgt = costs.get("Trans532", {}).get("target")
+    t1_tgt = costs.get("Trans1", {}).get("target")
+    t2_tgt = costs.get("Trans2", {}).get("target")
 
     best_n, best_cost = None, np.inf
     for r in results:
-        t1064_str = f"{r['T1064']:.4e}" if r["T1064"] is not None else "N/A"
-        t532_str = f"{r['T532']:.4e}" if r["T532"] is not None else "N/A"
+        t1_str = f"{r['T1']:.4e}" if r["T1"] is not None else "N/A"
+        t2_str = f"{r['T2']:.4e}" if r["T2"] is not None else "N/A"
         if r["cost"] < best_cost:
             best_cost = r["cost"]
             best_n = r["Npairs"]
         print(f"{r['Npairs']:>6} | {2*r['Npairs']:>6} | "
-              f"{r['cost']:>10.6f} | {t1064_str:>12} | {t532_str:>12}")
+              f"{r['cost']:>10.6f} | {t1_str:>12} | {t2_str:>12}")
 
-    print(f"\nTargets:  T1064={t1064_tgt}  T532={t532_tgt}")
+    print(f"\nTargets:  T1={t1_tgt}  T2={t2_tgt}")
     if best_n:
         print(f"Best:     Npairs={best_n} (cost={best_cost:.6f})")
 

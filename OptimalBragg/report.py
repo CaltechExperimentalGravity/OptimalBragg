@@ -42,12 +42,39 @@ def assess_quality(achieved, target, metric_name):
     return 'FAIL'
 
 
-def _format_value(val, metric_name):
+def _is_ar(target):
+    """Return True if target indicates anti-reflection (AR) coating."""
+    return target > 0.5
+
+
+def _format_trans_value(T_achieved, target):
+    """Format a transmission metric value using AR/HR logic.
+
+    AR targets (target > 0.5): show reflectivity as percentage.
+    HR targets (target <= 0.5): show transmission in ppm.
+    """
+    if _is_ar(target):
+        return f'{(1 - T_achieved)*100:.3f}%'
+    return f'{T_achieved*1e6:.2f} ppm'
+
+
+def _format_trans_target(target):
+    """Format a transmission target using AR/HR logic."""
+    if _is_ar(target):
+        return f'{(1 - target)*100:.1f}%'
+    return f'{target*1e6:.1f} ppm'
+
+
+def _trans_label(cost_name, target, wavelength_nm):
+    """Build a display label like 'T @ 1064 nm' or 'R @ 700 nm'."""
+    prefix = 'R' if _is_ar(target) else 'T'
+    return f'{prefix} @ {wavelength_nm:.0f} nm'
+
+
+def _format_value(val, metric_name, target=None):
     """Format a metric value for display in the summary table."""
-    if metric_name in ('Trans1064',):
-        return f'{val*1e6:.2f} ppm'
-    elif metric_name in ('Trans532', 'TransOPLEV'):
-        return f'{val*100:.3f}%'
+    if metric_name.startswith('Trans') and target is not None:
+        return _format_trans_value(val, target)
     elif metric_name == 'Brownian':
         return f'{val:.4f}'
     elif metric_name == 'Thermooptic':
@@ -57,10 +84,8 @@ def _format_value(val, metric_name):
 
 def _format_target(target, metric_name):
     """Format a target value for display."""
-    if metric_name in ('Trans1064',):
-        return f'{target*1e6:.1f} ppm'
-    elif metric_name in ('Trans532', 'TransOPLEV'):
-        return f'{target*100:.1f}%'
+    if metric_name.startswith('Trans'):
+        return _format_trans_target(target)
     elif metric_name == 'Brownian':
         return f'{target:.2f}'
     elif metric_name == 'Thermooptic':
@@ -103,7 +128,7 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
     metrics = {}
     with h5py.File(hdf5_path, 'r') as f:
         grp = 'diffevo_output'
-        for key in ('T1064', 'T532', 'TOPL', 'scalarCost'):
+        for key in ('T1', 'T2', 'T3', 'scalarCost'):
             try:
                 metrics[key] = float(np.array(f[f'{grp}/{key}']))
             except (KeyError, TypeError):
@@ -161,10 +186,17 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
     ])
 
     metric_to_cost = {
-        'T1064': 'Trans1064',
-        'T532': 'Trans532',
-        'TOPL': 'TransOPLEV',
+        'T1': 'Trans1',
+        'T2': 'Trans2',
+        'T3': 'Trans3',
     }
+
+    # Compute actual wavelength labels from misc ratios
+    misc = params.get('misc', {})
+    wavelength = params.get('_wavelength', 1064e-9)
+    wl_ratios = {'Trans1': 1.0,
+                 'Trans2': misc.get('lambda2', 0.5),
+                 'Trans3': misc.get('lambda3', None)}
 
     for hdf_key, cost_name in metric_to_cost.items():
         if hdf_key in metrics and cost_name in params.get('costs', {}):
@@ -174,9 +206,15 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
             if weight == 0:
                 continue
             status = assess_quality(achieved, target, cost_name)
+            wl_ratio = wl_ratios.get(cost_name)
+            if wl_ratio is not None:
+                wl_nm = wavelength * wl_ratio * 1e9
+                label = _trans_label(cost_name, target, wl_nm)
+            else:
+                label = cost_name
             lines.extend([
-                f'   * - {cost_name}',
-                f'     - {_format_value(achieved, cost_name)}',
+                f'   * - {label}',
+                f'     - {_format_value(achieved, cost_name, target)}',
                 f'     - {_format_target(target, cost_name)}',
                 f'     - {status}',
             ])
@@ -274,10 +312,16 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
             '   :width: 100%', '',
         ])
 
-    # MC section
+    # MC section — build wavelength-aware labels
+    # MC data is always stored as T (ppm for row 0, % for row 1),
+    # so labels always use T regardless of AR/HR target.
+    wl1_nm = wavelength * 1e9
+    lambda2_ratio = misc.get('lambda2', 0.5)
+    wl2_nm = wavelength * lambda2_ratio * 1e9
+
     mc_labels = [
-        ('T1064_ppm', r':math:`T_{1064}` [ppm]'),
-        ('T532_pct', r':math:`T_{532}` [%]'),
+        ('T1', rf':math:`T_{{{wl1_nm:.0f}}}` [ppm]'),
+        ('T2', rf':math:`T_{{{wl2_nm:.0f}}}` [%]'),
         ('S_TO', r':math:`S_\mathrm{TO}` '
          r'[:math:`\times 10^{-21}` m/:math:`\sqrt{\mathrm{Hz}}`]'),
         ('S_Br', r':math:`S_\mathrm{Br}` '
@@ -356,8 +400,8 @@ def regenerate_runs_index(runs_dir):
     os.makedirs(runs_dir, exist_ok=True)
 
     entries = {}
-    for mirror_type in ('ETM', 'ITM'):
-        subdir = os.path.join(runs_dir, mirror_type)
+    for entry in sorted(os.listdir(runs_dir)):
+        subdir = os.path.join(runs_dir, entry)
         if not os.path.isdir(subdir):
             continue
         timestamps = []
@@ -365,16 +409,14 @@ def regenerate_runs_index(runs_dir):
             if fname.endswith('.rst') and fname != 'index.rst':
                 timestamps.append(fname[:-4])
         if timestamps:
-            entries[mirror_type] = timestamps
+            entries[entry] = timestamps
 
     lines = [
         'Run Reports', '===========', '',
         'Auto-generated index of optimization run reports.', '',
     ]
 
-    for mirror_type in ('ETM', 'ITM'):
-        if mirror_type not in entries:
-            continue
+    for mirror_type in sorted(entries):
         lines.extend([
             f'{mirror_type} Runs',
             '-' * (len(mirror_type) + 5), '',

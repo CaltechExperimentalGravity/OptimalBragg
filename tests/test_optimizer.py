@@ -52,7 +52,7 @@ class TestRunOptimization:
         params = tmp_path / "test_params.yml"
         params.write_text("""\
 costs:
-    Trans1064:
+    Trans1:
         target: 0.5
         weight: 5
     Brownian:
@@ -69,7 +69,7 @@ misc:
     atol: 0.1
     tol: 0.1
     init_method: 'halton'
-    lambdaAUX: 0.5
+    lambda2: 0.5
     materials_file: 'materials.yml'
 """)
 
@@ -114,7 +114,7 @@ optics:
         params = tmp_path / "ETM_params.yml"
         params.write_text("""\
 costs:
-    Trans1064:
+    Trans1:
         target: 0.5
         weight: 5
 
@@ -128,7 +128,7 @@ misc:
     atol: 0.1
     tol: 0.1
     init_method: 'halton'
-    lambdaAUX: 0.5
+    lambda2: 0.5
     materials_file: 'materials.yml'
 """)
 

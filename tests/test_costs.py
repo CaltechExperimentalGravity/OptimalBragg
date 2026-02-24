@@ -79,6 +79,86 @@ class TestSensitivityCost:
         assert cost >= 0
 
 
+class TestSensitivityInMaster:
+    """Test the per-layer dT/dL gradient penalty in getMirrorCost."""
+
+    @pytest.fixture
+    def sfg_stack(self):
+        """12-bilayer SiO2/TiTa2O5 stack (SFG-like)."""
+        return qw_stack(
+            lam_ref=1064e-9,
+            substrate=Material(FusedSilica),
+            superstrate=Material(air),
+            thin_films={"L": Material(SiO2), "H": Material(TiTa2O5)},
+            pattern="LH" * 12 + "L",
+        )
+
+    def test_sensitivity_nonnegative(self, sfg_stack):
+        from OptimalBragg.costs import getMirrorCost, precompute_misc
+        from OptimalBragg.noise import brownian_proxy
+        costs = {
+            'Trans1': {'target': 1e-3, 'weight': 5},
+            'Trans2': {'target': 1.0, 'weight': 5},
+            'Sensitivity': {'target': 1.0, 'weight': 1},
+        }
+        gam = brownian_proxy(sfg_stack)
+        misc = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
+        precompute_misc(costs, sfg_stack, misc)
+        L = sfg_stack["Ls_opt"]
+        _, out = getMirrorCost(L, costs, sfg_stack, gam,
+                               verbose=True, misc=misc)
+        assert out['vectorCost']['Sensitivity'] >= 0
+
+    def test_sensitivity_higher_for_random_layers(self, sfg_stack):
+        """Random layer thicknesses should be more sensitive than QW."""
+        from OptimalBragg.costs import getMirrorCost, precompute_misc
+        from OptimalBragg.noise import brownian_proxy
+        costs = {
+            'Trans1': {'target': 1e-3, 'weight': 5},
+            'Trans2': {'target': 1.0, 'weight': 5},
+            'Sensitivity': {'target': 1.0, 'weight': 1},
+        }
+        gam = brownian_proxy(sfg_stack)
+        misc = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
+        precompute_misc(costs, sfg_stack, misc)
+        L_qw = sfg_stack["Ls_opt"]
+
+        rng = np.random.default_rng(42)
+        L_rand = rng.uniform(0.1, 0.4, size=len(L_qw))
+
+        _, out_qw = getMirrorCost(L_qw, costs, sfg_stack, gam,
+                                   verbose=True, misc=misc)
+        misc2 = dict(misc)
+        precompute_misc(costs, sfg_stack, misc2)
+        _, out_rand = getMirrorCost(L_rand, costs, sfg_stack, gam,
+                                     verbose=True, misc=misc2)
+        # QW is a natural minimum — random should have higher sensitivity
+        assert (out_rand['vectorCost']['Sensitivity']
+                > out_qw['vectorCost']['Sensitivity'])
+
+    def test_sensitivity_increases_total_cost(self, sfg_stack):
+        """Adding Sensitivity cost should increase the total scalar cost."""
+        from OptimalBragg.costs import getMirrorCost, precompute_misc
+        from OptimalBragg.noise import brownian_proxy
+        costs_no = {
+            'Trans1': {'target': 1e-3, 'weight': 5},
+            'Sensitivity': {'target': 1.0, 'weight': 0},
+        }
+        costs_yes = {
+            'Trans1': {'target': 1e-3, 'weight': 5},
+            'Sensitivity': {'target': 1.0, 'weight': 2},
+        }
+        gam = brownian_proxy(sfg_stack)
+        misc1 = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
+        misc2 = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
+        precompute_misc(costs_no, sfg_stack, misc1)
+        precompute_misc(costs_yes, sfg_stack, misc2)
+        L = sfg_stack["Ls_opt"]
+        c_no = getMirrorCost(L, costs_no, sfg_stack, gam, misc=misc1)
+        c_yes = getMirrorCost(L, costs_yes, sfg_stack, gam, misc=misc2)
+        assert c_yes >= c_no
+
+
 class TestSurfEfieldCost:
     def test_positive(self):
         from OptimalBragg.costs import surfEfieldCost
@@ -151,14 +231,14 @@ class TestPrecomputeMisc:
     def test_populates_cache(self, aLIGO_stack):
         from OptimalBragg.costs import precompute_misc
         costs = {
-            'Trans1064': {'target': 5e-6, 'weight': 15},
-            'Trans532': {'target': 0.032, 'weight': 5},
+            'Trans1': {'target': 5e-6, 'weight': 15},
+            'Trans2': {'target': 0.032, 'weight': 5},
             'Brownian': {'target': 20.0, 'weight': 2},
             'Thermooptic': {'target': 1.6e-42, 'weight': 2},
         }
         misc = {
             'Npairs': 18, 'aoi': 0, 'pol': 'te',
-            'lambdaAUX': 0.5, 'fTO': 100,
+            'lambda2': 0.5, 'fTO': 100,
             'r_mirror': 0.17, 'd_mirror': 0.20,
         }
         precompute_misc(costs, aLIGO_stack, misc)
@@ -177,13 +257,13 @@ class TestGetMirrorCost:
         from OptimalBragg.costs import precompute_misc
         from OptimalBragg.noise import brownian_proxy
         costs = {
-            'Trans1064': {'target': 5e-6, 'weight': 15},
+            'Trans1': {'target': 5e-6, 'weight': 15},
             'Brownian': {'target': 20.0, 'weight': 2},
         }
         gam = brownian_proxy(aLIGO_stack)
         misc = {
             'Npairs': 18, 'aoi': 0, 'pol': 'te',
-            'lambdaAUX': 0.5, 'fTO': 100,
+            'lambda2': 0.5, 'fTO': 100,
             'r_mirror': 0.17, 'd_mirror': 0.20,
             'w_beam': 0.062,
         }
@@ -205,21 +285,21 @@ class TestGetMirrorCost:
         cost, out = getMirrorCost(L, costs, stack, gam, verbose=True,
                                   misc=misc)
         assert 'vectorCost' in out
-        assert 'Trans1064' in out['vectorCost']
+        assert 'Trans1' in out['vectorCost']
         assert 'Brownian' in out['vectorCost']
-        assert 'T1064' in out
-        assert 'R1064' in out
+        assert 'T1' in out
+        assert 'R1' in out
 
     def test_zero_weights_unity_cost(self, aLIGO_stack):
         """All zero weights → scalar cost should be 1.0."""
         from OptimalBragg.costs import getMirrorCost, precompute_misc
         costs = {
-            'Trans1064': {'target': 5e-6, 'weight': 0},
+            'Trans1': {'target': 5e-6, 'weight': 0},
             'Brownian': {'target': 20.0, 'weight': 0},
         }
         misc = {
             'Npairs': 18, 'aoi': 0, 'pol': 'te',
-            'lambdaAUX': 0.5,
+            'lambda2': 0.5,
         }
         precompute_misc(costs, aLIGO_stack, misc)
         L = aLIGO_stack["Ls_opt"]
@@ -230,13 +310,13 @@ class TestGetMirrorCost:
         from OptimalBragg.costs import getMirrorCost, precompute_misc
         from OptimalBragg.noise import brownian_proxy
         costs = {
-            'Trans1064': {'target': 5e-6, 'weight': 15},
+            'Trans1': {'target': 5e-6, 'weight': 15},
             'Thermooptic': {'target': 1.6e-42, 'weight': 2},
         }
         gam = brownian_proxy(aLIGO_stack)
         misc = {
             'Npairs': 18, 'aoi': 0, 'pol': 'te',
-            'lambdaAUX': 0.5, 'fTO': 100,
+            'lambda2': 0.5, 'fTO': 100,
             'r_mirror': 0.17, 'd_mirror': 0.20, 'w_beam': 0.062,
         }
         precompute_misc(costs, aLIGO_stack, misc)
@@ -247,14 +327,14 @@ class TestGetMirrorCost:
     def test_ncopies_extends_stack(self, aLIGO_stack):
         """Ncopies should tile extra layers."""
         from OptimalBragg.costs import getMirrorCost, precompute_misc
-        costs = {'Trans1064': {'target': 5e-6, 'weight': 15}}
+        costs = {'Trans1': {'target': 5e-6, 'weight': 15}}
         misc_base = {
             'Npairs': 18, 'aoi': 0, 'pol': 'te',
-            'lambdaAUX': 0.5,
+            'lambda2': 0.5,
         }
         misc_copy = {
             'Npairs': 18, 'Ncopies': 1, 'aoi': 0, 'pol': 'te',
-            'lambdaAUX': 0.5,
+            'lambda2': 0.5,
         }
         precompute_misc(costs, aLIGO_stack, misc_base)
         precompute_misc(costs, aLIGO_stack, misc_copy)

@@ -51,7 +51,7 @@ def cmd_run(args):
     if not args.no_mc:
         params_path = Path(args.params)
         stem = params_path.stem.upper()
-        optic = 'ETM' if 'ETM' in stem else ('ITM' if 'ITM' in stem else 'output')
+        optic = 'ETM' if 'ETM' in stem else ('ITM' if 'ITM' in stem else params_path.stem.split('_')[0])
         data_dir = params_path.parent / 'Data' / optic
 
         mc_output = str(data_dir / Path(hdf5_path).name.replace(
@@ -107,7 +107,7 @@ def _generate_plots_and_report(params_path, hdf5_path=None,
 
     # Infer optic name
     stem = params_path.stem.upper()
-    optic = 'ETM' if 'ETM' in stem else ('ITM' if 'ITM' in stem else 'output')
+    optic = 'ETM' if 'ETM' in stem else ('ITM' if 'ITM' in stem else params_path.stem.split('_')[0])
 
     # Find the HDF5 file
     data_dir = params_dir / 'Data' / optic
@@ -137,10 +137,11 @@ def _generate_plots_and_report(params_path, hdf5_path=None,
     with h5py.File(hdf5_path, 'r') as f:
         n = np.array(f['diffevo_output/n'])
         L_opt = np.array(f['diffevo_output/L'])
-        T1064 = float(np.array(f['diffevo_output/T1064'])) \
-            if 'diffevo_output/T1064' in f else None
+        T1 = float(np.array(f['diffevo_output/T1'])) \
+            if 'diffevo_output/T1' in f else None
 
     wavelength = materials['laser']['wavelength']
+    opt_params['_wavelength'] = wavelength
     fig_dir = params_dir / 'Figures' / optic
     os.makedirs(fig_dir, exist_ok=True)
 
@@ -178,9 +179,10 @@ def _generate_plots_and_report(params_path, hdf5_path=None,
         print(f"  Saved: {optic}_SF{ts}.svg")
 
     # Spectral reflectivity
-    lambda_aux = opt_params['misc'].get('lambdaAUX', 0.5)
-    plot_spectral(n, L_opt, wavelength, T1064=T1064,
-                  lambda_aux=lambda_aux,
+    lambda2 = opt_params['misc'].get('lambda2', 0.5)
+    lambda3 = opt_params['misc'].get('lambda3', None)
+    plot_spectral(n, L_opt, wavelength, T1=T1,
+                  lambda2=lambda2, lambda3=lambda3,
                   save_path=str(fig_dir / f'{optic}_R{ts}.svg'))
     print(f"  Saved: {optic}_R{ts}.svg")
 

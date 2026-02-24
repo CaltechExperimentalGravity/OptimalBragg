@@ -105,7 +105,7 @@ python benchmarks/bench_thermooptic.py    # Thermooptic JIT vs numpy
 
 Each project directory has:
 - **`materials.yml`** — Material properties referencing the central library, with optional overrides
-- **`ETM_params.yml`, `ITM_params.yml`** — Cost function weights/targets, optimizer settings, `lambdaAUX` wavelength ratio
+- **`ETM_params.yml`, `ITM_params.yml`** — Cost function weights/targets, optimizer settings, `lambda2`/`lambda3` wavelength ratios
 
 ### Data Flow
 
@@ -122,5 +122,5 @@ Uses `emcee` ensemble sampler (20 walkers, 3D parameter space). Perturbs: high-n
 - Binary data files (`.mat`, `.hdf5`) are gitignored; `.mat` files use Git LFS
 - Physical units: wavelengths in meters (SI), layer thicknesses as optical thickness (fraction of lambda_0), thermal noise in m^2/Hz (PSD), temperature in Kelvin
 - Primary operating points: 2050 nm / 123 K (Voyager), 1064 nm / 295 K (aLIGO)
-- AUX wavelength ratio is configured per-project via `lambdaAUX` in params YAML (not hardcoded)
+- Wavelength ratios are configured per-project via `lambda2`/`lambda3` in params YAML (not hardcoded)
 - Corner plots use ArviZ `plot_pair()` (not `corner` package)

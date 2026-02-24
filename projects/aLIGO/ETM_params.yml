@@ -4,8 +4,8 @@
 # This specifies the terms to include in your cost function. To exclude
 # certain costs from the optimization run, simply set weight to 0.0
 costs:
-    # PSL wavelength transmission
-    Trans1064:
+    # Design wavelength transmission
+    Trans1:
         target: 5e-6
         weight: 5
     # Brownian noise level (QW proxy for 21 bilayers + cap ~15, optimizer needs ~23)
@@ -28,12 +28,12 @@ costs:
     Absorption:
         target: 1e-4
         weight: 0
-    # AUX transmission (532 nm, 3.2% target per aLIGO spec R=96.8%)
-    Trans532:
+    # Second wavelength transmission (532 nm, 3.2% target per aLIGO spec R=96.8%)
+    Trans2:
         target: 0.032
         weight: 5
-    # OPLEV transmission
-    TransOPLEV:
+    # Third wavelength transmission
+    Trans3:
         target: 0.05
         weight: 0
     # Optical thickness inhomogeneity
@@ -66,7 +66,7 @@ misc:
     hwcap: 'L'
     # how to initialize the population
     init_method: 'halton'
-    # AUX wavelength ratio (lambda_AUX / lambda_PSL) -- 532 nm / 1064 nm
-    lambdaAUX: 0.5
+    # Second wavelength ratio (lambda_2 / lambda_design) -- 532 nm / 1064 nm
+    lambda2: 0.5
     # Materials config (replaces gwincStructFile)
     materials_file: 'materials.yml'
