@@ -2,8 +2,12 @@
 
 Usage::
 
+    optimalbragg run projects/aLIGO/ETM_params.yml
+    optimalbragg run projects/aLIGO/ETM_params.yml --mc-samples 10000
+    optimalbragg run projects/aLIGO/ETM_params.yml --no-mc
     optimalbragg optimize projects/aLIGO/ETM_params.yml
     optimalbragg plot projects/aLIGO/ETM_params.yml
+    optimalbragg plot projects/aLIGO/ETM_params.yml --mc-hdf5 Data/ETM/ETM_MC.hdf5
     optimalbragg mc Data/ETM/ETM_Layers_260221.hdf5 5000
     optimalbragg corner Data/ETM/ETM_MC.hdf5
 """
@@ -22,8 +26,66 @@ def cmd_optimize(args):
     )
 
 
-def cmd_plot(args):
-    """Generate plots from optimization output."""
+def cmd_run(args):
+    """Run full pipeline: optimize → plot + report → background MC."""
+    import subprocess
+    from pathlib import Path
+
+    from OptimalBragg.optimizer import run_optimization
+
+    # 1. Optimize
+    result = run_optimization(
+        args.params,
+        save=True,
+        optic=args.optic,
+    )
+    hdf5_path = result.get('hdf5_path')
+    if hdf5_path is None:
+        print("Error: optimization did not produce an HDF5 file.")
+        sys.exit(1)
+
+    # 2. Generate plots + initial report (MC pending)
+    _generate_plots_and_report(args.params, hdf5_path=hdf5_path)
+
+    # 3. Launch MC in background subprocess (unless --no-mc)
+    if not args.no_mc:
+        params_path = Path(args.params)
+        stem = params_path.stem.upper()
+        optic = 'ETM' if 'ETM' in stem else ('ITM' if 'ITM' in stem else 'output')
+        data_dir = params_path.parent / 'Data' / optic
+
+        mc_output = str(data_dir / Path(hdf5_path).name.replace(
+            '_Layers_', '_MC_'))
+        n_samples = args.mc_samples
+
+        subprocess.Popen([
+            sys.executable, '-m', 'OptimalBragg.mc_pipeline',
+            hdf5_path, mc_output, str(n_samples), str(args.params),
+        ])
+        print(f"\nMC running in background ({n_samples} samples).")
+        print("Refresh report after completion to see corner plot.")
+    else:
+        print("\nSkipping MC (--no-mc).")
+
+
+def _generate_plots_and_report(params_path, hdf5_path=None,
+                               mc_hdf5_path=None):
+    """Generate all plots and the Sphinx report for an optimization run.
+
+    Parameters
+    ----------
+    params_path : str or Path
+        Path to cost/optimizer YAML.
+    hdf5_path : str, optional
+        Specific HDF5 file. If None, uses the latest in Data/<optic>/.
+    mc_hdf5_path : str, optional
+        Path to MC output HDF5. If None, auto-detects from Data dir.
+
+    Returns
+    -------
+    fig_paths : dict
+    hdf5_path : str
+    """
     import glob
     import os
     from pathlib import Path
@@ -38,7 +100,7 @@ def cmd_plot(args):
     from OptimalBragg.plot import apply_style, plot_layers, plot_spectral
     from OptimalBragg.plot import plot_noise, plot_starfish
 
-    params_path = Path(args.params)
+    params_path = Path(params_path)
     params_dir = params_path.parent
     opt_params = yamlread(str(params_path))
     misc = opt_params['misc']
@@ -49,9 +111,7 @@ def cmd_plot(args):
 
     # Find the HDF5 file
     data_dir = params_dir / 'Data' / optic
-    if args.hdf5:
-        hdf5_path = args.hdf5
-    else:
+    if hdf5_path is None:
         candidates = sorted(glob.glob(str(data_dir / '*Layers*.hdf5')),
                             key=os.path.getctime)
         if not candidates:
@@ -59,6 +119,15 @@ def cmd_plot(args):
             sys.exit(1)
         hdf5_path = candidates[-1]
         print(f"Using: {hdf5_path}")
+
+    # Auto-detect MC file if not provided
+    if mc_hdf5_path is None:
+        mc_candidates = sorted(
+            glob.glob(str(data_dir / f'{optic}_MC_*.hdf5')),
+            key=os.path.getctime)
+        if mc_candidates:
+            mc_hdf5_path = mc_candidates[-1]
+            print(f"Found MC: {mc_hdf5_path}")
 
     # Load materials
     mat_file = params_dir / misc.get('materials_file', 'materials.yml')
@@ -150,6 +219,45 @@ def cmd_plot(args):
 
     import matplotlib.pyplot as plt
     plt.close('all')
+
+    # Build fig_paths dict
+    fig_paths = {
+        'layers': str(fig_dir / f'{optic}_Layers_{ts}.svg'),
+        'starfish': sf_path if stats else None,
+        'spectral': str(fig_dir / f'{optic}_R{ts}.svg'),
+        'noise': str(fig_dir / f'{optic}_TN_{ts}.svg'),
+    }
+
+    # Corner plot if MC data exists
+    if mc_hdf5_path and os.path.isfile(mc_hdf5_path):
+        from OptimalBragg.plot import plot_corner
+        with h5py.File(mc_hdf5_path, 'r') as fmc:
+            mc_samples = np.array(fmc['MCout'][:])
+        corner_path = str(fig_dir / f'{optic}_corner_{ts}.svg')
+        plot_corner(mc_samples, mirror_type=optic, save_path=corner_path)
+        fig_paths['corner'] = corner_path
+        print(f"  Saved: {optic}_corner_{ts}.svg")
+        plt.close('all')
+
+    # Generate RST/HTML report
+    from OptimalBragg.report import generate_run_rst
+    project_dir = params_dir.name
+    generate_run_rst(
+        hdf5_path, optic, fig_paths, opt_params,
+        project_dir=project_dir,
+        mc_hdf5_path=mc_hdf5_path,
+    )
+
+    return fig_paths, hdf5_path
+
+
+def cmd_plot(args):
+    """Generate plots from optimization output."""
+    _generate_plots_and_report(
+        args.params,
+        hdf5_path=args.hdf5,
+        mc_hdf5_path=getattr(args, 'mc_hdf5', None),
+    )
     print("Done.")
 
 
@@ -211,6 +319,17 @@ def main():
     )
     subparsers = parser.add_subparsers(dest='command', required=True)
 
+    # run (full pipeline)
+    p_run = subparsers.add_parser(
+        'run', help='Full pipeline: optimize → plot → MC (background)')
+    p_run.add_argument('params', help='Path to cost/optimizer YAML')
+    p_run.add_argument('--optic', help='Optic name (ETM or ITM)')
+    p_run.add_argument('--mc-samples', type=int, default=5000,
+                       help='Number of MC samples (default: 5000)')
+    p_run.add_argument('--no-mc', action='store_true',
+                       help='Skip Monte Carlo analysis')
+    p_run.set_defaults(func=cmd_run)
+
     # optimize
     p_opt = subparsers.add_parser('optimize', help='Run coating optimization')
     p_opt.add_argument('params', help='Path to cost/optimizer YAML')
@@ -223,6 +342,7 @@ def main():
     p_plot = subparsers.add_parser('plot', help='Generate plots')
     p_plot.add_argument('params', help='Path to cost/optimizer YAML')
     p_plot.add_argument('--hdf5', help='Specific HDF5 file (default: latest)')
+    p_plot.add_argument('--mc-hdf5', help='MC output HDF5 (default: auto-detect)')
     p_plot.set_defaults(func=cmd_plot)
 
     # mc

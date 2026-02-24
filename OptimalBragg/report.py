@@ -115,6 +115,18 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
         except KeyError:
             L, n = None, None
 
+        # Optimizer metadata
+        try:
+            metrics['algorithm'] = f['algorithm'][()].decode() \
+                if isinstance(f['algorithm'][()], bytes) \
+                else str(f['algorithm'][()])
+        except (KeyError, TypeError):
+            pass
+        try:
+            metrics['wall_time'] = float(np.array(f['wall_time']))
+        except (KeyError, TypeError):
+            pass
+
         vector_costs = {}
         try:
             for cost_name in f[f'{grp}/vectorCost']:
@@ -190,6 +202,20 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
             f'     -',
             f'     -',
         ])
+    if 'algorithm' in metrics:
+        lines.extend([
+            f'   * - Optimizer',
+            f'     - {metrics["algorithm"]}',
+            f'     -',
+            f'     -',
+        ])
+    if 'wall_time' in metrics:
+        lines.extend([
+            f'   * - Wall time',
+            f'     - {metrics["wall_time"]:.1f} s',
+            f'     -',
+            f'     -',
+        ])
     lines.append('')
 
     # Cost breakdown
@@ -240,11 +266,11 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
             '   :width: 60%', '',
         ])
 
-    if 'thermal_noise' in fig_paths:
+    if 'noise' in fig_paths:
         lines.extend([
             'Thermal Noise Budget',
             '--------------------', '',
-            f'.. image:: {rel_prefix}/{fig_paths["thermal_noise"]}',
+            f'.. image:: {rel_prefix}/{fig_paths["noise"]}',
             '   :width: 100%', '',
         ])
 
