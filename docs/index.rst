@@ -16,6 +16,7 @@ noise, manufacturing tolerance, and surface E-field constraints.
    :maxdepth: 2
    :caption: Physics
 
+   physics/materials
    physics/transfer-matrix
    physics/cost-function
    physics/thermal-noise
