@@ -45,6 +45,9 @@ docs/runs/ITM/*.rst
 **/Figures/ETM/
 **/Figures/ITM/
 
+# Log files
+**/*.log
+
 # Python cache
 __pycache__/
 *.egg-info/
