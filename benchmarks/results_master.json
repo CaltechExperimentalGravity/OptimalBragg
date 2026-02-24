@@ -1,0 +1,25 @@
+{
+  "branch": "master",
+  "config": {
+    "Npairs": 14,
+    "Nlayers": 29,
+    "popsize": 40
+  },
+  "multidiel1": {
+    "1wl_us": 84.9,
+    "3wl_us": 85.7,
+    "N_calls": 10000
+  },
+  "getMirrorCost": {
+    "ms_per_call": 0.185,
+    "N_calls": 2000,
+    "scalar_cost": 103056116447.75418
+  },
+  "full_optimization": {
+    "wall_time_sec": 4.0,
+    "final_cost": 1.9212303826472965,
+    "converged": true,
+    "iterations": 84,
+    "nfev": 98840
+  }
+}

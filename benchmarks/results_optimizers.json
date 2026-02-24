@@ -1,0 +1,536 @@
+[
+  {
+    "name": "DE:baseline",
+    "kwargs": {},
+    "runs": [
+      {
+        "time": 4.44,
+        "cost": 1539.31370188,
+        "n_evals": 204195,
+        "T1064": 5.116148385053698e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 5.89,
+        "cost": 1562.05657979,
+        "n_evals": 281866,
+        "T1064": 5.106934919729689e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 5.03,
+        "cost": 1539.31682042,
+        "n_evals": 239851,
+        "T1064": 5.115817273693146e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.31682042,
+    "median_time": 5.03,
+    "std_cost": 10.72036049,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:strategy=best2bin",
+    "kwargs": {
+      "strategy": "best2bin"
+    },
+    "runs": [
+      {
+        "time": 78.25,
+        "cost": 1578.6183844,
+        "n_evals": 3700432,
+        "T1064": 5.076345548027383e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 54.92,
+        "cost": 1574.1921707,
+        "n_evals": 2599163,
+        "T1064": 5.1770123576933e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 62.42,
+        "cost": 1539.31451564,
+        "n_evals": 2954456,
+        "T1064": 5.115992751991705e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1574.1921707,
+    "median_time": 62.42,
+    "std_cost": 17.57787843,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:strategy=rand1bin",
+    "kwargs": {
+      "strategy": "rand1bin"
+    },
+    "runs": [
+      {
+        "time": 62.71,
+        "cost": 1539.32149999,
+        "n_evals": 2979410,
+        "T1064": 5.115738027527961e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 57.97,
+        "cost": 1594.02549874,
+        "n_evals": 2737343,
+        "T1064": 5.03515787420028e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 58.33,
+        "cost": 1596.30992127,
+        "n_evals": 2754114,
+        "T1064": 4.965486535835062e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1594.02549874,
+    "median_time": 58.33,
+    "std_cost": 26.34266971,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:strategy=currenttobest1bin",
+    "kwargs": {
+      "strategy": "currenttobest1bin"
+    },
+    "runs": [
+      {
+        "time": 4.47,
+        "cost": 1539.3165155,
+        "n_evals": 210205,
+        "T1064": 5.1164056885655285e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 4.36,
+        "cost": 1539.30996189,
+        "n_evals": 205948,
+        "T1064": 5.116038972907688e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 4.3,
+        "cost": 1539.32569258,
+        "n_evals": 203499,
+        "T1064": 5.115607102590403e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.3165155,
+    "median_time": 4.36,
+    "std_cost": 0.00645173,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:popsize=10",
+    "kwargs": {
+      "popsize": "10"
+    },
+    "runs": [
+      {
+        "time": 3.16,
+        "cost": 1563.38953125,
+        "n_evals": 156694,
+        "T1064": 5.119591612645635e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 3.64,
+        "cost": 1539.31028303,
+        "n_evals": 179888,
+        "T1064": 5.1159587025617625e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 3.64,
+        "cost": 1573.9985523,
+        "n_evals": 179577,
+        "T1064": 5.118446432694768e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1563.38953125,
+    "median_time": 3.64,
+    "std_cost": 14.51297331,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:popsize=20",
+    "kwargs": {
+      "popsize": "20"
+    },
+    "runs": [
+      {
+        "time": 7.84,
+        "cost": 1539.31002446,
+        "n_evals": 356289,
+        "T1064": 5.116127169912943e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 6.01,
+        "cost": 1539.32428604,
+        "n_evals": 273253,
+        "T1064": 5.115322518456367e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 7.35,
+        "cost": 1539.31203808,
+        "n_evals": 334023,
+        "T1064": 5.115848964010183e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.31203808,
+    "median_time": 7.35,
+    "std_cost": 0.0063022,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:popsize=30",
+    "kwargs": {
+      "popsize": "30"
+    },
+    "runs": [
+      {
+        "time": 9.59,
+        "cost": 1539.31086801,
+        "n_evals": 401320,
+        "T1064": 5.115920477472002e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 9.6,
+        "cost": 1539.30995673,
+        "n_evals": 398974,
+        "T1064": 5.116129559223914e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 11.2,
+        "cost": 1558.00632748,
+        "n_evals": 467330,
+        "T1064": 5.141550269094353e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.31086801,
+    "median_time": 9.6,
+    "std_cost": 8.81333891,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:mutation=(0.5, 1.0)",
+    "kwargs": {
+      "mutation": "(0.5, 1.0)"
+    },
+    "runs": [
+      {
+        "time": 2.57,
+        "cost": 1539.31086801,
+        "n_evals": 121063,
+        "T1064": 5.1157722544825646e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 2.46,
+        "cost": 1539.31990197,
+        "n_evals": 115705,
+        "T1064": 5.1154821754106905e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 2.03,
+        "cost": 1556.54494652,
+        "n_evals": 95659,
+        "T1064": 5.1326414376440255e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.31990197,
+    "median_time": 2.46,
+    "std_cost": 8.12209403,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:mutation=(0.7, 1.7)",
+    "kwargs": {
+      "mutation": "(0.7, 1.7)"
+    },
+    "runs": [
+      {
+        "time": 39.13,
+        "cost": 1539.31126952,
+        "n_evals": 1846337,
+        "T1064": 5.116564770202281e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 35.84,
+        "cost": 1585.56604472,
+        "n_evals": 1686894,
+        "T1064": 5.10497853611902e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 34.45,
+        "cost": 1587.4055982,
+        "n_evals": 1627732,
+        "T1064": 5.036791202450708e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1585.56604472,
+    "median_time": 35.84,
+    "std_cost": 22.2509741,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:recombination=0.5",
+    "kwargs": {
+      "recombination": "0.5"
+    },
+    "runs": [
+      {
+        "time": 12.23,
+        "cost": 1544.28322813,
+        "n_evals": 579137,
+        "T1064": 5.1167292751674864e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 8.69,
+        "cost": 1539.30969198,
+        "n_evals": 410126,
+        "T1064": 5.1161677333544375e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 8.58,
+        "cost": 1568.21562877,
+        "n_evals": 402563,
+        "T1064": 5.1187509592098834e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1544.28322813,
+    "median_time": 8.69,
+    "std_cost": 12.61854475,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:recombination=0.9",
+    "kwargs": {
+      "recombination": "0.9"
+    },
+    "runs": [
+      {
+        "time": 2.24,
+        "cost": 1539.31056075,
+        "n_evals": 105060,
+        "T1064": 5.115855008508419e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 2.65,
+        "cost": 1539.31802268,
+        "n_evals": 125089,
+        "T1064": 5.11584504847562e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 2.49,
+        "cost": 1566.85421139,
+        "n_evals": 116934,
+        "T1064": 5.203274376031075e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.31802268,
+    "median_time": 2.49,
+    "std_cost": 12.98244299,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:tol=0.001",
+    "kwargs": {
+      "tol": "0.001"
+    },
+    "runs": [
+      {
+        "time": 8.11,
+        "cost": 1539.31118142,
+        "n_evals": 381753,
+        "T1064": 5.115808442979208e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 8.63,
+        "cost": 1543.04255267,
+        "n_evals": 407299,
+        "T1064": 5.106005494082133e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 6.71,
+        "cost": 1539.3103386,
+        "n_evals": 316233,
+        "T1064": 5.116249884307145e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.31118142,
+    "median_time": 8.11,
+    "std_cost": 1.75918396,
+    "n_timeouts": 0
+  },
+  {
+    "name": "DE:tol=0.0001",
+    "kwargs": {
+      "tol": "0.0001"
+    },
+    "runs": [
+      {
+        "time": 9.74,
+        "cost": 1539.31015049,
+        "n_evals": 450082,
+        "T1064": 5.1161095386831335e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 10.0,
+        "cost": 1539.59768834,
+        "n_evals": 461783,
+        "T1064": 5.107927528280598e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 10.74,
+        "cost": 1539.61019864,
+        "n_evals": 496426,
+        "T1064": 5.115084910523038e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.59768834,
+    "median_time": 10.0,
+    "std_cost": 0.13858949,
+    "n_timeouts": 0
+  },
+  {
+    "name": "dual_annealing",
+    "kwargs": {},
+    "runs": [
+      {
+        "time": 1.65,
+        "cost": 1539.32584808,
+        "n_evals": 60177,
+        "T1064": 5.115727422899674e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 1.63,
+        "cost": 1539.3119695,
+        "n_evals": 59568,
+        "T1064": 5.115320000692591e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 1.74,
+        "cost": 1539.30954641,
+        "n_evals": 63947,
+        "T1064": 5.116372795654911e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 1539.3119695,
+    "median_time": 1.65,
+    "std_cost": 0.00718201,
+    "n_timeouts": 0
+  },
+  {
+    "name": "basin_hopping",
+    "kwargs": {},
+    "runs": [
+      {
+        "time": 0.84,
+        "cost": 2091.66432659,
+        "n_evals": 37352,
+        "T1064": 5.102923889999111e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 0.84,
+        "cost": 2091.66432659,
+        "n_evals": 37352,
+        "T1064": 5.102923889999111e-06,
+        "success": true,
+        "timed_out": false
+      },
+      {
+        "time": 0.84,
+        "cost": 2091.66432659,
+        "n_evals": 37352,
+        "T1064": 5.102923889999111e-06,
+        "success": true,
+        "timed_out": false
+      }
+    ],
+    "median_cost": 2091.66432659,
+    "median_time": 0.84,
+    "std_cost": 0.0,
+    "n_timeouts": 0
+  }
+]

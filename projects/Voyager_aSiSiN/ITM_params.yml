@@ -56,7 +56,7 @@ misc:
     # Number of copies of the variable stack
     Ncopies: 0
     # Number of particles in the optimizer
-    Nparticles: 12
+    Nparticles: 600
     # Absolute Tolerance
     atol: 3e-9
     # Relative Tolerance
