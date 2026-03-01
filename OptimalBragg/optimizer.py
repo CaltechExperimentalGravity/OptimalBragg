@@ -242,6 +242,8 @@ def run_optimization(params_path, save=True, optic=None):
         "algorithm": algorithm,
         "wall_time": dt,
     }
+    if misc.get("_original_params"):
+        result["_original_params"] = Path(misc["_original_params"])
 
     if save:
         hdf5_path = _save_hdf5(result, params_path, params_dir)
@@ -266,7 +268,9 @@ def _save_hdf5(result, params_path, params_dir):
     spath = params_dir / "Data" / optic_dir
     os.makedirs(spath, exist_ok=True)
 
-    fname = spath / f"{optic_dir}_Layers_{tnowstr}.hdf5"
+    nlayers = len(result["L"])
+    npairs = (nlayers - 1) // 2 if nlayers % 2 == 1 else nlayers // 2
+    fname = spath / f"{optic_dir}_N{npairs}_Layers_{tnowstr}.hdf5"
 
     output = dict(result["output"])
     vector_cost = output.pop("vectorCost")
@@ -279,7 +283,7 @@ def _save_hdf5(result, params_path, params_dir):
             **{k: (np.float64(v) if np.isscalar(v) else v)
                for k, v in output.items()},
         },
-        "params_file": str(params_path),
+        "params_file": str(result.get("_original_params", params_path)),
         "algorithm": result.get("algorithm", "differential_evolution"),
         "wall_time": np.float64(result.get("wall_time", 0.0)),
     }
@@ -306,8 +310,46 @@ def _qw_min_npairs(n_H, n_L, n_sub, n_sup, T_target):
     return int(np.ceil(N))
 
 
+def _run_one_npairs(params_path, N, save, optic):
+    """Run a single Npairs optimization.  Designed for process-pool dispatch."""
+    import yaml
+
+    params_path = Path(params_path)
+    params_dir = params_path.parent
+
+    opt_params = yamlread(str(params_path))
+    opt_params["misc"]["Npairs"] = N
+    opt_params["misc"]["_original_params"] = str(params_path)
+
+    tmp_yaml = params_dir / f"_sweep_tmp_{optic}_N{N}.yml"
+    with open(tmp_yaml, "w") as f:
+        yaml.dump(opt_params, f, default_flow_style=False)
+
+    try:
+        result = run_optimization(tmp_yaml, save=save, optic=optic)
+        entry = {
+            "Npairs": N,
+            "cost": result["scalar_cost"],
+            "T1": result["output"].get("T1"),
+            "T2": result["output"].get("T2"),
+            "T3": result["output"].get("T3"),
+            "result": result,
+        }
+    except Exception as e:
+        print(f"  Npairs={N} FAILED: {e}")
+        entry = {"Npairs": N, "cost": np.inf,
+                 "T1": None, "T2": None, "T3": None, "result": None}
+    finally:
+        if tmp_yaml.exists():
+            tmp_yaml.unlink()
+
+    return entry
+
+
 def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
     """Sweep Npairs to find the minimum that hits all targets.
+
+    Runs all Npairs values in parallel using a process pool.
 
     Parameters
     ----------
@@ -327,6 +369,8 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
         One entry per Npairs with keys ``Npairs``, ``cost``,
         ``T1``, ``T2``, ``result``.
     """
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
     params_path = Path(params_path)
     params_dir = params_path.parent
 
@@ -366,62 +410,52 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
         n_start = _qw_min_npairs(n_H, n_L, n_sub, n_sup, t_min)
         n_range = (n_start, n_start + 6)
 
+    n_values = list(range(n_range[0], n_range[1] + 1))
+
     print(f"\n{'='*60}")
-    print(f"Nlayers sweep: Npairs = {n_range[0]}..{n_range[1]}")
+    print(f"Nlayers sweep: Npairs = {n_range[0]}..{n_range[1]}  "
+          f"({len(n_values)} jobs in parallel)")
     print(f"n_H={n_H:.3f}, n_L={n_L:.3f}, ratio={n_L/n_H:.4f}")
     print(f"{'='*60}\n")
 
-    results = []
-    original_npairs = misc["Npairs"]
+    # Launch all Npairs optimizations in parallel
+    results_map = {}
+    with ProcessPoolExecutor(max_workers=len(n_values)) as pool:
+        futures = {
+            pool.submit(_run_one_npairs, str(params_path), N, save, optic): N
+            for N in n_values
+        }
+        for future in as_completed(futures):
+            N = futures[future]
+            entry = future.result()
+            results_map[N] = entry
+            if entry["T1"] is not None:
+                r2_str = (f"  R2={1e6*(1-entry['T2']):.0f} ppm"
+                          if entry["T2"] is not None else "")
+                r3_str = (f"  R3={1e6*(1-entry['T3']):.0f} ppm"
+                          if entry.get("T3") is not None else "")
+                print(f"  Npairs={N:>2} done: cost={entry['cost']:.6f}  "
+                      f"T1={entry['T1']:.6e}{r2_str}{r3_str}")
+            else:
+                print(f"  Npairs={N:>2} done: FAILED")
 
-    for N in range(n_range[0], n_range[1] + 1):
-        print(f"\n--- Npairs = {N} ({2*N} layers) ---")
-
-        # Temporarily override Npairs in the YAML dict
-        opt_params["misc"]["Npairs"] = N
-        # Write temp YAML
-        import yaml
-        tmp_yaml = params_dir / f"_sweep_tmp_{optic}.yml"
-        with open(tmp_yaml, "w") as f:
-            yaml.dump(opt_params, f, default_flow_style=False)
-
-        try:
-            result = run_optimization(
-                tmp_yaml, save=save, optic=optic
-            )
-            entry = {
-                "Npairs": N,
-                "cost": result["scalar_cost"],
-                "T1": result["output"].get("T1"),
-                "T2": result["output"].get("T2"),
-                "result": result,
-            }
-        except Exception as e:
-            print(f"  FAILED: {e}")
-            entry = {"Npairs": N, "cost": np.inf,
-                     "T1": None, "T2": None, "result": None}
-
-        results.append(entry)
-        if entry["T1"] is not None:
-            print(f"  cost={entry['cost']:.6f}  "
-                  f"T1={entry['T1']:.6e}  "
-                  f"T2={entry['T2']:.6e}"
-                  if entry["T2"] is not None else
-                  f"  cost={entry['cost']:.6f}  "
-                  f"T1={entry['T1']:.6e}")
-
-    # Cleanup temp file
-    if tmp_yaml.exists():
-        tmp_yaml.unlink()
-
-    # Restore original
-    opt_params["misc"]["Npairs"] = original_npairs
+    # Collect results in Npairs order
+    results = [results_map[N] for N in n_values]
 
     # Print summary table
+    has_t3 = any(r.get("T3") is not None for r in results)
+    t3_tgt = costs.get("Trans3", {}).get("target")
+
+    header = (f"{'Npairs':>6} | {'Layers':>6} | {'Cost':>10} | "
+              f"{'T1':>12} | {'R2 (ppm)':>12}")
+    sep = f"{'-'*6}-+-{'-'*6}-+-{'-'*10}-+-{'-'*12}-+-{'-'*12}"
+    if has_t3:
+        header += f" | {'R3 (ppm)':>12}"
+        sep += f"-+-{'-'*12}"
+
     print(f"\n{'='*60}")
-    print(f"{'Npairs':>6} | {'Layers':>6} | {'Cost':>10} | "
-          f"{'T1':>12} | {'T2':>12}")
-    print(f"{'-'*6}-+-{'-'*6}-+-{'-'*10}-+-{'-'*12}-+-{'-'*12}")
+    print(header)
+    print(sep)
 
     t1_tgt = costs.get("Trans1", {}).get("target")
     t2_tgt = costs.get("Trans2", {}).get("target")
@@ -429,14 +463,25 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
     best_n, best_cost = None, np.inf
     for r in results:
         t1_str = f"{r['T1']:.4e}" if r["T1"] is not None else "N/A"
-        t2_str = f"{r['T2']:.4e}" if r["T2"] is not None else "N/A"
+        r2_str = (f"{1e6*(1-r['T2']):.0f}" if r["T2"] is not None
+                  else "N/A")
         if r["cost"] < best_cost:
             best_cost = r["cost"]
             best_n = r["Npairs"]
-        print(f"{r['Npairs']:>6} | {2*r['Npairs']:>6} | "
-              f"{r['cost']:>10.6f} | {t1_str:>12} | {t2_str:>12}")
+        line = (f"{r['Npairs']:>6} | {2*r['Npairs']:>6} | "
+                f"{r['cost']:>10.6f} | {t1_str:>12} | {r2_str:>12}")
+        if has_t3:
+            r3_str = (f"{1e6*(1-r['T3']):.0f}" if r.get("T3") is not None
+                      else "N/A")
+            line += f" | {r3_str:>12}"
+        print(line)
 
-    print(f"\nTargets:  T1={t1_tgt}  T2={t2_tgt}")
+    r2_tgt_ppm = f"{1e6*(1-t2_tgt):.0f}" if t2_tgt else "N/A"
+    targets_str = f"\nTargets:  T1={t1_tgt}  R2<{r2_tgt_ppm} ppm"
+    if has_t3:
+        r3_tgt_ppm = f"{1e6*(1-t3_tgt):.0f}" if t3_tgt else "N/A"
+        targets_str += f"  R3<{r3_tgt_ppm} ppm"
+    print(targets_str)
     if best_n:
         print(f"Best:     Npairs={best_n} (cost={best_cost:.6f})")
 

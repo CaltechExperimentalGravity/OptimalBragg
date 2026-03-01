@@ -50,18 +50,20 @@ def _is_ar(target):
 def _format_trans_value(T_achieved, target):
     """Format a transmission metric value using AR/HR logic.
 
-    AR targets (target > 0.5): show reflectivity as percentage.
+    AR targets (target > 0.5): show reflectivity in ppm.
     HR targets (target <= 0.5): show transmission in ppm.
     """
     if _is_ar(target):
-        return f'{(1 - T_achieved)*100:.3f}%'
+        R = 1 - T_achieved
+        return f'{R*1e6:.1f} ppm'
     return f'{T_achieved*1e6:.2f} ppm'
 
 
 def _format_trans_target(target):
     """Format a transmission target using AR/HR logic."""
     if _is_ar(target):
-        return f'{(1 - target)*100:.1f}%'
+        R_target = 1 - target
+        return f'{R_target*1e6:.0f} ppm'
     return f'{target*1e6:.1f} ppm'
 
 
@@ -312,22 +314,37 @@ def generate_run_rst(hdf5_path, mirror_type, fig_paths, params,
             '   :width: 100%', '',
         ])
 
-    # MC section — build wavelength-aware labels
-    # MC data is always stored as T (ppm for row 0, % for row 1),
-    # so labels always use T regardless of AR/HR target.
+    # MC section — build wavelength-aware labels dynamically
+    # Row 0: T1 (PSL) always in ppm.  Row 1: T2.  Row 2 (optional): T3.
+    # Use AR/HR logic: AR targets (>0.5) show R, HR targets show T.
     wl1_nm = wavelength * 1e9
     lambda2_ratio = misc.get('lambda2', 0.5)
     wl2_nm = wavelength * lambda2_ratio * 1e9
+    lambda3_ratio = misc.get('lambda3', None)
 
+    costs_cfg = params.get('costs', {})
+    t2_target = costs_cfg.get('Trans2', {}).get('target', 0)
+    t3_target = costs_cfg.get('Trans3', {}).get('target', 0)
+
+    def _mc_trans_label(wl_nm, target):
+        prefix = 'R' if _is_ar(target) else 'T'
+        return rf':math:`{prefix}_{{{wl_nm:.0f}}}` [ppm]'
+
+    # MC stores T [ppm] for HR and R [ppm] for AR — no transforms needed.
     mc_labels = [
         ('T1', rf':math:`T_{{{wl1_nm:.0f}}}` [ppm]'),
-        ('T2', rf':math:`T_{{{wl2_nm:.0f}}}` [%]'),
+        ('T2', _mc_trans_label(wl2_nm, t2_target)),
+    ]
+    if lambda3_ratio is not None:
+        wl3_nm = wavelength * lambda3_ratio * 1e9
+        mc_labels.append(('T3', _mc_trans_label(wl3_nm, t3_target)))
+    mc_labels.extend([
         ('S_TO', r':math:`S_\mathrm{TO}` '
          r'[:math:`\times 10^{-21}` m/:math:`\sqrt{\mathrm{Hz}}`]'),
         ('S_Br', r':math:`S_\mathrm{Br}` '
          r'[:math:`\times 10^{-21}` m/:math:`\sqrt{\mathrm{Hz}}`]'),
         ('E_surf', r':math:`E_\mathrm{surface}` [V/m]'),
-    ]
+    ])
 
     if mc_hdf5_path and os.path.isfile(mc_hdf5_path):
         lines.extend([

@@ -1,14 +1,14 @@
 # SFG cavity mirror: 3-wavelength optimization
 # Design wavelength: 1064 nm
-# - 1064 nm: HR (T = 1000 ppm) + zero surface E-field
-# - ~700.3 nm (SFG output, 1/(1/1064+1/2050) nm): AR (T as high as possible)
-# - 2050 nm: AR (T as high as possible)
+# - 1064 nm: HR (T = 4000-6000 ppm) + zero surface E-field
+# - ~700.3 nm (SFG output, 1/(1/1064+1/2050) nm): AR (R < 200 ppm, robust)
+# - 2050 nm: AR (R < 200 ppm, robust)
 
 costs:
     # Design wavelength transmission -- HR at 1064 nm
     Trans1:
-        target: 1e-3
-        weight: 5
+        target: 5e-3
+        weight: 2
     # Brownian noise -- not relevant for SFG cavity
     Brownian:
         target: 100
@@ -21,28 +21,35 @@ costs:
     Lsens:
         target: 1e-7
         weight: 0
-    # Per-layer curvature (d²T/dL²) penalty — penalizes fragile designs
-    # that sit at narrow T peaks.  Target is the mean(d²T/dL²)² budget;
-    # zero cost below, quadratic above.  Robust designs ~2000, fragile ~8000.
-    Sensitivity:
-        target: 5000
+    # First-derivative penalties — each manufacturing DOF is an
+    # independent multiplicative cost term.  log1p(|dT/d...|).
+    dTdnH:
+        weight: 4
+        delta: 0.005
+    dTdnL:
+        weight: 10
+        delta: 0.005
+    dTdd:
         weight: 2
+        delta: 0.005
     # Surface E-field intensity -- want low E-field at 1064 nm
     Esurf:
         target: 0.01
-        weight: 2
+        weight: 1
     # Integrated absorption
     Absorption:
         target: 1e-4
         weight: 0
-    # Second wavelength -- ~700 nm SFG output (higher T is better)
+    # Second wavelength -- ~700 nm SFG output (R < 200 ppm = T > 0.9998)
     Trans2:
-        target: 1.0
-        weight: 5
-    # Third wavelength -- 2050 nm pump (higher T is better)
+        target: 0.9998
+        weight: 250
+        bandwidth: 0.02    # ±1% → ~14 nm band at 700 nm
+    # Third wavelength -- 2050 nm pump (R < 200 ppm = T > 0.9998)
     Trans3:
-        target: 1.0
-        weight: 5
+        target: 0.9998
+        weight: 12000
+        bandwidth: 0.02    # ±1% → ~41 nm band at 2050 nm
     # Optical thickness inhomogeneity
     Lstdev:
         target: 0.5
@@ -52,7 +59,7 @@ misc:
     fTO: 100
     pol: 'te'
     aoi: 0
-    Npairs: 12
+    Npairs: 17
     Nfixed: 0
     Ncopies: 0
     Nparticles: 5000
@@ -67,4 +74,4 @@ misc:
     lambda3: 1.9268
     materials_file: 'materials.yml'
     algorithm: 'dual_annealing'
-    maxiter: 1000
+    maxiter: 8000

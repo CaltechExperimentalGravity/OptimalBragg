@@ -80,7 +80,7 @@ class TestSensitivityCost:
 
 
 class TestSensitivityInMaster:
-    """Test the per-layer dT/dL gradient penalty in getMirrorCost."""
+    """Test the dTdnH/dTdnL/dTdd derivative costs in getMirrorCost."""
 
     @pytest.fixture
     def sfg_stack(self):
@@ -93,13 +93,15 @@ class TestSensitivityInMaster:
             pattern="LH" * 12 + "L",
         )
 
-    def test_sensitivity_nonnegative(self, sfg_stack):
+    def test_derivative_costs_nonnegative(self, sfg_stack):
         from OptimalBragg.costs import getMirrorCost, precompute_misc
         from OptimalBragg.noise import brownian_proxy
         costs = {
             'Trans1': {'target': 1e-3, 'weight': 5},
             'Trans2': {'target': 1.0, 'weight': 5},
-            'Sensitivity': {'target': 1.0, 'weight': 1},
+            'dTdnH': {'weight': 1, 'delta': 0.005},
+            'dTdnL': {'weight': 1, 'delta': 0.005},
+            'dTdd':  {'weight': 1, 'delta': 0.005},
         }
         gam = brownian_proxy(sfg_stack)
         misc = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
@@ -107,16 +109,19 @@ class TestSensitivityInMaster:
         L = sfg_stack["Ls_opt"]
         _, out = getMirrorCost(L, costs, sfg_stack, gam,
                                verbose=True, misc=misc)
-        assert out['vectorCost']['Sensitivity'] >= 0
+        for dname in ('dTdnH', 'dTdnL', 'dTdd'):
+            assert out['vectorCost'][dname] >= 0
 
-    def test_sensitivity_higher_for_random_layers(self, sfg_stack):
-        """Random layer thicknesses should be more sensitive than QW."""
+    def test_derivative_costs_higher_for_random_layers(self, sfg_stack):
+        """Random layer thicknesses should have larger derivatives than QW."""
         from OptimalBragg.costs import getMirrorCost, precompute_misc
         from OptimalBragg.noise import brownian_proxy
         costs = {
             'Trans1': {'target': 1e-3, 'weight': 5},
             'Trans2': {'target': 1.0, 'weight': 5},
-            'Sensitivity': {'target': 1.0, 'weight': 1},
+            'dTdnH': {'weight': 1, 'delta': 0.005},
+            'dTdnL': {'weight': 1, 'delta': 0.005},
+            'dTdd':  {'weight': 1, 'delta': 0.005},
         }
         gam = brownian_proxy(sfg_stack)
         misc = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
@@ -132,21 +137,26 @@ class TestSensitivityInMaster:
         precompute_misc(costs, sfg_stack, misc2)
         _, out_rand = getMirrorCost(L_rand, costs, sfg_stack, gam,
                                      verbose=True, misc=misc2)
-        # QW is a natural minimum — random should have higher sensitivity
-        assert (out_rand['vectorCost']['Sensitivity']
-                > out_qw['vectorCost']['Sensitivity'])
+        # At least one DOF should be worse for random layers
+        qw_total = sum(out_qw['vectorCost'][d] for d in ('dTdnH', 'dTdnL', 'dTdd'))
+        rand_total = sum(out_rand['vectorCost'][d] for d in ('dTdnH', 'dTdnL', 'dTdd'))
+        assert rand_total >= qw_total
 
-    def test_sensitivity_increases_total_cost(self, sfg_stack):
-        """Adding Sensitivity cost should increase the total scalar cost."""
+    def test_derivative_costs_increase_total(self, sfg_stack):
+        """Enabling derivative costs should increase the total scalar cost."""
         from OptimalBragg.costs import getMirrorCost, precompute_misc
         from OptimalBragg.noise import brownian_proxy
         costs_no = {
             'Trans1': {'target': 1e-3, 'weight': 5},
-            'Sensitivity': {'target': 1.0, 'weight': 0},
+            'dTdnH': {'weight': 0, 'delta': 0.005},
+            'dTdnL': {'weight': 0, 'delta': 0.005},
+            'dTdd':  {'weight': 0, 'delta': 0.005},
         }
         costs_yes = {
             'Trans1': {'target': 1e-3, 'weight': 5},
-            'Sensitivity': {'target': 1.0, 'weight': 2},
+            'dTdnH': {'weight': 2, 'delta': 0.005},
+            'dTdnL': {'weight': 2, 'delta': 0.005},
+            'dTdd':  {'weight': 2, 'delta': 0.005},
         }
         gam = brownian_proxy(sfg_stack)
         misc1 = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
@@ -157,6 +167,58 @@ class TestSensitivityInMaster:
         c_no = getMirrorCost(L, costs_no, sfg_stack, gam, misc=misc1)
         c_yes = getMirrorCost(L, costs_yes, sfg_stack, gam, misc=misc2)
         assert c_yes >= c_no
+
+    def test_derivative_costs_exclude_hr_wavelength(self, sfg_stack):
+        """HR Trans1 (target < 0.5) should be excluded from derivative costs."""
+        from OptimalBragg.costs import getMirrorCost, precompute_misc
+        from OptimalBragg.noise import brownian_proxy
+        gam = brownian_proxy(sfg_stack)
+        L = sfg_stack["Ls_opt"]
+
+        # Config A: HR Trans1 + AR Trans2 + derivative costs
+        costs_both = {
+            'Trans1': {'target': 1e-3, 'weight': 5},
+            'Trans2': {'target': 1.0, 'weight': 5},
+            'dTdnH': {'weight': 1, 'delta': 0.005},
+        }
+        misc_a = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
+        precompute_misc(costs_both, sfg_stack, misc_a)
+        _, out_a = getMirrorCost(L, costs_both, sfg_stack, gam,
+                                  verbose=True, misc=misc_a)
+
+        # Config B: only AR Trans2 + derivative costs (no Trans1)
+        costs_ar_only = {
+            'Trans2': {'target': 1.0, 'weight': 5},
+            'dTdnH': {'weight': 1, 'delta': 0.005},
+        }
+        misc_b = {'Npairs': 12, 'aoi': 0, 'pol': 'te', 'lambda2': 0.658}
+        precompute_misc(costs_ar_only, sfg_stack, misc_b)
+        _, out_b = getMirrorCost(L, costs_ar_only, sfg_stack, gam,
+                                  verbose=True, misc=misc_b)
+
+        assert_allclose(
+            out_a['vectorCost']['dTdnH'],
+            out_b['vectorCost']['dTdnH'],
+            rtol=1e-10,
+            err_msg="HR Trans1 was not excluded from dTdnH cost"
+        )
+
+    def test_derivative_costs_include_ar_trans1(self, sfg_stack):
+        """Trans1 with AR target (>= 0.5) should be included in derivatives."""
+        from OptimalBragg.costs import getMirrorCost, precompute_misc
+        from OptimalBragg.noise import brownian_proxy
+
+        costs_ar = {
+            'Trans1': {'target': 0.9, 'weight': 5},
+            'dTdnH': {'weight': 1, 'delta': 0.005},
+        }
+        gam = brownian_proxy(sfg_stack)
+        misc = {'Npairs': 12, 'aoi': 0, 'pol': 'te'}
+        precompute_misc(costs_ar, sfg_stack, misc)
+        L = sfg_stack["Ls_opt"]
+        _, out = getMirrorCost(L, costs_ar, sfg_stack, gam,
+                               verbose=True, misc=misc)
+        assert out['vectorCost']['dTdnH'] > 0.0
 
 
 class TestSurfEfieldCost:

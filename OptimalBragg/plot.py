@@ -332,16 +332,58 @@ def plot_starfish(scalar_costs, scale=None, save_path=None, title=''):
 
 # ── Corner plot ──────────────────────────────────────────────────────
 
-# Observable labels matching MCout row order
-CORNER_LABELS = [
-    r'$T_{\lambda_1}$ [ppm]',
-    r'$T_{\lambda_2}$ [%]',
+_NOISE_LABELS = [
     r'$S_\mathrm{TO}$ [$\times 10^{-21}$ m/$\sqrt{\mathrm{Hz}}$]',
     r'$S_\mathrm{Br}$ [$\times 10^{-21}$ m/$\sqrt{\mathrm{Hz}}$]',
     r'$E_\mathrm{surface}$ [V/m]',
 ]
+_NOISE_VAR_NAMES = ['S_TO', 'S_Br', 'E_surf']
 
-CORNER_VAR_NAMES = ['T1_ppm', 'T2_pct', 'S_TO', 'S_Br', 'E_surf']
+
+def _build_corner_labels(n_obs, wavelength_info=None):
+    """Build (labels, var_names) for corner plot with actual wavelengths.
+
+    Parameters
+    ----------
+    n_obs : int
+        Number of MCout rows (5 or 6).
+    wavelength_info : dict, optional
+        Keys: ``wavelength`` [m], ``lambda2`` (ratio), ``lambda3`` (ratio or None).
+        When provided, labels show e.g. ``$T_{1064}$`` instead of generic subscripts.
+
+    Returns
+    -------
+    labels : list of str
+    var_names : list of str
+    """
+    if wavelength_info is not None:
+        wl = wavelength_info['wavelength']
+        wl1 = f'{wl * 1e9:.0f}'
+        wl2 = f'{wl * wavelength_info.get("lambda2", 0.5) * 1e9:.0f}'
+    else:
+        wl1, wl2 = r'\lambda_1', r'\lambda_2'
+
+    labels = [
+        rf'$T_{{{wl1}}}$ [ppm]',
+        rf'$R_{{{wl2}}}$ [ppm]',
+    ]
+    var_names = ['T1_ppm', 'R2_ppm']
+
+    if n_obs >= 6:
+        if wavelength_info is not None and wavelength_info.get('lambda3') is not None:
+            wl3 = f'{wl * wavelength_info["lambda3"] * 1e9:.0f}'
+        else:
+            wl3 = r'\lambda_3'
+        labels.append(rf'$R_{{{wl3}}}$ [ppm]')
+        var_names.append('R3_ppm')
+
+    labels.extend(_NOISE_LABELS)
+    var_names.extend(_NOISE_VAR_NAMES)
+    return labels, var_names
+
+
+# Legacy aliases (generic labels, no wavelength info)
+CORNER_LABELS, CORNER_VAR_NAMES = _build_corner_labels(5)
 
 
 def sigma_clip(samples, nsigma=3):
@@ -355,7 +397,8 @@ def sigma_clip(samples, nsigma=3):
     return samples[:, mask], mask
 
 
-def plot_corner(mc_samples, mirror_type='ETM', save_path=None):
+def plot_corner(mc_samples, mirror_type='ETM', save_path=None,
+                wavelength_info=None):
     """Generate ArviZ corner plot from MC samples.
 
     Parameters
@@ -366,6 +409,9 @@ def plot_corner(mc_samples, mirror_type='ETM', save_path=None):
         'ETM' or 'ITM' for title.
     save_path : str, optional
         If given, save figure.
+    wavelength_info : dict, optional
+        ``{'wavelength': <m>, 'lambda2': <ratio>, 'lambda3': <ratio|None>}``
+        for wavelength-specific axis labels (e.g. ``$T_{1064}$``).
 
     Returns
     -------
@@ -376,6 +422,7 @@ def plot_corner(mc_samples, mirror_type='ETM', save_path=None):
     matplotlib.use('Agg')
 
     n_obs, n_samples = mc_samples.shape
+    corner_labels, corner_var_names = _build_corner_labels(n_obs, wavelength_info)
 
     # 3-sigma clipping
     samples_clean, mask = sigma_clip(mc_samples, nsigma=3)
@@ -387,18 +434,19 @@ def plot_corner(mc_samples, mirror_type='ETM', save_path=None):
     # Filter out degenerate dimensions (zero variance)
     keep = []
     for i in range(n_obs):
+        label = corner_labels[i] if i < len(corner_labels) else f'Dim {i}'
         if np.std(samples_clean[i]) > 1e-15 * np.abs(np.mean(samples_clean[i])):
             keep.append(i)
         else:
             print(f"Skipping degenerate dimension {i} "
-                  f"({CORNER_VAR_NAMES[i]}): zero variance")
+                  f"({label}): zero variance")
     samples_clean = samples_clean[keep]
-    used_names = [CORNER_VAR_NAMES[i] for i in keep]
-    used_labels = [CORNER_LABELS[i] for i in keep]
+    used_labels = [corner_labels[i] if i < len(corner_labels) else f'Dim {i}' for i in keep]
     n_plot = len(keep)
 
-    # Build ArviZ InferenceData
-    posterior = {name: samples_clean[i] for i, name in enumerate(used_names)}
+    # Build ArviZ InferenceData — use pretty labels as dict keys
+    # so ArviZ renders them directly on all axes
+    posterior = {label: samples_clean[i] for i, label in enumerate(used_labels)}
     idata = az.from_dict(posterior=posterior)
 
     apply_style()
@@ -414,19 +462,14 @@ def plot_corner(mc_samples, mirror_type='ETM', save_path=None):
                                       'linewidths': 2},
     )
 
-    fig = plt.gcf()
-    labels = used_labels
-    axes = fig.get_axes()
+    # Clear y-labels on diagonal (marginal) panels — they're densities,
+    # not scatter plots, so the y-axis label should not repeat the variable name.
+    ax_arr = np.atleast_2d(ax)
+    for i in range(min(n_plot, ax_arr.shape[0])):
+        if i < ax_arr.shape[1]:
+            ax_arr[i, i].set_ylabel('')
 
-    # Bottom row x-labels, left column y-labels
-    for j in range(n_plot):
-        idx = (n_plot - 1) * n_plot + j
-        if idx < len(axes):
-            axes[idx].set_xlabel(labels[j], fontsize=14, fontweight='bold')
-    for i in range(n_plot):
-        idx = i * n_plot
-        if idx < len(axes):
-            axes[idx].set_ylabel(labels[i], fontsize=14, fontweight='bold')
+    fig = plt.gcf()
 
     fig.suptitle(f'{mirror_type} Monte Carlo Sensitivity '
                  f'({samples_clean.shape[1]} samples)',

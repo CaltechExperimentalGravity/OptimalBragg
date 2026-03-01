@@ -27,6 +27,34 @@ import tqdm
 from OptimalBragg.layers import multidiel1, op2phys
 
 
+def _extract_wavelength_ratios(layers_hdf5):
+    """Read lambda2/lambda3 from the params YAML stored in the HDF5.
+
+    Returns
+    -------
+    lambda2 : float
+        Second wavelength ratio (default 0.5 if not found).
+    lambda3 : float or None
+        Third wavelength ratio (None if not present).
+    """
+    from OptimalBragg.io import yamlread
+    from pathlib import Path
+
+    with h5py.File(layers_hdf5, 'r') as f:
+        if 'params_file' not in f:
+            return 0.5, None
+        raw = np.array(f['params_file'])
+        pf_str = raw.item().decode('utf-8') if isinstance(raw.item(), bytes) else str(raw.item())
+
+    params_path = Path(pf_str)
+    if not params_path.exists():
+        return 0.5, None
+
+    params = yamlread(str(params_path))
+    misc = params.get('misc', {})
+    return misc.get('lambda2', 0.5), misc.get('lambda3', None)
+
+
 def _generate_perturbations(n_samples, n_dim=3, n_walkers=128,
                             width=0.005):
     """Generate Gaussian perturbation samples using emcee.
@@ -72,7 +100,7 @@ def _generate_perturbations(n_samples, n_dim=3, n_walkers=128,
     return sampler.get_chain(flat=True)[:n_samples, :]
 
 
-def run_mc(layers_hdf5, n_samples=5000, lambda2=0.5,
+def run_mc(layers_hdf5, n_samples=5000, lambda2=None, lambda3=None,
            w_beam=0.062, r_mirror=0.17, d_mirror=0.20,
            freq=None):
     """Run Monte Carlo sensitivity analysis on an optimized coating.
@@ -84,8 +112,11 @@ def run_mc(layers_hdf5, n_samples=5000, lambda2=0.5,
         and ``diffevo_output/L``).
     n_samples : int
         Number of MC samples.
-    lambda2 : float
+    lambda2 : float, optional
         Second wavelength ratio (lambda_2 / lambda_design).
+        Auto-detected from params YAML if None.
+    lambda3 : float, optional
+        Third wavelength ratio. Auto-detected from params YAML if None.
     w_beam : float
         Beam radius [m].
     r_mirror, d_mirror : float
@@ -96,13 +127,20 @@ def run_mc(layers_hdf5, n_samples=5000, lambda2=0.5,
     Returns
     -------
     result : dict
-        Keys: ``MCout`` (5 x n_samples), ``TOnoise``, ``Brnoise``,
-        ``freq``, ``perturbs``.
+        Keys: ``MCout`` (5 or 6 x n_samples), ``TOnoise``, ``Brnoise``,
+        ``freq``, ``perturbs``, ``has_lambda3``.
     """
     from OptimalBragg.noise import coating_thermooptic, coating_brownian
 
     if freq is None:
         freq = np.logspace(1, 3, 50)
+
+    # Auto-detect wavelength ratios from params YAML in HDF5
+    _lambda2, _lambda3 = _extract_wavelength_ratios(layers_hdf5)
+    if lambda2 is None:
+        lambda2 = _lambda2
+    if lambda3 is None:
+        lambda3 = _lambda3
 
     # Read optimizer output
     with h5py.File(layers_hdf5, 'r') as f:
@@ -147,6 +185,7 @@ def run_mc(layers_hdf5, n_samples=5000, lambda2=0.5,
     # Allocate output arrays
     Tp_IR = np.empty(n_samples)
     Tp_AUX = np.empty(n_samples)
+    Tp_lam3 = np.empty(n_samples) if lambda3 is not None else None
     surfField = np.empty(n_samples)
     TOnoise = np.empty((n_samples, len(freq)))
     Brnoise = np.empty((n_samples, len(freq)))
@@ -167,6 +206,11 @@ def run_mc(layers_hdf5, n_samples=5000, lambda2=0.5,
         r_aux, _ = multidiel1(n_j, L_opt_j, lambda2)
         Tp_AUX[jj] = 1 - np.abs(r_aux) ** 2
 
+        # Transmission at third wavelength (if present)
+        if lambda3 is not None:
+            r_lam3, _ = multidiel1(n_j, L_opt_j, lambda3)
+            Tp_lam3[jj] = 1 - np.abs(r_lam3) ** 2
+
         # Thermo-optic noise (JIT)
         for fi, f_val in enumerate(freq):
             TOnoise[jj, fi] = coating_thermooptic_fast(
@@ -179,15 +223,20 @@ def run_mc(layers_hdf5, n_samples=5000, lambda2=0.5,
         SbrZ = coating_brownian(freq, _perturbed_stack, w_beam)
         Brnoise[jj] = SbrZ
 
-    # Package output in same format as legacy doMC.py
+    # Package output: T [ppm] for HR wavelength, R [ppm] for AR wavelengths
     idx100 = np.argmin(np.abs(freq - 100))
-    MCout = np.vstack((
-        1e6 * Tp_IR,               # T_1064 [ppm]
-        1e2 * Tp_AUX,              # T_AUX [%]
+    rows = [
+        1e6 * Tp_IR,               # T_PSL [ppm]
+        1e6 * (1 - Tp_AUX),        # R_AUX [ppm]
+    ]
+    if lambda3 is not None:
+        rows.append(1e6 * (1 - Tp_lam3))  # R_lam3 [ppm]
+    rows.extend([
         np.sqrt(TOnoise[:, idx100]) * 1e21,  # S_TO [×1e-21]
         np.sqrt(Brnoise[:, idx100]) * 1e21,  # S_Br [×1e-21]
         surfField,                  # E_surface
-    ))
+    ])
+    MCout = np.vstack(rows)
 
     return {
         'MCout': MCout,
@@ -195,6 +244,7 @@ def run_mc(layers_hdf5, n_samples=5000, lambda2=0.5,
         'Brnoise': np.sqrt(Brnoise),
         'freq': freq,
         'perturbs': perturbs,
+        'has_lambda3': lambda3 is not None,
     }
 
 

@@ -238,11 +238,27 @@ def precompute_misc(costs, stack, misc):
         wl_map['PSL'] = len(wl_list)
         wl_list.append(1.0)
     if 'Trans2' in active:
-        wl_map['AUX'] = len(wl_list)
-        wl_list.append(lambda2)
+        bw = costs['Trans2'].get('bandwidth', 0)
+        if bw > 0:
+            n_bw = 7
+            lams = np.linspace(lambda2 * (1 - bw), lambda2 * (1 + bw), n_bw)
+            wl_map['AUX'] = slice(len(wl_list), len(wl_list) + n_bw)
+            wl_map['AUX_center'] = len(wl_list) + n_bw // 2
+            wl_list.extend(lams.tolist())
+        else:
+            wl_map['AUX'] = len(wl_list)
+            wl_list.append(lambda2)
     if 'Trans3' in active:
-        wl_map['OPL'] = len(wl_list)
-        wl_list.append(lambda3)
+        bw = costs['Trans3'].get('bandwidth', 0)
+        if bw > 0:
+            n_bw = 7
+            lams = np.linspace(lambda3 * (1 - bw), lambda3 * (1 + bw), n_bw)
+            wl_map['OPL'] = slice(len(wl_list), len(wl_list) + n_bw)
+            wl_map['OPL_center'] = len(wl_list) + n_bw // 2
+            wl_list.extend(lams.tolist())
+        else:
+            wl_map['OPL'] = len(wl_list)
+            wl_list.append(lambda3)
     misc['_wl_array'] = np.array(wl_list) if wl_list else None
     misc['_wl_map'] = wl_map
 
@@ -348,11 +364,27 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
             wl_map['PSL'] = len(wl_list)
             wl_list.append(1.0)
         if 'Trans2' in active:
-            wl_map['AUX'] = len(wl_list)
-            wl_list.append(lambda2)
+            bw = costs['Trans2'].get('bandwidth', 0)
+            if bw > 0:
+                n_bw = 7
+                lams = np.linspace(lambda2 * (1 - bw), lambda2 * (1 + bw), n_bw)
+                wl_map['AUX'] = slice(len(wl_list), len(wl_list) + n_bw)
+                wl_map['AUX_center'] = len(wl_list) + n_bw // 2
+                wl_list.extend(lams.tolist())
+            else:
+                wl_map['AUX'] = len(wl_list)
+                wl_list.append(lambda2)
         if 'Trans3' in active:
-            wl_map['OPL'] = len(wl_list)
-            wl_list.append(lambda3)
+            bw = costs['Trans3'].get('bandwidth', 0)
+            if bw > 0:
+                n_bw = 7
+                lams = np.linspace(lambda3 * (1 - bw), lambda3 * (1 + bw), n_bw)
+                wl_map['OPL'] = slice(len(wl_list), len(wl_list) + n_bw)
+                wl_map['OPL_center'] = len(wl_list) + n_bw // 2
+                wl_list.extend(lams.tolist())
+            else:
+                wl_map['OPL'] = len(wl_list)
+                wl_list.append(lambda3)
         wl_arr = np.array(wl_list) if wl_list else None
 
     if wl_arr is not None and len(wl_arr) > 0:
@@ -373,24 +405,33 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
 
     if 'Trans2' in active:
         idx = wl_map['AUX']
-        T2 = T_main[idx]
-        vector_cost['Trans2'] = np.abs(
-            (costs['Trans2']['target'] - T2)
+        T2_band = T_main[idx]
+        cost_band = np.abs(
+            (costs['Trans2']['target'] - T2_band)
             / costs['Trans2']['target']
         ) ** 2
+        vector_cost['Trans2'] = float(np.max(cost_band))
         if verbose:
-            output['T2'] = T2
-            output['R2'] = 1 - T2
+            if isinstance(idx, slice):
+                output['T2'] = float(T_main[wl_map['AUX_center']])
+            else:
+                output['T2'] = float(T2_band)
+            output['R2'] = 1 - output['T2']
 
     if 'Trans3' in active:
         idx = wl_map['OPL']
-        T3 = T_main[idx]
-        vector_cost['Trans3'] = np.abs(
-            (costs['Trans3']['target'] - T3)
+        T3_band = T_main[idx]
+        cost_band = np.abs(
+            (costs['Trans3']['target'] - T3_band)
             / costs['Trans3']['target']
         ) ** 2
+        vector_cost['Trans3'] = float(np.max(cost_band))
         if verbose:
-            output['T3'] = T3
+            if isinstance(idx, slice):
+                output['T3'] = float(T_main[wl_map['OPL_center']])
+            else:
+                output['T3'] = float(T3_band)
+            output['R3'] = 1 - output['T3']
 
     if 'Esurf' in active:
         idx = wl_map['PSL']
@@ -459,54 +500,77 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
         sensAUX = np.abs((target_sens - T_pert[1]) / target_sens) ** 2
         vector_cost['Lsens'] = np.sqrt(sensPSL ** 2 + sensAUX ** 2)
 
-    # --- Sensitivity: per-layer curvature (d²T/dL²) penalty ---
-    # Fragile designs sit at narrow T peaks where dT/dL ≈ 0 but
-    # d²T/dL² is large and negative — small perturbations cause T
-    # to fall off a cliff.  We penalize the mean squared curvature
-    # across all layers and active transmission targets.
-    if 'Sensitivity' in active:
-        eps = 5e-3  # perturbation in optical thickness units
-        # Collect active transmission targets and their nominal T values
-        sens_targets = []  # (cost_name, wavelength_ratio)
-        sens_T_nom = []    # nominal T at each wavelength
-        if 'Trans1' in active:
-            sens_targets.append(('Trans1', 1.0))
-            sens_T_nom.append(T1)
+    # --- First-derivative penalties (3 independent multiplicative terms) ---
+    # Each manufacturing DOF gets its own term in the product:
+    #   dTdnH  — dT/dn_H  (high-index material error)
+    #   dTdnL  — dT/dn_L  (low-index material error)
+    #   dTdd   — dT/d_thickness (thickness calibration error)
+    # Computed via central finite differences.  log1p compression.
+    deriv_active = {'dTdnH', 'dTdnL', 'dTdd'} & active
+    if deriv_active:
+        # Shared delta from any active derivative cost
+        for dname in ('dTdnH', 'dTdnL', 'dTdd'):
+            if dname in active:
+                delta = costs[dname].get('delta', 1e-2)
+                break
+
+        # Collect active wavelengths for derivative evaluation.
+        # For broadband costs (bandwidth > 0), use ALL band wavelengths
+        # so derivatives capture curvature across the full band.
+        sens_wls = []
+        if 'Trans1' in active and costs['Trans1']['target'] >= 0.5:
+            sens_wls.append(1.0)
         if 'Trans2' in active:
-            sens_targets.append(('Trans2', lambda2))
-            sens_T_nom.append(T2)
+            idx2 = wl_map.get('AUX')
+            if isinstance(idx2, slice) and wl_arr is not None:
+                sens_wls.extend(wl_arr[idx2].tolist())
+            else:
+                sens_wls.append(lambda2)
         if 'Trans3' in active:
-            sens_targets.append(('Trans3', lambda3))
-            sens_T_nom.append(T3)
+            idx3 = wl_map.get('OPL')
+            if isinstance(idx3, slice) and wl_arr is not None:
+                sens_wls.extend(wl_arr[idx3].tolist())
+            else:
+                sens_wls.append(lambda3)
 
-        if sens_targets:
-            wl_sens = np.array([s[1] for s in sens_targets])
-            T_nom_arr = np.array(sens_T_nom)
-            N_layers = len(L)
-            curv_sq_sum = 0.0
+        if sens_wls:
+            wl_sens = np.array(sens_wls)
 
-            for j in range(N_layers):
-                Lp = L.copy()
-                Lp[j] += eps
-                Lm = L.copy()
-                Lm[j] = max(L[j] - eps, 0.01)
-                eps_m = L[j] - Lm[j]
-                rp, _ = multidiel1(n, Lp, wl_sens, aoi, pol)
-                rm, _ = multidiel1(n, Lm, wl_sens, aoi, pol)
-                Tp = 1 - np.abs(rp) ** 2
-                Tm = 1 - np.abs(rm) ** 2
-                d2TdL2 = (Tp + Tm - 2 * T_nom_arr) / (eps * eps_m)
-                curv_sq_sum += np.sum(d2TdL2 ** 2)
+            # Build high-n / low-n masks
+            n_layers_only = n[1:-1]
+            n_thresh = np.sqrt(n_layers_only.min() * n_layers_only.max())
+            low_mask = np.zeros(len(n), dtype=bool)
+            high_mask = np.zeros(len(n), dtype=bool)
+            for ii in range(1, len(n) - 1):
+                if n[ii] < n_thresh:
+                    low_mask[ii] = True
+                else:
+                    high_mask[ii] = True
 
-            n_terms = N_layers * len(sens_targets)
-            mean_curv_sq = curv_sq_sum / n_terms
-            # Threshold penalty: zero at or below target, quadratic above.
-            # Target is the curvature budget (mean squared d²T/dL²).
-            target_curv = costs['Sensitivity']['target']
-            excess = mean_curv_sq / target_curv - 1.0
-            vector_cost['Sensitivity'] = max(0.0, excess) ** 2
+            if 'dTdnH' in active:
+                n_hup = n.copy(); n_hup[high_mask] *= (1 + delta)
+                n_hdn = n.copy(); n_hdn[high_mask] *= (1 - delta)
+                r_hup, _ = multidiel1(n_hup, L, wl_sens, aoi, pol)
+                r_hdn, _ = multidiel1(n_hdn, L, wl_sens, aoi, pol)
+                dT = ((1 - np.abs(r_hup)**2) - (1 - np.abs(r_hdn)**2)) / (2 * delta)
+                vector_cost['dTdnH'] = np.mean(np.log1p(np.abs(dT)))
+
+            if 'dTdnL' in active:
+                n_lup = n.copy(); n_lup[low_mask] *= (1 + delta)
+                n_ldn = n.copy(); n_ldn[low_mask] *= (1 - delta)
+                r_lup, _ = multidiel1(n_lup, L, wl_sens, aoi, pol)
+                r_ldn, _ = multidiel1(n_ldn, L, wl_sens, aoi, pol)
+                dT = ((1 - np.abs(r_lup)**2) - (1 - np.abs(r_ldn)**2)) / (2 * delta)
+                vector_cost['dTdnL'] = np.mean(np.log1p(np.abs(dT)))
+
+            if 'dTdd' in active:
+                r_tup, _ = multidiel1(n, L * (1 + delta), wl_sens, aoi, pol)
+                r_tdn, _ = multidiel1(n, L * (1 - delta), wl_sens, aoi, pol)
+                dT = ((1 - np.abs(r_tup)**2) - (1 - np.abs(r_tdn)**2)) / (2 * delta)
+                vector_cost['dTdd'] = np.mean(np.log1p(np.abs(dT)))
         else:
-            vector_cost['Sensitivity'] = 0.0
+            for dname in deriv_active:
+                vector_cost[dname] = 0.0
 
     # Multiplicative product: C = prod(1 + w * c_i)
     scalar_cost = 1.0

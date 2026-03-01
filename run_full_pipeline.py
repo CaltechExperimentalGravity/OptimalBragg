@@ -75,10 +75,13 @@ def run_pipeline(optic):
 
     from OptimalBragg.io import yamlread
     opt_params = yamlread(params_yml)
-    lambda2 = opt_params['misc'].get('lambda2', 0.5)
+    misc = opt_params['misc']
+    lambda2 = misc.get('lambda2', 0.5)
+    lambda3 = misc.get('lambda3', None)
 
     from OptimalBragg.mc import run_mc, save_mc
-    mc_result = run_mc(hdf5_path, n_samples=2000, lambda2=lambda2)
+    mc_result = run_mc(hdf5_path, n_samples=2000, lambda2=lambda2,
+                       lambda3=lambda3)
     save_mc(mc_result, mc_output)
 
     dt_mc = time.perf_counter() - t0
@@ -97,7 +100,16 @@ def run_pipeline(optic):
     import numpy as np
     with h5py.File(mc_output, 'r') as f:
         mc_samples = np.array(f['MCout'][:])
-    plot_corner(mc_samples, mirror_type=optic, save_path=corner_path)
+    from OptimalBragg.io import load_materials_yaml
+    mat_file = str(Path(PROJECT) / misc.get('materials_file', 'materials.yml'))
+    materials = load_materials_yaml(mat_file)
+    wl_info = {
+        'wavelength': materials['laser']['wavelength'],
+        'lambda2': lambda2,
+        'lambda3': lambda3,
+    }
+    plot_corner(mc_samples, mirror_type=optic, save_path=corner_path,
+                wavelength_info=wl_info)
 
     dt_corner = time.perf_counter() - t0
     print(f"  Corner plot complete in {dt_corner:.1f}s")

@@ -34,10 +34,10 @@ class TestFormatValue:
         assert 'ppm' in result
 
     def test_trans2_ar(self):
-        """AR target (T=1.0) should format as reflectivity %."""
+        """AR target (T=1.0) should format as reflectivity ppm."""
         from OptimalBragg.report import _format_value
         result = _format_value(0.95, 'Trans2', target=1.0)
-        assert '%' in result
+        assert 'ppm' in result
 
     def test_trans2_hr(self):
         """HR target (T=0.032) should format as ppm."""

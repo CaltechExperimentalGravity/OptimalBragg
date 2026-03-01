@@ -236,7 +236,10 @@ def _generate_plots_and_report(params_path, hdf5_path=None,
         with h5py.File(mc_hdf5_path, 'r') as fmc:
             mc_samples = np.array(fmc['MCout'][:])
         corner_path = str(fig_dir / f'{optic}_corner_{ts}.svg')
-        plot_corner(mc_samples, mirror_type=optic, save_path=corner_path)
+        wl_info = {'wavelength': wavelength, 'lambda2': lambda2,
+                   'lambda3': lambda3}
+        plot_corner(mc_samples, mirror_type=optic, save_path=corner_path,
+                    wavelength_info=wl_info)
         fig_paths['corner'] = corner_path
         print(f"  Saved: {optic}_corner_{ts}.svg")
         plt.close('all')
@@ -310,7 +313,25 @@ def cmd_corner(args):
         os.makedirs(fig_dir, exist_ok=True)
         output = f'{fig_dir}/{mirror_type}_nominal_cornerPlt.svg'
 
-    plot_corner(mc_samples, mirror_type=mirror_type, save_path=output)
+    # Build wavelength info from params YAML if provided
+    wl_info = None
+    if getattr(args, 'params', None):
+        from OptimalBragg.io import yamlread, load_materials_yaml
+        from pathlib import Path
+        params_path = Path(args.params)
+        opt_params = yamlread(str(params_path))
+        misc = opt_params.get('misc', {})
+        mat_file = params_path.parent / misc.get('materials_file', 'materials.yml')
+        if mat_file.exists():
+            materials = load_materials_yaml(str(mat_file))
+            wl_info = {
+                'wavelength': materials['laser']['wavelength'],
+                'lambda2': misc.get('lambda2', 0.5),
+                'lambda3': misc.get('lambda3', None),
+            }
+
+    plot_corner(mc_samples, mirror_type=mirror_type, save_path=output,
+                wavelength_info=wl_info)
     print(f"Saved corner plot: {output}")
 
 
@@ -370,6 +391,7 @@ def main():
     p_corner.add_argument('hdf5', help='Path to MC output HDF5')
     p_corner.add_argument('--output', '-o', help='Output figure path')
     p_corner.add_argument('--mirror-type', help='ETM or ITM')
+    p_corner.add_argument('--params', help='Path to params YAML for wavelength labels')
     p_corner.set_defaults(func=cmd_corner)
 
     args = parser.parse_args()
