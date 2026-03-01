@@ -39,11 +39,13 @@ docs/_build/
 # Auto-generated run reports and index (regenerated from HDF5 data)
 docs/runs/ETM/*.rst
 docs/runs/ITM/*.rst
+docs/runs/SFG/*.rst
 docs/runs/index.rst
 
 # Generated figures
 **/Figures/ETM/
 **/Figures/ITM/
+**/Figures/SFG/
 
 # Log files
 **/*.log
