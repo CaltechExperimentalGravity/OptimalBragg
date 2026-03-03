@@ -69,7 +69,7 @@ Coatings/
 |
 |-- environment.yml                  # Conda environment specification
 |-- pyproject.toml                   # Package config + pytest settings
-|-- .gitlab-ci.yml                   # GitLab CI pipeline
+|-- .github/workflows/ci.yml         # GitHub Actions CI + Pages
 |-- README.md                        # Project overview + install instructions
 |-- CODEMAP.md                       # This file
 `-- CLAUDE.md                        # AI assistant instructions

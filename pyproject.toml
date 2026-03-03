@@ -8,11 +8,15 @@ version = "0.2.0"
 description = "Optical coating optimization for gravitational wave detector mirrors"
 requires-python = ">=3.10"
 
+[project.urls]
+Repository = "https://github.com/CaltechExperimentalGravity/OptimalBragg"
+Documentation = "https://caltechexperimentalgravity.github.io/OptimalBragg"
+
 [project.scripts]
 optimalbragg = "OptimalBragg.cli:main"
 
 [project.optional-dependencies]
-docs = ["sphinx", "sphinx-rtd-theme"]
+docs = ["sphinx", "pydata-sphinx-theme"]
 
 [tool.setuptools.packages.find]
 include = ["OptimalBragg*"]

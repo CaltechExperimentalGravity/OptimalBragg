@@ -33,7 +33,7 @@ recomputing all material constants on every evaluation:
 
 where :math:`z_L, z_H` are the total *optical* thicknesses and
 :math:`\gamma` encodes the material property ratios (pre-computed once
-by :func:`~generic.optimUtils.brownianProxy`).
+by :func:`~OptimalBragg.noise.brownian_proxy`).
 
 Thermo-Optic Noise
 -------------------
@@ -78,13 +78,13 @@ Implementation
 The canonical implementation lives in ``pygwinc``
 (:func:`gwinc.noise.coatingthermal.coating_thermooptic`). For the
 optimizer hot path, we use a JIT-compiled version in
-:mod:`generic.thermoopticUtils` that inlines all sub-calculations into a
+:mod:`OptimalBragg.noise` that inlines all sub-calculations into a
 single Numba-compiled function. This gives identical results with ~10x
 speedup.
 
-The JIT function requires pre-extracted material parameters (a flat
-tuple of scalars), created once per optimization by
-:func:`~generic.thermoopticUtils.extract_ifo_params`.
+The JIT function :func:`~OptimalBragg.noise.coating_thermooptic_fast`
+takes a pre-extracted ``stack_params`` tuple of scalars, created once
+per optimization.
 
 Finite Mirror Corrections
 ^^^^^^^^^^^^^^^^^^^^^^^^^

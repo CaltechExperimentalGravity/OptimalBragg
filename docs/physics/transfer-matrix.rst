@@ -3,7 +3,7 @@ Transfer Matrix Method
 
 The core physics computation is the transfer matrix method (TMM) for
 multilayer dielectric stacks, implemented in
-:func:`~generic.coatingUtils.multidiel1`.
+:func:`~OptimalBragg.layers.multidiel1`.
 
 Theory
 ------
@@ -43,10 +43,10 @@ is called millions of times during a single optimization run. We use
 Numba JIT compilation (``@numba.njit(cache=True)``) to achieve ~7 us
 per call for a 14-bilayer stack, compared to ~200-500 us in pure Python.
 
-The function :func:`~generic.coatingUtils.multidiel1` accepts an array
+The function :func:`~OptimalBragg.layers.multidiel1` accepts an array
 of wavelengths, enabling a single call to evaluate reflectivity at
 multiple wavelengths simultaneously. This is exploited in
-:func:`~generic.optimUtils.getMirrorCost` to consolidate what would
+:func:`~OptimalBragg.costs.getMirrorCost` to consolidate what would
 otherwise be 6 separate calls into just 2.
 
 Quarter-Wave Stacks

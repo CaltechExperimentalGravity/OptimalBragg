@@ -21,8 +21,8 @@ Project-specific configurations live in `projects/`, each with:
 
 1. Clone the repository:
    ```bash
-   git clone <repo-url>
-   cd Coatings
+   git clone https://github.com/CaltechExperimentalGravity/OptimalBragg.git
+   cd OptimalBragg
    ```
 2. Create the conda environment and install the package:
    ```bash

@@ -6,8 +6,8 @@ Installation
 
 1. Clone the repository::
 
-    git clone git@git.ligo.org:40m/Coatings.git
-    cd Coatings
+    git clone git@github.com:CaltechExperimentalGravity/OptimalBragg.git
+    cd OptimalBragg
 
 2. Create the conda environment and install::
 

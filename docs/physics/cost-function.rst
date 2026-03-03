@@ -1,16 +1,16 @@
 Cost Function
 =============
 
-The optimizer minimizes a scalar cost function that is a weighted sum of
-individual objective terms. Each term is configured in the project's
-``ETM_params.yml`` with a ``target`` and ``weight``. Set ``weight: 0``
-to disable a term.
+The optimizer minimizes a scalar cost function that is a multiplicative
+product of individual objective terms. Each term is configured in the
+project's ``ETM_params.yml`` with a ``target`` and ``weight``. Set
+``weight: 0`` to disable a term.
 
 .. math::
 
-   C_\text{total} = \sum_i w_i \cdot c_i
+   C_\text{total} = \prod_i (1 + w_i \cdot c_i)
 
-The master evaluator is :func:`~generic.optimUtils.getMirrorCost`.
+The master evaluator is :func:`~OptimalBragg.costs.getMirrorCost`.
 
 Cost Terms
 ----------
@@ -25,7 +25,7 @@ Targets a specific power transmission at the primary laser wavelength
 
    c_\text{Trans1064} = \left|\frac{T_\text{target} - T}{T_\text{target}}\right|^2
 
-where :math:`T = 1 - |r|^2` from :func:`~generic.coatingUtils.multidiel1`.
+where :math:`T = 1 - |r|^2` from :func:`~OptimalBragg.layers.multidiel1`.
 
 Trans532 -- Auxiliary Wavelength Transmission
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ encodes material loss angles and Young's moduli, and :math:`t` is the
 target scaling factor.
 
 The pre-factor :math:`\gamma` is computed once before optimization by
-:func:`~generic.optimUtils.brownianProxy`.
+:func:`~OptimalBragg.noise.brownian_proxy`.
 
 Thermooptic -- Thermo-Optic Noise
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,7 +105,7 @@ Absorption
 ^^^^^^^^^^
 
 **Not implemented** in the optimizer. The underlying
-:func:`~generic.coatingUtils.calcAbsorption` function exists for
+:func:`~OptimalBragg.layers.calc_abs` function exists for
 post-optimization analysis.
 
 Optimizer

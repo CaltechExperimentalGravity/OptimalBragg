@@ -41,7 +41,7 @@ emcee Configuration
 - **Burn-in:** 1000 steps (discarded via ``sampler.reset()``)
 - **Production:** 5000 steps
 - **Target distribution:** Multivariate Gaussian
-  (``lnprob`` in :mod:`generic.coatingUtils`)
+  (``lnprob`` in :mod:`OptimalBragg.mc`)
 
 The sampler generates correlated draws from the perturbation
 distribution. A subset of ``nSamples`` points from the flattened chain
@@ -55,9 +55,9 @@ For each perturbed parameter set, the code:
 1. Scales the refractive index arrays (low-n and high-n independently)
 2. Scales all layer thicknesses uniformly
 3. Recomputes :math:`T_\text{1064}` and :math:`T_\text{AUX}` via
-   :func:`~generic.coatingUtils.multidiel1`
+   :func:`~OptimalBragg.layers.multidiel1`
 4. Computes the surface E-field via
-   :func:`~generic.coatingUtils.surfaceField`
+   :func:`~OptimalBragg.layers.surfield`
 5. Evaluates the full thermal noise spectrum (Brownian + thermo-optic)
    via ``pygwinc``
 
@@ -77,8 +77,8 @@ The MC output HDF5 file contains:
 Interpreting Corner Plots
 -------------------------
 
-The ``cornerPlt.py`` script generates corner plots (pair plots) from
-the MC output using the ``corner`` package. Each panel shows:
+The ``optimalbragg corner`` command generates corner plots (pair plots)
+from the MC output using ArviZ ``plot_pair()``. Each panel shows:
 
 - **Diagonal:** Marginalized 1-D histogram for one observable
 - **Off-diagonal:** 2-D joint distribution between two observables
@@ -98,5 +98,5 @@ Usage
 
 ::
 
-    python doMC.py Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5 output_MC.hdf5 5000
-    python cornerPlt.py output_MC.hdf5
+    optimalbragg mc Data/ETM/ETM_Layers_YYMMDD_HHMMSS.hdf5 5000
+    optimalbragg corner Data/ETM/ETM_MC.hdf5

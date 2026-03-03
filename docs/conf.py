@@ -32,5 +32,13 @@ html_theme_options = {
     'show_toc_level': 2,
 }
 
+# GitHub context for pydata theme
+html_context = {
+    'github_user': 'CaltechExperimentalGravity',
+    'github_repo': 'OptimalBragg',
+    'github_version': 'master',
+    'doc_path': 'docs/',
+}
+
 # Exclude patterns
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
