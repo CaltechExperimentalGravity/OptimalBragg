@@ -176,6 +176,43 @@ def thermoopticCost(target, fTarget, L, stack, stack_params=None,
 
 # ── Pre-computation cache ────────────────────────────────────────────
 
+def _build_wavelength_map(active, costs, lambda2, lambda3):
+    """Build consolidated wavelength array and index map for multidiel1.
+
+    Returns ``(wl_array, wl_map)`` where *wl_array* is a 1-D float array
+    (or ``None`` if no wavelengths are needed) and *wl_map* maps label
+    strings to indices or slices into *wl_array*.
+    """
+    wl_list, wl_map = [], {}
+    if 'Trans1' in active or 'Esurf' in active:
+        wl_map['PSL'] = len(wl_list)
+        wl_list.append(1.0)
+    if 'Trans2' in active:
+        bw = costs['Trans2'].get('bandwidth', 0)
+        if bw > 0:
+            n_bw = 7
+            lams = np.linspace(lambda2 * (1 - bw), lambda2 * (1 + bw), n_bw)
+            wl_map['AUX'] = slice(len(wl_list), len(wl_list) + n_bw)
+            wl_map['AUX_center'] = len(wl_list) + n_bw // 2
+            wl_list.extend(lams.tolist())
+        else:
+            wl_map['AUX'] = len(wl_list)
+            wl_list.append(lambda2)
+    if 'Trans3' in active:
+        bw = costs['Trans3'].get('bandwidth', 0)
+        if bw > 0:
+            n_bw = 7
+            lams = np.linspace(lambda3 * (1 - bw), lambda3 * (1 + bw), n_bw)
+            wl_map['OPL'] = slice(len(wl_list), len(wl_list) + n_bw)
+            wl_map['OPL_center'] = len(wl_list) + n_bw // 2
+            wl_list.extend(lams.tolist())
+        else:
+            wl_map['OPL'] = len(wl_list)
+            wl_list.append(lambda3)
+    wl_array = np.array(wl_list) if wl_list else None
+    return wl_array, wl_map
+
+
 def precompute_misc(costs, stack, misc):
     """Pre-compute cached values for the getMirrorCost hot loop.
 
@@ -233,34 +270,9 @@ def precompute_misc(costs, stack, misc):
     misc['_lambda3'] = lambda3
 
     # Wavelength array and map for consolidated multidiel1 call
-    wl_list, wl_map = [], {}
-    if 'Trans1' in active or 'Esurf' in active:
-        wl_map['PSL'] = len(wl_list)
-        wl_list.append(1.0)
-    if 'Trans2' in active:
-        bw = costs['Trans2'].get('bandwidth', 0)
-        if bw > 0:
-            n_bw = 7
-            lams = np.linspace(lambda2 * (1 - bw), lambda2 * (1 + bw), n_bw)
-            wl_map['AUX'] = slice(len(wl_list), len(wl_list) + n_bw)
-            wl_map['AUX_center'] = len(wl_list) + n_bw // 2
-            wl_list.extend(lams.tolist())
-        else:
-            wl_map['AUX'] = len(wl_list)
-            wl_list.append(lambda2)
-    if 'Trans3' in active:
-        bw = costs['Trans3'].get('bandwidth', 0)
-        if bw > 0:
-            n_bw = 7
-            lams = np.linspace(lambda3 * (1 - bw), lambda3 * (1 + bw), n_bw)
-            wl_map['OPL'] = slice(len(wl_list), len(wl_list) + n_bw)
-            wl_map['OPL_center'] = len(wl_list) + n_bw // 2
-            wl_list.extend(lams.tolist())
-        else:
-            wl_map['OPL'] = len(wl_list)
-            wl_list.append(lambda3)
-    misc['_wl_array'] = np.array(wl_list) if wl_list else None
-    misc['_wl_map'] = wl_map
+    misc['_wl_array'], misc['_wl_map'] = _build_wavelength_map(
+        active, costs, lambda2, lambda3
+    )
 
     # Sensitivity wavelengths
     if 'Lsens' in active:
@@ -359,33 +371,9 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
     wl_arr = misc.get('_wl_array')
     wl_map = misc.get('_wl_map')
     if wl_map is None:
-        wl_list, wl_map = [], {}
-        if 'Trans1' in active or 'Esurf' in active:
-            wl_map['PSL'] = len(wl_list)
-            wl_list.append(1.0)
-        if 'Trans2' in active:
-            bw = costs['Trans2'].get('bandwidth', 0)
-            if bw > 0:
-                n_bw = 7
-                lams = np.linspace(lambda2 * (1 - bw), lambda2 * (1 + bw), n_bw)
-                wl_map['AUX'] = slice(len(wl_list), len(wl_list) + n_bw)
-                wl_map['AUX_center'] = len(wl_list) + n_bw // 2
-                wl_list.extend(lams.tolist())
-            else:
-                wl_map['AUX'] = len(wl_list)
-                wl_list.append(lambda2)
-        if 'Trans3' in active:
-            bw = costs['Trans3'].get('bandwidth', 0)
-            if bw > 0:
-                n_bw = 7
-                lams = np.linspace(lambda3 * (1 - bw), lambda3 * (1 + bw), n_bw)
-                wl_map['OPL'] = slice(len(wl_list), len(wl_list) + n_bw)
-                wl_map['OPL_center'] = len(wl_list) + n_bw // 2
-                wl_list.extend(lams.tolist())
-            else:
-                wl_map['OPL'] = len(wl_list)
-                wl_list.append(lambda3)
-        wl_arr = np.array(wl_list) if wl_list else None
+        wl_arr, wl_map = _build_wavelength_map(
+            active, costs, lambda2, lambda3
+        )
 
     if wl_arr is not None and len(wl_arr) > 0:
         r_main, _ = multidiel1(n, L, wl_arr, aoi, pol)
