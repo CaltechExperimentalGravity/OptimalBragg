@@ -62,7 +62,7 @@ misc:
     Npairs: 17
     Nfixed: 0
     Ncopies: 0
-    Nparticles: 5000
+    Nparticles: 50000
     atol: 1e-12
     tol: 1e-6
     # Half-wave SiO2 cap for low surface E-field
