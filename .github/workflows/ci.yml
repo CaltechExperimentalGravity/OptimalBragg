@@ -1,0 +1,56 @@
+name: CI
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: coatingDev
+          miniforge-version: latest
+      - run: pip install -e .
+      - run: pytest tests/ -v --tb=short -k "not slow"
+
+  test_integration:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: coatingDev
+          miniforge-version: latest
+      - run: pip install -e .
+      - run: pytest tests/test_integration.py -v --tb=short -m slow
+
+  pages:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    needs: [test, test_integration]
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: coatingDev
+          miniforge-version: latest
+      - run: sudo apt-get install -y -qq graphviz
+      - run: pip install -e .
+      - run: make -C docs codemap
+      - run: sphinx-build -b html docs/ public/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public/
