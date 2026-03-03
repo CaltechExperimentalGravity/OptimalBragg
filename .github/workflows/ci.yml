@@ -37,6 +37,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
     needs: [test, test_integration]
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     defaults:
       run:
         shell: bash -l {0}
@@ -54,3 +61,5 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public/
+      - uses: actions/deploy-pages@v4
+        id: deploy
