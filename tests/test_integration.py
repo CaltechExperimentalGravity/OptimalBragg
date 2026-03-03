@@ -239,7 +239,7 @@ def test_full_pipeline_hdf5_plot_mc_report():
                 'layers': f'{rel_fig}/{optic}_Layers_{ts}.svg',
                 'spectral': f'{rel_fig}/{optic}_R{ts}.svg',
                 'starfish': f'{rel_fig}/{optic}_SF{ts}.svg',
-                'thermal_noise': f'{rel_fig}/{optic}_TN_{ts}.svg',
+                'noise': f'{rel_fig}/{optic}_TN_{ts}.svg',
                 'corner': f'{rel_fig}/{optic}_nominal_cornerPlt.svg',
             }
 

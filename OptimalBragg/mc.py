@@ -174,19 +174,20 @@ def run_mc(layers_hdf5, n_samples=5000, lambda2=None, lambda3=None,
 
         # Transmission at PSL wavelength
         r_psl, _ = multidiel1(n_j, L_opt_j, 1.0)
+        r_psl = r_psl.item()
         Tp_IR[jj] = 1 - np.abs(r_psl) ** 2
 
         # Surface E-field
-        surfField[jj] = np.abs(1 + r_psl[0]) ** 2
+        surfField[jj] = np.abs(1 + r_psl) ** 2
 
         # Transmission at AUX wavelength
         r_aux, _ = multidiel1(n_j, L_opt_j, lambda2)
-        Tp_AUX[jj] = 1 - np.abs(r_aux) ** 2
+        Tp_AUX[jj] = 1 - np.abs(r_aux.item()) ** 2
 
         # Transmission at third wavelength (if present)
         if lambda3 is not None:
             r_lam3, _ = multidiel1(n_j, L_opt_j, lambda3)
-            Tp_lam3[jj] = 1 - np.abs(r_lam3) ** 2
+            Tp_lam3[jj] = 1 - np.abs(r_lam3.item()) ** 2
 
         # Thermo-optic noise (JIT)
         for fi, f_val in enumerate(freq):
