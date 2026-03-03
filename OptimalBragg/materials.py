@@ -35,15 +35,6 @@
 #     o Use Sellmeier coefficients for all thin films to cover any wavelength
 #       >> Mine data from refractiveindex.org if not available?
 
-# =====================================================================
-#  Placeholder materials (not yet populated)
-# =====================================================================
-aSi = {}
-SiN = {}
-GaAs = {}
-AlGaAs = {}
-H2O_123 = {}
-
 
 # =====================================================================
 #  Room temperature coatings @ 1064 nm, 295 K

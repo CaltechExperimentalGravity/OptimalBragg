@@ -202,7 +202,7 @@ getMirrorCost(L, costs, stack, gam, verbose, misc)
 | `surfield(rr, Ei, normalized)` | Surface E-field from reflectivity | |
 | `calc_abs(Esq, Ls, alphas)` | Integrated absorption from E-field profile | |
 | `op2phys(L, n)` | Optical to physical thickness conversion | |
-| `fieldDepth(L, n, ...)` | E-field squared vs depth | |
+| `field_zmag(L, n, ...)` | E-field squared vs depth | |
 | `sellmeier(B, C, lam)` | Refractive index from Sellmeier coefficients | |
 | `amp_refl(wavelengths, stack)` | Spectral amplitude reflectivity | |
 | `refl(wavelengths, stack)` | Spectral power reflectivity | |

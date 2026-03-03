@@ -89,7 +89,7 @@ python benchmarks/bench_thermooptic.py    # Thermooptic JIT vs numpy
 
 ### Core Package (`OptimalBragg/`)
 
-- **`layers.py`** — Transfer matrix method (`multidiel1` with Numba JIT), `multilayer_diel()`, `field_zmag()`, `surfield()`, `calc_abs()`, `op2phys()`, `fieldDepth()`, Sellmeier dispersion, spectral reflectivity/transmission
+- **`layers.py`** — Transfer matrix method (`multidiel1` with Numba JIT), `multilayer_diel()`, `field_zmag()`, `surfield()`, `calc_abs()`, `op2phys()`, Sellmeier dispersion, spectral reflectivity/transmission
 - **`costs.py`** — Cost function components: `transmissionCost`, `brownianCost`, `thermoopticCost`, `sensitivityCost`, `surfEfieldCost`, `absorptionCost`. Master evaluator: `getMirrorCost(L, costs, stack, gam, verbose, misc)`. Multiplicative cost: `C = prod(1 + w_i * c_i)`
 - **`noise.py`** — Thermal noise models: `coating_thermooptic_fast()` (Numba JIT), `coating_brownian()` (Hong et al.), `substrate_brownian()`, `substrate_thermoelastic()`, `brownian_proxy()`. All take `stack` dict.
 - **`materials.py`** — Central materials library with references: `SiO2`, `TiTa2O5`, `Ta2O5`, `aSi_123`, `SiN_123`, `cSi_123`, `FusedSilica`, `air`
