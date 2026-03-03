@@ -66,7 +66,7 @@ class TestTransmissionCost:
         n = np.array([1.0, 1.45, 2.06, 1.45])
         L = np.array([0.25, 0.25])
         _, T = transmissionCost(0.5, n, L, 1.0, 0, 'te')
-        cost, _ = transmissionCost(float(T), n, L, 1.0, 0, 'te')
+        cost, _ = transmissionCost(T.item(), n, L, 1.0, 0, 'te')
         assert cost < 1e-10
 
 
