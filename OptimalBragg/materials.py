@@ -167,7 +167,7 @@ cSi_123 = {
         "Alphas": 5.2e-12,                 # Surface loss limit
         "MechanicalLossExponent": 1,       # c2 * f^exponent
         "Kappa": 700,                      # See [0], thermal conductivity [W/m/K]
-        "ThermalDiffusivity": 0.00143,     # See [0], 1/Kappa
+        "ThermalDiffusivity": 700.0,       # Thermal conductivity [W/m/K], See [0]
         "Beta": 1e-4,                      # See [1]
         "Phi": 3e-13,                      # At 1 Hz, See [2]
         "c2": 3e-13,                       # See [2]
