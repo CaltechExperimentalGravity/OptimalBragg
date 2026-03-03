@@ -19,9 +19,6 @@ References
 import numpy as np
 import numba
 
-# NumPy 2.0 renamed trapz → trapezoid
-_trapz = getattr(np, 'trapezoid', np.trapz)
-
 
 # ── Numba JIT transfer matrix core ───────────────────────────────────────
 
@@ -360,7 +357,7 @@ def calc_abs(Esq, Ls, alphas, n_pts=None):
     absorp = 0.0
     for i, (alpha_i, Li) in enumerate(zip(alphas, Ls)):
         E_layer = Esq[i * n_pts : (i + 1) * n_pts]
-        absorp += 2 * _trapz(E_layer * alpha_i, dx=Li / n_pts)
+        absorp += 2 * np.trapezoid(E_layer * alpha_i, dx=Li / n_pts)
     return absorp
 
 
