@@ -20,7 +20,6 @@ Or from command line::
 """
 
 import numpy as np
-import emcee
 import h5py
 import tqdm
 
@@ -55,9 +54,8 @@ def _extract_wavelength_ratios(layers_hdf5):
     return misc.get('lambda2', 0.5), misc.get('lambda3', None)
 
 
-def _generate_perturbations(n_samples, n_dim=3, n_walkers=128,
-                            width=0.005):
-    """Generate Gaussian perturbation samples using emcee.
+def _generate_perturbations(n_samples, n_dim=3, width=0.005):
+    """Generate Gaussian perturbation samples.
 
     Parameters
     ----------
@@ -65,8 +63,6 @@ def _generate_perturbations(n_samples, n_dim=3, n_walkers=128,
         Number of perturbation samples to generate.
     n_dim : int
         Number of perturbation dimensions (3: high-n, low-n, thickness).
-    n_walkers : int
-        Number of emcee walkers.
     width : float
         Standard deviation of Gaussian perturbations (default 0.5%).
 
@@ -76,28 +72,9 @@ def _generate_perturbations(n_samples, n_dim=3, n_walkers=128,
         Shape ``(n_samples, n_dim)`` — fractional perturbations
         centered at zero.
     """
-    means = np.zeros(n_dim)
-    cov = np.diag(width * np.ones(n_dim))
-    cov = np.dot(cov, cov)
-    icov = np.linalg.inv(cov)
-
-    def lnprob(x, mu, icov):
-        diff = x - mu
-        return -0.5 * np.dot(diff, np.dot(icov, diff))
-
-    p0 = np.random.rand(n_dim * n_walkers).reshape((n_walkers, n_dim))
-    sampler = emcee.EnsembleSampler(n_walkers, n_dim, lnprob,
-                                    args=[means, icov])
-
-    # Burn-in
-    pos, _, _ = sampler.run_mcmc(p0, 2000, progress=False)
-    sampler.reset()
-
-    # Production
-    n_steps = max(n_samples // n_walkers + 1, 200)
-    sampler.run_mcmc(pos, n_steps, progress=False)
-
-    return sampler.get_chain(flat=True)[:n_samples, :]
+    cov = (width ** 2) * np.eye(n_dim)
+    return np.random.multivariate_normal(np.zeros(n_dim), cov,
+                                         size=n_samples)
 
 
 def run_mc(layers_hdf5, n_samples=5000, lambda2=None, lambda3=None,
