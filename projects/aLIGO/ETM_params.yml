@@ -19,10 +19,10 @@ costs:
     # Optical thickness sensitivity
     Lsens:
         target: 1e-7
-        weight: 0
+        weight: 2
     # Surface E-field intensity |1+r|^2 budget (half-wave SiO2 cap gives ~0)
     Esurf:
-        target: 0.01
+        target: 0
         weight: 2
     # Integrated absorption - doesn't seem to work?
     Absorption:
@@ -31,7 +31,7 @@ costs:
     # Second wavelength transmission (532 nm, 3.2% target per aLIGO spec R=96.8%)
     Trans2:
         target: 0.032
-        weight: 5
+        weight: 3
     # Third wavelength transmission
     Trans3:
         target: 0.05
