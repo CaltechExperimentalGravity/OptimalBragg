@@ -37,8 +37,15 @@ Coatings/
 |   |   |-- mkETM.py / mkITM.py      #     Thin wrappers calling run_optimization()
 |   |   |-- Data/                    #     HDF5 output (gitignored)
 |   |   `-- Figures/                 #     Generated plots (gitignored)
+|   |-- SFG/                         #   SiO2/Ta2O5 at 1064 nm, 295 K
 |   |-- Voyager_aSiSiN/             #   aSi/SiN at 2050 nm, 123 K
 |   `-- Voyager_Ta2O5/              #   Ta2O5/SiO2 at 2050 nm, 123 K
+|
+|-- archive/                         # Legacy projects (pre-refactor)
+|   |-- PRC/                         #   40m PR3 mirror design (MATLAB)
+|   |-- PRC_new/                     #   Updated PRC variant
+|   |-- Barrel_Coating/              #   Mariner barrel emissivity data
+|   `-- inverseProblem/              #   Inverse coating design notebook
 |
 |-- tests/                           # Pytest test suite
 |   |-- test_materials.py            #   Material class, qw_stack, materials library
@@ -75,8 +82,9 @@ Coatings/
 `-- CLAUDE.md                        # AI assistant instructions
 ```
 
-**Legacy directories** (`Arms/`, `SiN_aSi/`, `Ta2O5_Voyager/`, `generic/`) contain the original code
-before the OptimalBragg refactor. They are no longer used by the active pipeline.
+**`archive/`** contains legacy project directories (`PRC/`, `PRC_new/`, `Barrel_Coating/`,
+`inverseProblem/`) preserved for reference. The full pre-refactor codebase is available
+at tag `v0.1-legacy`.
 
 ---
 
@@ -280,14 +288,14 @@ The optimizer minimizes this scalar. After convergence, `polish=True` refines wi
 
 ## 5. Active Projects
 
-| | **aLIGO** | **Voyager aSiSiN** | **Voyager Ta2O5** |
-|---|---|---|---|
-| **Directory** | `projects/aLIGO/` | `projects/Voyager_aSiSiN/` | `projects/Voyager_Ta2O5/` |
-| **High-n material** | TiTa2O5 (n=2.06) | a-Si (n=3.65) | Ta2O5 (n=2.0) |
-| **Low-n material** | SiO2 (n=1.45) | SiN (n=2.17) | SiO2 (n=1.435) |
-| **Primary wavelength** | 1064 nm | 2050 nm | 2050 nm |
-| **Temperature** | 295 K | 123 K | 123 K |
-| **Substrate** | Fused silica | c-Si | c-Si |
+| | **aLIGO** | **SFG** | **Voyager aSiSiN** | **Voyager Ta2O5** |
+|---|---|---|---|---|
+| **Directory** | `projects/aLIGO/` | `projects/SFG/` | `projects/Voyager_aSiSiN/` | `projects/Voyager_Ta2O5/` |
+| **High-n material** | TiTa2O5 (n=2.06) | Ta2O5 (n=2.0) | a-Si (n=3.65) | Ta2O5 (n=2.0) |
+| **Low-n material** | SiO2 (n=1.45) | SiO2 (n=1.45) | SiN (n=2.17) | SiO2 (n=1.435) |
+| **Primary wavelength** | 1064 nm | 1064 nm | 2050 nm | 2050 nm |
+| **Temperature** | 295 K | 295 K | 123 K | 123 K |
+| **Substrate** | Fused silica | Fused silica | c-Si | c-Si |
 
 ---
 

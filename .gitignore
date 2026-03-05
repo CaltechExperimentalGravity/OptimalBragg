@@ -36,6 +36,9 @@ octave-workspace
 # Sphinx build output
 docs/_build/
 
+# Generated diagram (rebuilt by Sphinx/CI)
+docs/codemap.png
+
 # Auto-generated run reports and index (regenerated from HDF5 data)
 docs/runs/ETM/*.rst
 docs/runs/ITM/*.rst
