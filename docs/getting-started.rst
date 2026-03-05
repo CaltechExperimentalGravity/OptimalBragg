@@ -91,11 +91,11 @@ Running Tests
 Active Projects
 ---------------
 
-==========================  ================  ==================  ===========
-Project                     Materials         Primary wavelength  Temperature
-==========================  ================  ==================  ===========
-``projects/aLIGO/``         SiO2 / TiTa2O5   1064 nm             295 K
-``projects/SFG/``           SiO2 / Ta2O5     1064 nm             295 K
-``projects/Voyager_aSiSiN/``  a-Si / SiN     2050 nm             123 K
-``projects/Voyager_Ta2O5/``   Ta2O5 / SiO2   2050 nm             123 K
-==========================  ================  ==================  ===========
+==============================  ================  ==================  ===========
+Project                         Materials         Primary wavelength  Temperature
+==============================  ================  ==================  ===========
+``projects/aLIGO/``             SiO2 / TiTa2O5   1064 nm             295 K
+``projects/SFG/``               SiO2 / Ta2O5     1064 nm             295 K
+``projects/Voyager_aSiSiN/``    a-Si / SiN       2050 nm             123 K
+``projects/Voyager_Ta2O5/``     Ta2O5 / SiO2     2050 nm             123 K
+==============================  ================  ==================  ===========
