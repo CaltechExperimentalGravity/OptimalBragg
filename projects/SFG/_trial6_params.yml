@@ -1,0 +1,56 @@
+costs:
+  Absorption:
+    target: 0.0001
+    weight: 0
+  Brownian:
+    target: 100
+    weight: 0
+  Esurf:
+    target: 0.01
+    weight: 1
+  Lsens:
+    target: 1.0e-07
+    weight: 0
+  Lstdev:
+    target: 0.5
+    weight: 0
+  Thermooptic:
+    target: 1.0e-40
+    weight: 0
+  Trans1:
+    target: 0.005
+    weight: 2
+  Trans2:
+    bandwidth: 0.02
+    target: 0.9998
+    weight: 250
+  Trans3:
+    bandwidth: 0.02
+    target: 0.9998
+    weight: 12000
+  dTdd:
+    delta: 0.005
+    weight: 6
+  dTdnH:
+    delta: 0.005
+    weight: 12
+  dTdnL:
+    delta: 0.005
+    weight: 18
+misc:
+  Ncopies: 0
+  Nfixed: 0
+  Npairs: 16
+  Nparticles: 50000
+  algorithm: dual_annealing
+  aoi: 0
+  atol: 1.0e-12
+  fTO: 100
+  hwcap: L
+  init_method: halton
+  lambda2: 0.6582
+  lambda3: 1.9268
+  materials_file: materials.yml
+  maxiter: 8000
+  pol: te
+  tol: 1.0e-06

@@ -1,0 +1,102 @@
+ Run 260306_021817
+==================
+
+.. list-table:: Design Summary
+   :header-rows: 1
+   :widths: 30 25 25 20
+
+   * - Metric
+     - Achieved
+     - Target
+     - Status
+   * - T @ 1064 nm
+     - 5052.01 ppm
+     - 5000.0 ppm
+     - PASS
+   * - R @ 700 nm
+     - 0.3 ppm
+     - 200 ppm
+     - PASS
+   * - R @ 2050 nm
+     - 119.8 ppm
+     - 200 ppm
+     - PASS
+   * - Number of layers
+     - 33
+     -
+     -
+   * - Total thickness
+     - 4.78 um
+     -
+     -
+   * - Total scalar cost
+     - 1.080729
+     -
+     -
+   * - Optimizer
+     - dual_annealing
+     -
+     -
+   * - Wall time
+     - 196.3 s
+     -
+     -
+
+.. list-table:: Cost Function Breakdown
+   :header-rows: 1
+   :widths: 40 30 30
+
+   * - Cost Term
+     - Value
+     - Weight
+   * - Esurf
+     - 0.000000
+     - 1
+   * - Trans1
+     - 0.000108
+     - 2
+   * - Trans2
+     - 0.000000
+     - 250
+   * - Trans3
+     - 0.000000
+     - 12000
+   * - dTdd
+     - 0.004944
+     - 6
+   * - dTdnH
+     - 0.001946
+     - 12
+   * - dTdnL
+     - 0.001387
+     - 18
+
+Layer Structure & E-Field
+-------------------------
+
+.. image:: ../../../projects/SFG/Figures/_Layers_260306_021817.svg
+   :width: 100%
+
+Spectral Reflectivity
+---------------------
+
+.. image:: ../../../projects/SFG/Figures/_R260306_021817.svg
+   :width: 100%
+
+Starfish Cost Chart
+-------------------
+
+.. image:: ../../../projects/SFG/Figures/_SF260306_021817.svg
+   :width: 60%
+
+Thermal Noise Budget
+--------------------
+
+.. image:: ../../../projects/SFG/Figures/_TN_260306_021817.svg
+   :width: 100%
+
+Monte Carlo Sensitivity
+-----------------------
+
+*MC analysis pending. Re-run report generation after MC completes.*
+
