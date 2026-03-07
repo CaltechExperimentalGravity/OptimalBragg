@@ -488,16 +488,19 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
         sensAUX = np.abs((target_sens - T_pert[1]) / target_sens) ** 2
         vector_cost['Lsens'] = np.sqrt(sensPSL ** 2 + sensAUX ** 2)
 
-    # --- First-derivative penalties (3 independent multiplicative terms) ---
+    # --- Sensitivity penalties (first & second derivative) ---
     # Each manufacturing DOF gets its own term in the product:
-    #   dTdnH  — dT/dn_H  (high-index material error)
-    #   dTdnL  — dT/dn_L  (low-index material error)
-    #   dTdd   — dT/d_thickness (thickness calibration error)
-    # Computed via central finite differences.  log1p compression.
-    deriv_active = {'dTdnH', 'dTdnL', 'dTdd'} & active
+    #   dTdnH  / d2TdnH  — dT/dn_H  / d²T/dn_H²  (high-index material error)
+    #   dTdnL  / d2TdnL  — dT/dn_L  / d²T/dn_L²  (low-index material error)
+    #   dTdd   / d2Tdd   — dT/dd    / d²T/dd²     (thickness calibration error)
+    # First derivatives via central finite differences.  log1p compression.
+    # Second derivatives (curvature): (T(+δ) - 2T₀ + T(-δ)) / δ².
+    deriv_active = {'dTdnH', 'dTdnL', 'dTdd',
+                    'd2TdnH', 'd2TdnL', 'd2Tdd'} & active
     if deriv_active:
         # Shared delta from any active derivative cost
-        for dname in ('dTdnH', 'dTdnL', 'dTdd'):
+        for dname in ('dTdnH', 'dTdnL', 'dTdd',
+                      'd2TdnH', 'd2TdnL', 'd2Tdd'):
             if dname in active:
                 delta = costs[dname].get('delta', 1e-2)
                 break
@@ -535,27 +538,51 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
                 else:
                     high_mask[ii] = True
 
-            if 'dTdnH' in active:
+            # Unperturbed T at sensitivity wavelengths (for curvature)
+            curv_active = {'d2TdnH', 'd2TdnL', 'd2Tdd'} & active
+            if curv_active:
+                r0_sens, _ = multidiel1(n, L, wl_sens, aoi, pol)
+                T0_sens = 1 - np.abs(r0_sens) ** 2
+
+            if 'dTdnH' in active or 'd2TdnH' in active:
                 n_hup = n.copy(); n_hup[high_mask] *= (1 + delta)
                 n_hdn = n.copy(); n_hdn[high_mask] *= (1 - delta)
                 r_hup, _ = multidiel1(n_hup, L, wl_sens, aoi, pol)
                 r_hdn, _ = multidiel1(n_hdn, L, wl_sens, aoi, pol)
-                dT = ((1 - np.abs(r_hup)**2) - (1 - np.abs(r_hdn)**2)) / (2 * delta)
-                vector_cost['dTdnH'] = np.mean(np.log1p(np.abs(dT)))
+                T_hup = 1 - np.abs(r_hup)**2
+                T_hdn = 1 - np.abs(r_hdn)**2
+                if 'dTdnH' in active:
+                    dT = (T_hup - T_hdn) / (2 * delta)
+                    vector_cost['dTdnH'] = np.mean(np.log1p(np.abs(dT)))
+                if 'd2TdnH' in active:
+                    d2T = (T_hup - 2 * T0_sens + T_hdn) / (delta ** 2)
+                    vector_cost['d2TdnH'] = np.mean(np.log1p(np.abs(d2T)))
 
-            if 'dTdnL' in active:
+            if 'dTdnL' in active or 'd2TdnL' in active:
                 n_lup = n.copy(); n_lup[low_mask] *= (1 + delta)
                 n_ldn = n.copy(); n_ldn[low_mask] *= (1 - delta)
                 r_lup, _ = multidiel1(n_lup, L, wl_sens, aoi, pol)
                 r_ldn, _ = multidiel1(n_ldn, L, wl_sens, aoi, pol)
-                dT = ((1 - np.abs(r_lup)**2) - (1 - np.abs(r_ldn)**2)) / (2 * delta)
-                vector_cost['dTdnL'] = np.mean(np.log1p(np.abs(dT)))
+                T_lup = 1 - np.abs(r_lup)**2
+                T_ldn = 1 - np.abs(r_ldn)**2
+                if 'dTdnL' in active:
+                    dT = (T_lup - T_ldn) / (2 * delta)
+                    vector_cost['dTdnL'] = np.mean(np.log1p(np.abs(dT)))
+                if 'd2TdnL' in active:
+                    d2T = (T_lup - 2 * T0_sens + T_ldn) / (delta ** 2)
+                    vector_cost['d2TdnL'] = np.mean(np.log1p(np.abs(d2T)))
 
-            if 'dTdd' in active:
+            if 'dTdd' in active or 'd2Tdd' in active:
                 r_tup, _ = multidiel1(n, L * (1 + delta), wl_sens, aoi, pol)
                 r_tdn, _ = multidiel1(n, L * (1 - delta), wl_sens, aoi, pol)
-                dT = ((1 - np.abs(r_tup)**2) - (1 - np.abs(r_tdn)**2)) / (2 * delta)
-                vector_cost['dTdd'] = np.mean(np.log1p(np.abs(dT)))
+                T_tup = 1 - np.abs(r_tup)**2
+                T_tdn = 1 - np.abs(r_tdn)**2
+                if 'dTdd' in active:
+                    dT = (T_tup - T_tdn) / (2 * delta)
+                    vector_cost['dTdd'] = np.mean(np.log1p(np.abs(dT)))
+                if 'd2Tdd' in active:
+                    d2T = (T_tup - 2 * T0_sens + T_tdn) / (delta ** 2)
+                    vector_cost['d2Tdd'] = np.mean(np.log1p(np.abs(d2T)))
         else:
             for dname in deriv_active:
                 vector_cost[dname] = 0.0
