@@ -351,6 +351,15 @@ def cmd_corner(args):
     print(f"Saved corner plot: {output}")
 
 
+def cmd_pdf(args):
+    """Build a single-page PDF from a run report RST."""
+    from OptimalBragg.report import build_pdf
+
+    rst = Path(args.rst).resolve()
+    output = Path(args.output).resolve() if args.output else None
+    build_pdf(rst, output_path=output)
+
+
 def cmd_publish(args):
     """Promote a run to 'golden' by staging its artifacts for git commit."""
     import glob
@@ -460,6 +469,13 @@ def main():
     p_corner.add_argument('--mirror-type', help='ETM or ITM')
     p_corner.add_argument('--params', help='Path to params YAML for wavelength labels')
     p_corner.set_defaults(func=cmd_corner)
+
+    # pdf
+    p_pdf = subparsers.add_parser(
+        'pdf', help='Build a single-page PDF from a run report RST')
+    p_pdf.add_argument('rst', help='Path to run report .rst file')
+    p_pdf.add_argument('--output', '-o', help='Output PDF path (default: same dir as RST)')
+    p_pdf.set_defaults(func=cmd_pdf)
 
     # publish
     p_pub = subparsers.add_parser(

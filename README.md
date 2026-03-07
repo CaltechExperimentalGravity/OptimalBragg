@@ -1,3 +1,5 @@
+[![CI](https://github.com/CaltechExperimentalGravity/OptimalBragg/actions/workflows/ci.yml/badge.svg)](https://github.com/CaltechExperimentalGravity/OptimalBragg/actions/workflows/ci.yml)
+
 # OptimalBragg: Mirror Coating Design by Global Optimization
 
 Code to optimize HR mirror dielectric stack designs for gravitational wave detector test masses.

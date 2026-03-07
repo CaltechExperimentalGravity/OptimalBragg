@@ -7,7 +7,9 @@ index of all run reports.
 
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 import h5py
 import numpy as np
 from datetime import datetime
@@ -472,3 +474,111 @@ def build_html():
         print("Sphinx build skipped: 'make' not found")
     except subprocess.TimeoutExpired:
         print("Sphinx build skipped: timed out after 120s")
+
+
+def build_pdf(rst_path, output_path=None):
+    """Build a single-page PDF from one run report RST.
+
+    Creates a temporary Sphinx project containing just the target RST,
+    copies referenced images so paths resolve, builds LaTeX, and
+    compiles to PDF.
+
+    Parameters
+    ----------
+    rst_path : str or Path
+        Path to the run report ``.rst`` file (e.g.
+        ``docs/runs/SFG/260306_021817.rst``).
+    output_path : str or Path, optional
+        Where to write the final PDF.  Defaults to the same directory
+        as the RST with a ``.pdf`` extension.
+
+    Returns
+    -------
+    str
+        Path to the generated PDF.
+    """
+    rst_path = Path(rst_path).resolve()
+    if not rst_path.exists():
+        raise FileNotFoundError(f"RST not found: {rst_path}")
+
+    if output_path is None:
+        output_path = rst_path.with_suffix('.pdf')
+    output_path = Path(output_path).resolve()
+
+    # Read the RST and rewrite image paths to be relative to tmpdir
+    rst_text = rst_path.read_text()
+
+    tmpdir = Path(tempfile.mkdtemp(prefix='ob_pdf_'))
+    try:
+        # Find all image directives, convert SVG→PDF, rewrite paths
+        img_pattern = re.compile(r'\.\. image:: (.+)')
+        for m in img_pattern.finditer(rst_text):
+            img_rel = m.group(1)
+            img_src = (rst_path.parent / img_rel).resolve()
+            if not img_src.exists():
+                continue
+            if img_src.suffix == '.svg':
+                pdf_name = img_src.stem + '.pdf'
+                img_dst = tmpdir / pdf_name
+                subprocess.run(
+                    ['rsvg-convert', '-f', 'pdf', '-o',
+                     str(img_dst), str(img_src)],
+                    check=True, capture_output=True,
+                )
+                rst_text = rst_text.replace(img_rel, pdf_name)
+            else:
+                img_dst = tmpdir / img_src.name
+                shutil.copy2(img_src, img_dst)
+                rst_text = rst_text.replace(img_rel, img_src.name)
+
+        # Write the modified RST as index.rst
+        (tmpdir / 'index.rst').write_text(rst_text)
+
+        # Minimal conf.py for LaTeX/PDF build
+        title = rst_path.stem
+        conf = f"""\
+project = 'OptimalBragg'
+author = 'Caltech Experimental Gravity Group'
+extensions = []
+exclude_patterns = ['_build']
+latex_elements = {{
+    'papersize': 'letterpaper',
+    'pointsize': '11pt',
+}}
+latex_documents = [
+    ('index', 'report.tex', '{title}', author, 'howto'),
+]
+"""
+        (tmpdir / 'conf.py').write_text(conf)
+
+        # sphinx-build → LaTeX
+        latex_dir = tmpdir / '_build' / 'latex'
+        result = subprocess.run(
+            ['sphinx-build', '-b', 'latex', str(tmpdir), str(latex_dir)],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Sphinx LaTeX build failed:\n{result.stderr[-500:]}")
+
+        # Copy converted images into the latex build dir so pdflatex finds them
+        for pdf_img in tmpdir.glob('*.pdf'):
+            shutil.copy2(pdf_img, latex_dir / pdf_img.name)
+
+        # latexmk → PDF
+        result = subprocess.run(
+            ['latexmk', '-pdf', '-interaction=nonstopmode', 'report.tex'],
+            cwd=str(latex_dir),
+            capture_output=True, text=True, timeout=120,
+        )
+        pdf_built = latex_dir / 'report.pdf'
+        if not pdf_built.exists():
+            raise RuntimeError(
+                f"PDF compilation failed:\n{result.stderr[-500:]}")
+
+        shutil.copy2(pdf_built, output_path)
+        print(f"PDF saved: {output_path}")
+        return str(output_path)
+
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
