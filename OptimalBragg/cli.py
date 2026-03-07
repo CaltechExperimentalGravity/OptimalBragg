@@ -14,6 +14,24 @@ Usage::
 
 import argparse
 import sys
+from pathlib import Path
+
+
+def _infer_optic(params_path):
+    """Infer optic name from a params YAML filename.
+
+    Checks for ETM/ITM/SFG in the stem; falls back to the parent
+    directory name (e.g. ``projects/SFG/`` → ``'SFG'``).
+    """
+    params_path = Path(params_path)
+    stem = params_path.stem.upper()
+    if 'ETM' in stem:
+        return 'ETM'
+    if 'ITM' in stem:
+        return 'ITM'
+    if 'SFG' in stem:
+        return 'SFG'
+    return params_path.parent.name
 
 
 def cmd_optimize(args):
@@ -50,8 +68,7 @@ def cmd_run(args):
     # 3. Launch MC in background subprocess (unless --no-mc)
     if not args.no_mc:
         params_path = Path(args.params)
-        stem = params_path.stem.upper()
-        optic = 'ETM' if 'ETM' in stem else ('ITM' if 'ITM' in stem else params_path.stem.split('_')[0])
+        optic = _infer_optic(params_path)
         data_dir = params_path.parent / 'Data' / optic
 
         mc_output = str(data_dir / Path(hdf5_path).name.replace(
@@ -106,8 +123,7 @@ def _generate_plots_and_report(params_path, hdf5_path=None,
     misc = opt_params['misc']
 
     # Infer optic name
-    stem = params_path.stem.upper()
-    optic = 'ETM' if 'ETM' in stem else ('ITM' if 'ITM' in stem else params_path.stem.split('_')[0])
+    optic = _infer_optic(params_path)
 
     # Find the HDF5 file
     data_dir = params_dir / 'Data' / optic
@@ -335,6 +351,57 @@ def cmd_corner(args):
     print(f"Saved corner plot: {output}")
 
 
+def cmd_publish(args):
+    """Promote a run to 'golden' by staging its artifacts for git commit."""
+    import glob
+    import subprocess
+
+    hdf5 = Path(args.hdf5).resolve()
+    if not hdf5.exists():
+        print(f"Error: {hdf5} not found")
+        sys.exit(1)
+
+    # Extract timestamp from filename: ..._YYMMDD_HHMMSS.hdf5
+    ts = hdf5.stem[-13:]  # YYMMDD_HHMMSS
+
+    # Infer optic from HDF5 path (e.g. Data/SFG/SFG_N16_Layers_...)
+    optic = hdf5.parent.name
+
+    # Find project dir: walk up from Data/<optic> to project root
+    project_dir = hdf5.parent.parent.parent  # projects/<project>/
+
+    # Locate RST report
+    repo_root = Path(__file__).resolve().parent.parent
+    rst_path = repo_root / 'docs' / 'runs' / optic / f'{ts}.rst'
+
+    # Locate figures
+    fig_dir = project_dir / 'Figures' / optic
+    fig_pattern = str(fig_dir / f'{optic}_*_{ts}.svg')
+    # Also check alternate naming (SF has no underscore before timestamp)
+    fig_pattern_alt = str(fig_dir / f'{optic}_*{ts}.svg')
+    figs = sorted(set(glob.glob(fig_pattern) + glob.glob(fig_pattern_alt)))
+
+    # Collect files to stage
+    to_stage = [str(hdf5)]
+    if rst_path.exists():
+        to_stage.append(str(rst_path))
+    else:
+        print(f"Warning: RST not found at {rst_path}")
+    to_stage.extend(figs)
+
+    if len(to_stage) <= 1:
+        print("Warning: only the HDF5 file was found — "
+              "run 'optimalbragg plot' first to generate report + figures.")
+
+    # git add -f (force, since these paths are normally gitignored)
+    subprocess.run(['git', 'add', '-f'] + to_stage, check=True)
+
+    print(f"\nStaged {len(to_stage)} files for commit:")
+    for f in to_stage:
+        print(f"  {f}")
+    print("\nReview with 'git status' and commit when ready.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='optimalbragg',
@@ -393,6 +460,12 @@ def main():
     p_corner.add_argument('--mirror-type', help='ETM or ITM')
     p_corner.add_argument('--params', help='Path to params YAML for wavelength labels')
     p_corner.set_defaults(func=cmd_corner)
+
+    # publish
+    p_pub = subparsers.add_parser(
+        'publish', help='Stage a golden run (HDF5 + report + figures) for git commit')
+    p_pub.add_argument('hdf5', help='Path to optimizer output HDF5')
+    p_pub.set_defaults(func=cmd_publish)
 
     args = parser.parse_args()
     args.func(args)

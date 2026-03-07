@@ -10,7 +10,6 @@ requires-python = ">=3.10"
 
 [project.urls]
 Repository = "https://github.com/CaltechExperimentalGravity/OptimalBragg"
-Documentation = "https://caltechexperimentalgravity.github.io/OptimalBragg"
 
 [project.scripts]
 optimalbragg = "OptimalBragg.cli:main"

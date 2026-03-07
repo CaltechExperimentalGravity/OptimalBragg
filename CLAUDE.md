@@ -27,8 +27,9 @@ These rules override all defaults. They exist because of real failures. Do not r
 
 Optical coating optimization for gravitational wave detector mirrors. The `OptimalBragg` package designs high-reflectivity dielectric stacks by globally optimizing a multiplicative cost function that balances transmissivity, thermal noise, manufacturing tolerance, and surface E-field constraints.
 
-Three project configurations in `projects/`:
+Four project configurations in `projects/`:
 - **`projects/aLIGO/`** — aLIGO: SiO2/TiTa2O5 coatings at 1064 nm, 295 K, fused silica substrate
+- **`projects/SFG/`** — 40m SFG cavity: SiO2/Ta2O5 coatings at 1064 nm, 295 K, fused silica substrate
 - **`projects/Voyager_aSiSiN/`** — LIGO Voyager: aSi/SiN coatings at 2050 nm, 123 K, silicon substrate
 - **`projects/Voyager_Ta2O5/`** — LIGO Voyager: Ta2O5/SiO2 coatings at 2050 nm, 123 K, silicon substrate
 

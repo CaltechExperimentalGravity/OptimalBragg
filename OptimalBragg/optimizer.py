@@ -26,6 +26,23 @@ from OptimalBragg.costs import getMirrorCost, precompute_misc
 from OptimalBragg.noise import brownian_proxy
 
 
+def _infer_optic(params_path):
+    """Infer optic name from a params YAML filename.
+
+    Checks for ETM/ITM/SFG in the stem; falls back to the parent
+    directory name (e.g. ``projects/SFG/`` → ``'SFG'``).
+    """
+    params_path = Path(params_path)
+    stem = params_path.stem.upper()
+    if 'ETM' in stem:
+        return 'ETM'
+    if 'ITM' in stem:
+        return 'ITM'
+    if 'SFG' in stem:
+        return 'SFG'
+    return params_path.parent.name
+
+
 def _build_stack(materials, Npairs, optic=None, hwcap=""):
     """Build a QW stack from loaded materials config.
 
@@ -100,11 +117,7 @@ def run_optimization(params_path, save=True, optic=None):
 
     # Infer optic name from filename if not given
     if optic is None:
-        stem = params_path.stem.upper()
-        if "ETM" in stem:
-            optic = "ETM"
-        elif "ITM" in stem:
-            optic = "ITM"
+        optic = _infer_optic(params_path)
 
     # Load configs
     opt_params = yamlread(str(params_path))
@@ -257,13 +270,7 @@ def _save_hdf5(result, params_path, params_dir):
     tnowstr = datetime.now().strftime("%y%m%d_%H%M%S")
 
     # Infer optic name for directory structure
-    stem = params_path.stem.upper()
-    if "ETM" in stem:
-        optic_dir = "ETM"
-    elif "ITM" in stem:
-        optic_dir = "ITM"
-    else:
-        optic_dir = params_path.stem.split('_')[0]
+    optic_dir = _infer_optic(params_path)
 
     spath = params_dir / "Data" / optic_dir
     os.makedirs(spath, exist_ok=True)
@@ -375,11 +382,7 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
     params_dir = params_path.parent
 
     if optic is None:
-        stem = params_path.stem.upper()
-        if "ETM" in stem:
-            optic = "ETM"
-        elif "ITM" in stem:
-            optic = "ITM"
+        optic = _infer_optic(params_path)
 
     # Load configs to get material indices and T targets
     opt_params = yamlread(str(params_path))
