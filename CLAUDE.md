@@ -91,7 +91,7 @@ python benchmarks/bench_thermooptic.py    # Thermooptic JIT vs numpy
 ### Core Package (`OptimalBragg/`)
 
 - **`layers.py`** — Transfer matrix method (`multidiel1` with Numba JIT), `multilayer_diel()`, `field_zmag()`, `surfield()`, `calc_abs()`, `op2phys()`, Sellmeier dispersion, spectral reflectivity/transmission
-- **`costs.py`** — Cost function components: `transmissionCost`, `brownianCost`, `thermoopticCost`, `sensitivityCost`, `surfEfieldCost`, `absorptionCost`. Master evaluator: `getMirrorCost(L, costs, stack, gam, verbose, misc)`. Multiplicative cost: `C = prod(1 + w_i * c_i)`
+- **`costs.py`** — Cost function components: `transmissionCost`, `brownianCost`, `thermoopticCost`, `sensitivityCost`, `surfEfieldCost`, `absorptionCost`. Master evaluator: `getMirrorCost(L, costs, stack, gam, verbose, misc)`. Multiplicative cost: `C = prod(1 + w_i * c_i)`. First-derivative sensitivity costs (`dTdnH`, `dTdnL`, `dTdd`) and second-derivative curvature costs (`d2TdnH`, `d2TdnL`, `d2Tdd`) via central finite differences
 - **`noise.py`** — Thermal noise models: `coating_thermooptic_fast()` (Numba JIT), `coating_brownian()` (Hong et al.), `substrate_brownian()`, `substrate_thermoelastic()`, `brownian_proxy()`. All take `stack` dict.
 - **`materials.py`** — Central materials library with references: `SiO2`, `TiTa2O5`, `Ta2O5`, `aSi_123`, `SiN_123`, `cSi_123`, `FusedSilica`, `air`
 - **`optimizer.py`** — `run_optimization(params_yaml)` using `differential_evolution`
@@ -125,3 +125,5 @@ Uses `emcee` ensemble sampler (20 walkers, 3D parameter space). Perturbs: high-n
 - Primary operating points: 2050 nm / 123 K (Voyager), 1064 nm / 295 K (aLIGO)
 - Wavelength ratios are configured per-project via `lambda2`/`lambda3` in params YAML (not hardcoded)
 - Corner plots use ArviZ `plot_pair()` (not `corner` package)
+- Sensitivity costs: `dTdnH`/`dTdnL`/`dTdd` penalize first derivatives (gradient); `d2TdnH`/`d2TdnL`/`d2Tdd` penalize second derivatives (curvature). Both use central finite differences with shared delta. Curvature costs are opt-in via YAML weights. A design with small gradient but large curvature will pass nominal targets but fail MC — always check MC 95th percentiles.
+- CLI commands: `optimize`, `run`, `plot`, `sweep`, `mc`, `corner`, `pdf`, `publish`
