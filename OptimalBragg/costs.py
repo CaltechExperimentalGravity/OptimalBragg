@@ -437,6 +437,8 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
         SBrZ = (L[::2].sum() + gam_val * L[1::2].sum())
         excess = SBrZ / costs['Brownian']['target'] - 1.0
         vector_cost['Brownian'] = max(0.0, excess) ** 2
+        if verbose:
+            output['Brownian'] = float(SBrZ)
 
     # --- Thermooptic (JIT-compiled) ---
     # Threshold penalty: zero at/below target, quadratic above.
@@ -453,6 +455,8 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
         )
         excess = StoZ / costs['Thermooptic']['target'] - 1.0
         vector_cost['Thermooptic'] = max(0.0, excess) ** 2
+        if verbose:
+            output['Thermooptic'] = float(StoZ)
 
     # --- Absorption (E-field profile, slow) ---
     if 'Absorption' in active:
@@ -470,6 +474,8 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
         vector_cost['Absorption'] = np.abs(
             (target_abs - absorp) / target_abs
         )
+        if verbose:
+            output['Absorption'] = float(absorp)
 
     # --- Layer thickness std dev ---
     if 'Lstdev' in active:

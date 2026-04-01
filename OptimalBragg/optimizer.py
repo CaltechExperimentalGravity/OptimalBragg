@@ -11,6 +11,8 @@ Or from the command line::
     python -m OptimalBragg.optimizer projects/aLIGO/ETM_params.yml
 """
 
+import contextlib
+import io
 import os
 import warnings
 from datetime import datetime
@@ -90,7 +92,7 @@ def _build_stack(materials, Npairs, optic=None, hwcap=""):
     return stack
 
 
-def run_optimization(params_path, save=True, optic=None):
+def run_optimization(params_path, save=True, optic=None, verbose=True):
     """Run a full coating optimization.
 
     Parameters
@@ -154,8 +156,9 @@ def run_optimization(params_path, save=True, optic=None):
     bounds = ((min_thick, 0.48),) + ((0.05, 0.48),) * (n_layers - 1)
 
     cap_str = f" + {hwcap} cap" if hwcap else ""
-    print(f"Optimizing {optic or 'coating'}: {Npairs} bilayers{cap_str}, "
-          f"{n_layers} free layers")
+    if verbose:
+        print(f"Optimizing {optic or 'coating'}: {Npairs} bilayers{cap_str}, "
+              f"{n_layers} free layers")
 
     tic = default_timer()
 
@@ -212,14 +215,15 @@ def run_optimization(params_path, save=True, optic=None):
             args=(costs, stack, gam, False, misc),
             polish=True,
             callback=monitor,
-            disp=True,
+            disp=verbose,
         )
 
         if not res.success:
             warnings.warn(f"Optimizer did not converge: {res.message}")
 
     dt = default_timer() - tic
-    print(f"\nOptimization took {dt:.1f} sec")
+    if verbose:
+        print(f"\nOptimization took {dt:.1f} sec")
 
     # Expand L with Ncopies and Nfixed
     Lres = res.x.copy()
@@ -238,10 +242,12 @@ def run_optimization(params_path, save=True, optic=None):
     final_misc = dict(misc)
     final_misc.update({"Ncopies": 0, "Nfixed": 0})
     precompute_misc(costs, stack, final_misc)
-    scalar_cost, output = getMirrorCost(
-        Lres, costs=costs, stack=stack, gam=gam,
-        verbose=True, misc=final_misc,
-    )
+    _suppress = contextlib.redirect_stdout(io.StringIO()) if not verbose else contextlib.nullcontext()
+    with _suppress:
+        scalar_cost, output = getMirrorCost(
+            Lres, costs=costs, stack=stack, gam=gam,
+            verbose=True, misc=final_misc,
+        )
 
     result = {
         "L": Lres,
@@ -259,25 +265,36 @@ def run_optimization(params_path, save=True, optic=None):
         result["_original_params"] = Path(misc["_original_params"])
 
     if save:
-        hdf5_path = _save_hdf5(result, params_path, params_dir)
+        hdf5_path = _save_hdf5(result, params_path, params_dir, misc, verbose=verbose)
         result["hdf5_path"] = hdf5_path
 
     return result
 
 
-def _save_hdf5(result, params_path, params_dir):
+def _save_hdf5(result, params_path, params_dir, misc=None, verbose=True):
     """Save optimization result to HDF5."""
     tnowstr = datetime.now().strftime("%y%m%d_%H%M%S")
+    run_name = misc.get("run_name", "") if misc else ""
 
     # Infer optic name for directory structure
     optic_dir = _infer_optic(params_path)
 
-    spath = params_dir / "Data" / optic_dir
+    batch_name = misc.get("batch_name") if misc else None
+    if batch_name:
+        # New structure: Data/{batch_name}/{finesse_dir}/
+        import re as _re
+        _m = _re.search(r'finesse(\d+)', params_path.stem, _re.IGNORECASE)
+        finesse_dir = f"finesse{_m.group(1)}" if _m else "finesse_unknown"
+        spath = params_dir / "Data" / batch_name / finesse_dir
+    else:
+        # Original structure: Data/{optic_dir}/
+        spath = params_dir / "Data" / optic_dir
     os.makedirs(spath, exist_ok=True)
 
     nlayers = len(result["L"])
     npairs = (nlayers - 1) // 2 if nlayers % 2 == 1 else nlayers // 2
-    fname = spath / f"{optic_dir}_N{npairs}_Layers_{tnowstr}.hdf5"
+    label = f"_{run_name}" if run_name else ""
+    fname = spath / f"{optic_dir}_N{npairs}_Layers_{tnowstr}{label}.hdf5"
 
     output = dict(result["output"])
     vector_cost = output.pop("vectorCost")
@@ -293,9 +310,12 @@ def _save_hdf5(result, params_path, params_dir):
         "params_file": str(result.get("_original_params", params_path)),
         "algorithm": result.get("algorithm", "differential_evolution"),
         "wall_time": np.float64(result.get("wall_time", 0.0)),
+        "converged": bool(result["res"].success),
+        "message": result["res"].message,
     }
     h5write(str(fname), h5_dict)
-    print(f"\nSaved: {fname}")
+    if verbose:
+        print(f"\nSaved: {fname}")
     return str(fname)
 
 
@@ -317,7 +337,7 @@ def _qw_min_npairs(n_H, n_L, n_sub, n_sup, T_target):
     return int(np.ceil(N))
 
 
-def _run_one_npairs(params_path, N, save, optic):
+def _run_one_npairs(params_path, N, save, optic, verbose=True):
     """Run a single Npairs optimization.  Designed for process-pool dispatch."""
     import yaml
 
@@ -333,7 +353,7 @@ def _run_one_npairs(params_path, N, save, optic):
         yaml.dump(opt_params, f, default_flow_style=False)
 
     try:
-        result = run_optimization(tmp_yaml, save=save, optic=optic)
+        result = run_optimization(tmp_yaml, save=save, optic=optic, verbose=verbose)
         entry = {
             "Npairs": N,
             "cost": result["scalar_cost"],
@@ -353,7 +373,7 @@ def _run_one_npairs(params_path, N, save, optic):
     return entry
 
 
-def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
+def sweep_nlayers(params_path, n_range=None, save=True, optic=None, verbose=True):
     """Sweep Npairs to find the minimum that hits all targets.
 
     Runs all Npairs values in parallel using a process pool.
@@ -415,32 +435,34 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
 
     n_values = list(range(n_range[0], n_range[1] + 1))
 
-    print(f"\n{'='*60}")
-    print(f"Nlayers sweep: Npairs = {n_range[0]}..{n_range[1]}  "
-          f"({len(n_values)} jobs in parallel)")
-    print(f"n_H={n_H:.3f}, n_L={n_L:.3f}, ratio={n_L/n_H:.4f}")
-    print(f"{'='*60}\n")
+    if verbose:
+        print(f"\n{'='*60}")
+        print(f"Nlayers sweep: Npairs = {n_range[0]}..{n_range[1]}  "
+              f"({len(n_values)} jobs in parallel)")
+        print(f"n_H={n_H:.3f}, n_L={n_L:.3f}, ratio={n_L/n_H:.4f}")
+        print(f"{'='*60}\n")
 
     # Launch all Npairs optimizations in parallel
     results_map = {}
     with ProcessPoolExecutor(max_workers=len(n_values)) as pool:
         futures = {
-            pool.submit(_run_one_npairs, str(params_path), N, save, optic): N
+            pool.submit(_run_one_npairs, str(params_path), N, save, optic, verbose): N
             for N in n_values
         }
         for future in as_completed(futures):
             N = futures[future]
             entry = future.result()
             results_map[N] = entry
-            if entry["T1"] is not None:
-                r2_str = (f"  R2={1e6*(1-entry['T2']):.0f} ppm"
-                          if entry["T2"] is not None else "")
-                r3_str = (f"  R3={1e6*(1-entry['T3']):.0f} ppm"
-                          if entry.get("T3") is not None else "")
-                print(f"  Npairs={N:>2} done: cost={entry['cost']:.6f}  "
-                      f"T1={entry['T1']:.6e}{r2_str}{r3_str}")
-            else:
-                print(f"  Npairs={N:>2} done: FAILED")
+            if verbose:
+                if entry["T1"] is not None:
+                    r2_str = (f"  R2={1e6*(1-entry['T2']):.0f} ppm"
+                              if entry["T2"] is not None else "")
+                    r3_str = (f"  R3={1e6*(1-entry['T3']):.0f} ppm"
+                              if entry.get("T3") is not None else "")
+                    print(f"  Npairs={N:>2} done: cost={entry['cost']:.6f}  "
+                          f"T1={entry['T1']:.6e}{r2_str}{r3_str}")
+                else:
+                    print(f"  Npairs={N:>2} done: FAILED")
 
     # Collect results in Npairs order
     results = [results_map[N] for N in n_values]
@@ -456,37 +478,40 @@ def sweep_nlayers(params_path, n_range=None, save=True, optic=None):
         header += f" | {'R3 (ppm)':>12}"
         sep += f"-+-{'-'*12}"
 
-    print(f"\n{'='*60}")
-    print(header)
-    print(sep)
-
     t1_tgt = costs.get("Trans1", {}).get("target")
     t2_tgt = costs.get("Trans2", {}).get("target")
 
     best_n, best_cost = None, np.inf
     for r in results:
-        t1_str = f"{r['T1']:.4e}" if r["T1"] is not None else "N/A"
-        r2_str = (f"{1e6*(1-r['T2']):.0f}" if r["T2"] is not None
-                  else "N/A")
         if r["cost"] < best_cost:
             best_cost = r["cost"]
             best_n = r["Npairs"]
-        line = (f"{r['Npairs']:>6} | {2*r['Npairs']:>6} | "
-                f"{r['cost']:>10.6f} | {t1_str:>12} | {r2_str:>12}")
-        if has_t3:
-            r3_str = (f"{1e6*(1-r['T3']):.0f}" if r.get("T3") is not None
-                      else "N/A")
-            line += f" | {r3_str:>12}"
-        print(line)
 
-    r2_tgt_ppm = f"{1e6*(1-t2_tgt):.0f}" if t2_tgt else "N/A"
-    targets_str = f"\nTargets:  T1={t1_tgt}  R2<{r2_tgt_ppm} ppm"
-    if has_t3:
-        r3_tgt_ppm = f"{1e6*(1-t3_tgt):.0f}" if t3_tgt else "N/A"
-        targets_str += f"  R3<{r3_tgt_ppm} ppm"
-    print(targets_str)
-    if best_n:
-        print(f"Best:     Npairs={best_n} (cost={best_cost:.6f})")
+    if verbose:
+        print(f"\n{'='*60}")
+        print(header)
+        print(sep)
+
+        for r in results:
+            t1_str = f"{r['T1']:.4e}" if r["T1"] is not None else "N/A"
+            r2_str = (f"{1e6*(1-r['T2']):.0f}" if r["T2"] is not None
+                      else "N/A")
+            line = (f"{r['Npairs']:>6} | {2*r['Npairs']:>6} | "
+                    f"{r['cost']:>10.6f} | {t1_str:>12} | {r2_str:>12}")
+            if has_t3:
+                r3_str = (f"{1e6*(1-r['T3']):.0f}" if r.get("T3") is not None
+                          else "N/A")
+                line += f" | {r3_str:>12}"
+            print(line)
+
+        r2_tgt_ppm = f"{1e6*(1-t2_tgt):.0f}" if t2_tgt else "N/A"
+        targets_str = f"\nTargets:  T1={t1_tgt}  R2<{r2_tgt_ppm} ppm"
+        if has_t3:
+            r3_tgt_ppm = f"{1e6*(1-t3_tgt):.0f}" if t3_tgt else "N/A"
+            targets_str += f"  R3<{r3_tgt_ppm} ppm"
+        print(targets_str)
+        if best_n:
+            print(f"Best:     Npairs={best_n} (cost={best_cost:.6f})")
 
     return results
 
