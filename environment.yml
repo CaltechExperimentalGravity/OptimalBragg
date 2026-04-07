@@ -13,7 +13,7 @@ dependencies:
   - lmfit
   - pyyaml
   - tqdm
-  - arviz
+  - arviz<1.0
   - cython
   - ipython
   - jupyter
