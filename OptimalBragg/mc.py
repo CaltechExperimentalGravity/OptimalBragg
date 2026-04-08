@@ -250,10 +250,23 @@ def _build_mc_stack(n_out, L_phys, layers_hdf5):
     # 2. Fall back to directory walking
     if params_path is None:
         hdf5_dir = Path(layers_hdf5).parent
-        for candidate in [
-            hdf5_dir.parent.parent / 'ETM_params.yml',
-            hdf5_dir.parent.parent / 'ITM_params.yml',
-        ]:
+        # Build candidate list: try remapping cluster path by filename first,
+        # then standard params filenames, then finesse-specific variants.
+        _fname = Path(pf_str).name if 'pf_str' in dir() else None
+        # Search in parent dirs at increasing depth (handles both standard
+        # Data/{optic}/ and batch Data/{batch}/{finesse}/ structures)
+        _search_dirs = [hdf5_dir.parent.parent, hdf5_dir.parent.parent.parent]
+        _candidates = []
+        for _search_dir in _search_dirs:
+            if _fname:
+                _candidates.append(_search_dir / _fname)
+            _candidates += [
+                _search_dir / 'ETM_params.yml',
+                _search_dir / 'ITM_params.yml',
+            ]
+            _candidates += sorted(_search_dir.glob('ETM_params_finesse*.yml'))
+            _candidates += sorted(_search_dir.glob('ITM_params_finesse*.yml'))
+        for candidate in _candidates:
             if candidate.exists():
                 params_path = candidate
                 break
