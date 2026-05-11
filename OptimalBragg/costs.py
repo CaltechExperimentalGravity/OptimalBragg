@@ -107,26 +107,24 @@ def stdevLCost(target, L):
     return np.abs((target - relative_stdev) / target) ** 2
 
 
-def brownianCost(target, L, gam):
-    """Brownian noise threshold penalty (LIGO-E0900068).
-
-    Returns 0 when noise proxy is at or below *target*, and a quadratic
-    penalty ``(SBrZ/target - 1)^2`` when above.
+def brownianCost(target, L, gam, mode='ceiling'):
+    """Brownian noise proxy cost (LIGO-E0900068).
 
     Parameters
     ----------
     target : float
-        Brownian proxy budget (e.g. QW stack reference).
+        Brownian proxy normalization reference.
     L : array_like
         Optical thicknesses.
     gam : float or dict
-        Brownian proxy factor.  If dict, uses the first value
-        (for binary stacks with a single high-n material).
+        Brownian proxy factor.  If dict, uses the first value.
+    mode : {'ceiling', 'minimize'}
+        ``'ceiling'``: ``max(0, SBrZ/target - 1)^2`` — zero below threshold.
+        ``'minimize'``: ``(SBrZ/target)^2`` — always rewards lower noise.
 
     Returns
     -------
     float
-        Threshold penalty: ``max(0, SBrZ/target - 1)^2``.
     """
     if isinstance(gam, dict):
         gam_val = next(iter(gam.values()))
@@ -135,19 +133,19 @@ def brownianCost(target, L, gam):
     zLow = np.sum(L[::2])
     zHigh = np.sum(L[1::2])
     SBrZ = zLow + gam_val * zHigh
+    if mode == 'minimize':
+        return (SBrZ / target) ** 2
     return max(0.0, SBrZ / target - 1.0) ** 2
 
 
 def thermoopticCost(target, fTarget, L, stack, stack_params=None,
-                    w_beam=None):
-    """Thermo-optic noise threshold penalty (JIT-compiled).
-
-    Returns 0 when S_TO is at or below *target*, quadratic above.
+                    w_beam=None, mode='ceiling'):
+    """Thermo-optic noise cost (JIT-compiled).
 
     Parameters
     ----------
     target : float
-        S_TO budget for normalization.
+        S_TO normalization reference.
     fTarget : float
         Frequency [Hz].
     L : array_like
@@ -158,11 +156,13 @@ def thermoopticCost(target, fTarget, L, stack, stack_params=None,
         Pre-computed from :func:`extract_stack_params`.
     w_beam : float, optional
         Beam radius [m].  Required if *stack_params* is None.
+    mode : {'ceiling', 'minimize'}
+        ``'ceiling'``: ``max(0, S_TO/target - 1)^2`` — zero below threshold.
+        ``'minimize'``: ``(S_TO/target)^2`` — always rewards lower noise.
 
     Returns
     -------
     float
-        Normalized TO noise: ``S_TO / target``.
     """
     wavelength = stack["lam_ref"]
     if stack_params is None:
@@ -171,6 +171,8 @@ def thermoopticCost(target, fTarget, L, stack, stack_params=None,
         raise ValueError("w_beam required")
     StoZ = coating_thermooptic_fast(fTarget, L, wavelength, w_beam,
                                     stack_params)
+    if mode == 'minimize':
+        return (StoZ / target) ** 2
     return max(0.0, StoZ / target - 1.0) ** 2
 
 
@@ -430,18 +432,19 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
         if verbose:
             output['Esurf'] = Esurf_sq
 
+    noise_mode = misc.get('noise_cost_mode', 'ceiling')
+
     # --- Brownian (no multidiel1 needed) ---
-    # Threshold penalty: zero at/below target, quadratic above.
     if 'Brownian' in active:
         gam_val = next(iter(gam.values())) if isinstance(gam, dict) else gam
         SBrZ = (L[::2].sum() + gam_val * L[1::2].sum())
-        excess = SBrZ / costs['Brownian']['target'] - 1.0
-        vector_cost['Brownian'] = max(0.0, excess) ** 2
+        ratio = SBrZ / costs['Brownian']['target']
+        vector_cost['Brownian'] = ratio ** 2 if noise_mode == 'minimize' \
+            else max(0.0, ratio - 1.0) ** 2
         if verbose:
             output['Brownian'] = float(SBrZ)
 
     # --- Thermooptic (JIT-compiled) ---
-    # Threshold penalty: zero at/below target, quadratic above.
     if 'Thermooptic' in active:
         stack_params = misc.get('_stack_params')
         if stack_params is None:
@@ -453,8 +456,9 @@ def getMirrorCost(L, costs, stack, gam, verbose=False, misc=None):
             misc.get('fTO', 100.0), L, stack["lam_ref"], w_beam,
             stack_params,
         )
-        excess = StoZ / costs['Thermooptic']['target'] - 1.0
-        vector_cost['Thermooptic'] = max(0.0, excess) ** 2
+        ratio = StoZ / costs['Thermooptic']['target']
+        vector_cost['Thermooptic'] = ratio ** 2 if noise_mode == 'minimize' \
+            else max(0.0, ratio - 1.0) ** 2
         if verbose:
             output['Thermooptic'] = float(StoZ)
 
