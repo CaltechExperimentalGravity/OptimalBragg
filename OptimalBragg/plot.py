@@ -21,13 +21,15 @@ def apply_style():
 
     plt.rcParams.update({
         'text.usetex': False,
+        'axes.facecolor': 'white',
+        'figure.facecolor': 'white',
         'lines.linewidth': 3,
         'font.size': 22,
         'xtick.direction': 'in',
         'ytick.direction': 'in',
         'xtick.labelsize': 'medium',
         'ytick.labelsize': 'medium',
-        'axes.labelsize': 'small',
+        'axes.labelsize': 'medium',
         'axes.titlesize': 'medium',
         'axes.grid.axis': 'both',
         'axes.grid.which': 'both',
@@ -37,7 +39,7 @@ def apply_style():
         'lines.markersize': 12,
         'legend.borderpad': 0.2,
         'legend.fancybox': True,
-        'legend.fontsize': 'small',
+        'legend.fontsize': 'medium',
         'legend.framealpha': 0.8,
         'legend.handletextpad': 0.5,
         'legend.labelspacing': 0.33,
@@ -92,9 +94,9 @@ def plot_layers(n, L_opt, wavelength, name_high='H', name_low='L',
 
     # E-field
     ax[0].plot(Z * 1e6, field, color='xkcd:electric purple', alpha=0.97)
-    absStr = (Rf"$|\vec E_{{\mathrm{{surface}}}}| = {1e6*field[0]:.0f}$ ppm "
-              Rf"of $|\vec E_{{\mathrm{{inc}}}}|$")
-    ax[0].text(0.5, 0.7, absStr, transform=ax[0].transAxes, fontsize=14)
+    # absStr = (Rf"$|\vec E_{{\mathrm{{surface}}}}| = {1e6*field[0]:.0f}$ ppm "
+    #           Rf"of $|\vec E_{{\mathrm{{inc}}}}|$")
+    # ax[0].text(0.5, 0.7, absStr, transform=ax[0].transAxes, fontsize=14)
 
     # Vertical lines at layer boundaries
     ax[0].vlines(np.cumsum(L_phys)[1:-1:2] * 1e6, 1e-5, 0.55,
@@ -113,12 +115,11 @@ def plot_layers(n, L_opt, wavelength, name_high='H', name_low='L',
               label=name_high)
     ax[1].legend()
     ax[1].yaxis.set_major_formatter(FormatStrFormatter('%3d'))
-    ax[0].set_ylabel(R"Normalized $|E(z)|^2$")
-    ax[1].set_ylabel(R"Physical layer thickness [nm]")
-    ax[1].set_xlabel(R"Distance from air interface, $[\mu \mathrm{m}]$")
+    ax[0].set_ylabel(R"Normalized $|E(z)|^2$", fontsize=16)
+    ax[1].set_ylabel(R"Physical layer thickness [nm]", fontsize=16)
+    ax[1].set_xlabel("Distance from coating surface [μm]")
 
     fig.subplots_adjust(hspace=0.01, left=0.09, right=0.95, top=0.92)
-    fig.suptitle(f'{name_high}:{name_low} coating electric field')
 
     if save_path:
         plt.savefig(save_path)
@@ -195,7 +196,7 @@ def plot_spectral(n, L_opt, wavelength, T1=None,
                    alpha=0.6,
                    label=f'{wl3_nm:.0f} nm')
 
-    ax.set_xlabel(R"Wavelength [$\mu \mathrm{m}$]")
+    ax.set_xlabel("Wavelength [μm]")
     ax.set_ylabel(R"T or R")
     ax.set_ylim((5e-8, 1.0))
     ax.legend(loc='lower left')
@@ -235,6 +236,7 @@ def plot_noise(stack, w_beam, r_mirror=0.17, d_mirror=0.20,
 
     if freq is None:
         freq = np.logspace(0, 4, 500)
+    freq = np.sort(np.unique(np.append(freq, 100.0)))
 
     StoZ, SteZ, StrZ = coating_thermooptic(
         freq, stack, w_beam, r_mirror, d_mirror)
@@ -262,11 +264,6 @@ def plot_noise(stack, w_beam, r_mirror=0.17, d_mirror=0.20,
               c='xkcd:Chocolate', alpha=0.3)
     ax.loglog(freq, CTNtot, c='k', lw=3, ls='--',
               label=Rf'CTN total = {CTNtot[idx100]/1e-22:.2f}e-22 @ 100 Hz')
-
-    n_layers = len(stack["Ls"])
-    thickness_um = np.sum(stack["Ls"]) * 1e6
-    ax.text(80, 11e-21, f'# of layers = {n_layers}', size='x-small')
-    ax.text(80, 5e-21, f'Thickness = {thickness_um:.2f} um', size='x-small')
 
     ax.legend()
     ax.set_xlim([10, 10e3])
@@ -333,8 +330,8 @@ def plot_starfish(scalar_costs, scale=None, save_path=None, title=''):
 # ── Corner plot ──────────────────────────────────────────────────────
 
 _NOISE_LABELS = [
-    r'$S_\mathrm{TO}$ [$\times 10^{-21}$ m/$\sqrt{\mathrm{Hz}}$]',
-    r'$S_\mathrm{Br}$ [$\times 10^{-21}$ m/$\sqrt{\mathrm{Hz}}$]',
+    r'$S_\mathrm{TO}$ [zm/$\sqrt{\mathrm{Hz}}$]',
+    r'$S_\mathrm{Br}$ [zm/$\sqrt{\mathrm{Hz}}$]',
     r'$E_\mathrm{surface}$ [V/m]',
 ]
 _NOISE_VAR_NAMES = ['S_TO', 'S_Br', 'E_surf']
@@ -365,17 +362,17 @@ def _build_corner_labels(n_obs, wavelength_info=None):
 
     labels = [
         rf'$T_{{{wl1}}}$ [ppm]',
-        rf'$R_{{{wl2}}}$ [ppm]',
+        rf'$T_{{{wl2}}}$ [ppm]',
     ]
-    var_names = ['T1_ppm', 'R2_ppm']
+    var_names = ['T1_ppm', 'T2_ppm']
 
     if n_obs >= 6:
         if wavelength_info is not None and wavelength_info.get('lambda3') is not None:
             wl3 = f'{wl * wavelength_info["lambda3"] * 1e9:.0f}'
         else:
             wl3 = r'\lambda_3'
-        labels.append(rf'$R_{{{wl3}}}$ [ppm]')
-        var_names.append('R3_ppm')
+        labels.append(rf'$T_{{{wl3}}}$ [ppm]')
+        var_names.append('T3_ppm')
 
     labels.extend(_NOISE_LABELS)
     var_names.extend(_NOISE_VAR_NAMES)
@@ -453,8 +450,9 @@ def plot_corner(mc_samples, mirror_type='ETM', save_path=None,
 
     ax = az.plot_pair(
         idata, kind='kde', marginals=True, point_estimate='median',
-        figsize=(18, 18), textsize=14,
-        kde_kwargs={'contourf_kwargs': {'cmap': 'Reds'},
+        figsize=(18, 18), textsize=21,
+        kde_kwargs={'hdi_probs': [0.68, 0.90, 0.95],
+                    'contourf_kwargs': {'cmap': 'Reds'},
                     'contour_kwargs': {'colors': 'firebrick'}},
         marginal_kwargs={'color': 'firebrick'},
         point_estimate_kwargs={'color': 'k'},
@@ -471,9 +469,6 @@ def plot_corner(mc_samples, mirror_type='ETM', save_path=None,
 
     fig = plt.gcf()
 
-    fig.suptitle(f'{mirror_type} Monte Carlo Sensitivity '
-                 f'({samples_clean.shape[1]} samples)',
-                 fontsize=18, y=0.99)
 
     if save_path:
         plt.savefig(save_path, bbox_inches='tight', dpi=150)

@@ -201,14 +201,14 @@ def run_mc(layers_hdf5, n_samples=5000, lambda2=None, lambda3=None,
         SbrZ = coating_brownian(freq, _perturbed_stack, w_beam)
         Brnoise[jj] = SbrZ
 
-    # Package output: T [ppm] for HR wavelength, R [ppm] for AR wavelengths
+    # Package output: T [ppm] for all wavelengths
     idx100 = np.argmin(np.abs(freq - 100))
     rows = [
         1e6 * Tp_IR,               # T_PSL [ppm]
-        1e6 * (1 - Tp_AUX),        # R_AUX [ppm]
+        1e6 * Tp_AUX,              # T_AUX [ppm]
     ]
     if lambda3 is not None:
-        rows.append(1e6 * (1 - Tp_lam3))  # R_lam3 [ppm]
+        rows.append(1e6 * Tp_lam3)  # T_lam3 [ppm]
     rows.extend([
         np.sqrt(TOnoise[:, idx100]) * 1e21,  # S_TO [×1e-21]
         np.sqrt(Brnoise[:, idx100]) * 1e21,  # S_Br [×1e-21]
